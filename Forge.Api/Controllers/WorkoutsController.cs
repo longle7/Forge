@@ -1,0 +1,163 @@
+using System.ComponentModel.DataAnnotations;
+using Forge.Api.Data;
+using Forge.Api.Domain;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace Forge.Api.Controllers
+{
+    /// <summary>
+    /// Your finished workouts (read, save, delete).
+    ///
+    /// Who are you? The app makes up a random ID once per device and sends it as the X-User-Id header on every
+    /// request (Settings shows it as your restore code). Each endpoint only touches rows with that ID. Someone else's
+    /// workout answers 404 (not 403), so nobody can tell whether it exists.
+    /// Saving is one idempotent PUT: the app makes up the workout's ID when it starts, so tapping Finish again after a
+    /// lost response (weak signal at the gym) saves the same workout instead of a copy, and editing a past workout is
+    /// the same call.
+    /// ponytail: header is trusted as-is, replace with the authenticated user's ID when login exists.
+    /// </summary>
+    [ApiController]
+    [Route("workouts")]
+    public class WorkoutsController : ControllerBase
+    {
+        public const int MaxSets = 300;
+        public static readonly TimeSpan MaxDuration = TimeSpan.FromHours(24);
+
+        private readonly ForgeDbContext _db;
+
+        public WorkoutsController(ForgeDbContext db)
+        {
+            _db = db;
+        }
+
+        // GET /workouts: newest first.
+        // ponytail: returns every workout; page it when history gets long.
+        [HttpGet]
+        public async Task<IEnumerable<WorkoutResponse>> GetAll([FromHeader(Name = "X-User-Id"), Required, MaxLength(100)] string userId)
+        {
+            var workouts = await _db.Workouts
+                .Include(w => w.Sets)
+                .Where(w => w.UserId == userId)
+                .OrderByDescending(w => w.StartedAtUtc)
+                .AsSplitQuery()
+                .ToListAsync();
+
+            return workouts.Select(WorkoutResponse.From);
+        }
+
+        // GET /workouts/{id}
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<WorkoutResponse>> GetById(Guid id, [FromHeader(Name = "X-User-Id"), Required, MaxLength(100)] string userId)
+        {
+            var workout = await _db.Workouts.Include(w => w.Sets).FirstOrDefaultAsync(w => w.Id == id && w.UserId == userId);
+            return workout is null ? NotFound() : WorkoutResponse.From(workout);
+        }
+
+        // PUT /workouts/{id}: creates the workout (201) or replaces it and all its sets (200).
+        [HttpPut("{id:guid}")]
+        public async Task<ActionResult<WorkoutResponse>> Put(
+            Guid id,
+            WorkoutRequest request,
+            [FromHeader(Name = "X-User-Id"), Required, MaxLength(100)] string userId)
+        {
+            var workout = await _db.Workouts.Include(w => w.Sets).FirstOrDefaultAsync(w => w.Id == id);
+            if (workout is not null && workout.UserId != userId)
+            {
+                return NotFound(); // someone else's: the same answer as a missing one
+            }
+
+            if (!await ValidateAsync(request, userId))
+            {
+                return ValidationProblem();
+            }
+
+            var created = workout is null;
+            if (workout is null)
+            {
+                workout = new Workout { Id = id, UserId = userId };
+                _db.Workouts.Add(workout);
+            }
+
+            workout.Name = string.IsNullOrWhiteSpace(request.Name) ? "Workout" : request.Name.Trim();
+            workout.StartedAtUtc = request.StartedAt.UtcDateTime;
+            workout.FinishedAtUtc = request.FinishedAt.UtcDateTime;
+            workout.Sets.Clear(); // the old sets are deleted (orphans of a required relationship)
+            workout.Sets.AddRange(request.Sets.Select((s, i) => new WorkoutSet
+            {
+                ExerciseId = s.ExerciseId,
+                Position = i,
+                Weight = s.Weight,
+                Reps = s.Reps,
+            }));
+            await _db.SaveChangesAsync();
+
+            var response = WorkoutResponse.From(workout);
+            return created ? CreatedAtAction(nameof(GetById), new { id }, response) : response;
+        }
+
+        // DELETE /workouts/{id}: its sets go with it (cascade delete).
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> Delete(Guid id, [FromHeader(Name = "X-User-Id"), Required, MaxLength(100)] string userId)
+        {
+            var deleted = await _db.Workouts.Where(w => w.Id == id && w.UserId == userId).ExecuteDeleteAsync();
+            return deleted == 0 ? NotFound() : NoContent();
+        }
+
+        // Checks what the attributes on the request can't: the sets' exercises and the times.
+        // Adds errors to ModelState and returns false when invalid.
+        private async Task<bool> ValidateAsync(WorkoutRequest request, string userId)
+        {
+            if (request.Sets.Count == 0)
+            {
+                ModelState.AddModelError(nameof(request.Sets), "Check off at least one set to save a workout.");
+            }
+            else if (request.Sets.Count > MaxSets)
+            {
+                ModelState.AddModelError(nameof(request.Sets), $"A workout can have up to {MaxSets} sets.");
+            }
+
+            var exerciseIds = request.Sets.Select(s => s.ExerciseId).Distinct().ToList();
+            var known = await _db.Exercises.CountAsync(e => exerciseIds.Contains(e.Id) && (e.UserId == null || e.UserId == userId));
+            if (known != exerciseIds.Count)
+            {
+                ModelState.AddModelError(nameof(request.Sets), "A set has an unknown exercise.");
+            }
+
+            if (request.FinishedAt < request.StartedAt)
+            {
+                ModelState.AddModelError(nameof(request.FinishedAt), "FinishedAt must be after StartedAt.");
+            }
+            else if (request.FinishedAt - request.StartedAt > MaxDuration)
+            {
+                ModelState.AddModelError(nameof(request.FinishedAt), "A workout can last up to 24 hours.");
+            }
+
+            return ModelState.IsValid;
+        }
+    }
+
+    public record WorkoutRequest(
+        [MaxLength(100)] string? Name,
+        DateTimeOffset StartedAt,
+        DateTimeOffset FinishedAt,
+        [Required] List<WorkoutSetRequest> Sets);
+
+    public record WorkoutSetRequest(
+        int ExerciseId,
+        [Range(0, 2000)] decimal Weight,
+        [Range(1, 1000)] int Reps);
+
+    public record WorkoutResponse(Guid Id, string Name, DateTime StartedAt, DateTime FinishedAt, IEnumerable<WorkoutSetResponse> Sets)
+    {
+        // SQL Server hands DateTimes back without a kind; mark them UTC so the JSON ends in "Z" and the app reads them right.
+        public static WorkoutResponse From(Workout w) => new(
+            w.Id,
+            w.Name,
+            DateTime.SpecifyKind(w.StartedAtUtc, DateTimeKind.Utc),
+            DateTime.SpecifyKind(w.FinishedAtUtc, DateTimeKind.Utc),
+            w.Sets.OrderBy(s => s.Position).Select(s => new WorkoutSetResponse(s.ExerciseId, s.Weight, s.Reps)));
+    }
+
+    public record WorkoutSetResponse(int ExerciseId, decimal Weight, int Reps);
+}

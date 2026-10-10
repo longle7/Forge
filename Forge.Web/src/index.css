@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+body {
+  @apply bg-neutral-100 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
+  /* Feel like an app on iOS: no gray flash on tap, no text-size jump on rotate. */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Page changes: the new page fades and rises into place (App.tsx), unless the device asks for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter {
+    animation: page-enter 200ms ease-out;
+  }
+}
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Keyboard focus (and in-page scrolling) keeps the focused item clear of the fixed tab bar and rest timer
+   (WCAG 2.4.11 Focus Not Obscured). */
+html {
+  scroll-padding-bottom: calc(9rem + env(safe-area-inset-bottom));
+}

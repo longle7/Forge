@@ -1,0 +1,17 @@
+# .NET build output and Visual Studio / Rider files
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+TestResults/
+
+# Secrets that must never be committed: local settings files and Apple private keys (.p8).
+# Real keys live in Azure secrets and `dotnet user-secrets` (see README).
+.env
+*.p8
+
+# Tool state
+.claude/
+.DS_Store
