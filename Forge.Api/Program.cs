@@ -33,6 +33,9 @@ builder.Services.AddDbContext<ForgeDbContext>(options =>
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<UsdaClient>(client => client.Timeout = TimeSpan.FromSeconds(10));
 
+// Photo scanning: Claude reads nutrition labels and plates (see ClaudeFoodVision; needs Anthropic:ApiKey).
+builder.Services.AddSingleton<IFoodVision, ClaudeFoodVision>();
+
 // Controllers handle the HTTP endpoints.
 builder.Services.AddControllers();
 

@@ -24,6 +24,7 @@ public static class TestDb
         var db = Open();
         db.Database.Migrate();
         db.FoodEntries.ExecuteDelete();
+        db.ScanUsage.ExecuteDelete();
         db.WeighIns.ExecuteDelete();
         db.UserProfiles.ExecuteDelete();
         // Workout sets and plan exercises point at exercises, so delete them (with their parents) before custom exercises.

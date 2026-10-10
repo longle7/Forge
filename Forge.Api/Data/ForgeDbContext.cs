@@ -24,6 +24,7 @@ namespace Forge.Api.Data
         public DbSet<PlanExercise> PlanExercises { get; set; } = null!;
         public DbSet<WeighIn> WeighIns { get; set; } = null!;
         public DbSet<FoodEntry> FoodEntries { get; set; } = null!;
+        public DbSet<ScanUsage> ScanUsage { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -109,6 +110,13 @@ namespace Forge.Api.Data
                 entity.Property(f => f.Protein).HasPrecision(6, 1);
                 entity.Property(f => f.Carbs).HasPrecision(6, 1);
                 entity.Property(f => f.Fat).HasPrecision(6, 1);
+            });
+
+            modelBuilder.Entity<ScanUsage>(entity =>
+            {
+                entity.ToTable("ScanUsage");
+                entity.HasKey(u => new { u.UserId, u.Day }); // one count per user per day
+                entity.Property(u => u.UserId).HasMaxLength(100);
             });
         }
     }

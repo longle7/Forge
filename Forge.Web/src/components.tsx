@@ -140,9 +140,6 @@ export function EmptyState({ icon, title, children }: { icon: IconName; title: s
   )
 }
 
-/** The ring colors: Move (workout) coral, Eat (calories) amber, Unlock (Time Out goals) green. */
-export const RING = { move: '#ff6b4a', eat: '#ffb238', unlock: '#22b573' }
-
 /** Apple-style activity rings, outermost first. Each value runs 0 to 1; more than 1 stays a full ring. */
 export function Rings({ rings, size = 128 }: { rings: { label: string; value: number; color: string }[]; size?: number }) {
   const stroke = 12

@@ -390,6 +390,23 @@ namespace Forge.Api.Migrations
                     b.ToTable("PlanExercises");
                 });
 
+            modelBuilder.Entity("Forge.Api.Domain.ScanUsage", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "Day");
+
+                    b.ToTable("ScanUsage", (string)null);
+                });
+
             modelBuilder.Entity("Forge.Api.Domain.UserProfile", b =>
                 {
                     b.Property<string>("UserId")

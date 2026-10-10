@@ -4,6 +4,7 @@ import { getRecentFoods, MEALS, randomId, saveFoodEntry, searchFoods, type FoodE
 import { Card, field, Group, Page, primaryButton, SearchInput, Segmented, Status } from '../components'
 import { localDate } from '../dates'
 import { FoodSheet, type FoodChoice } from '../FoodSheet'
+import { ScanFlow } from '../ScanFlow'
 import { failure, useNow, usePolling } from '../usePolling'
 import { formatKcal } from '../nutrition'
 
@@ -30,6 +31,7 @@ export default function AddFoodPage() {
   return (
     <Page title="Add Food" back={{ to: back, label: 'Calories' }}>
       <Segmented label="Meal" options={MEALS.map((m) => ({ value: m.id, label: m.label }))} value={meal} onChange={setMeal} />
+      <ScanFlow date={date} meal={meal} onLogged={() => navigate(back, { replace: true })} />
       <Segmented
         label="How to add"
         options={[

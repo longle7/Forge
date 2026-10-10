@@ -141,7 +141,8 @@ async function request(url: string, init?: RequestInit): Promise<Response> {
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await request(`${API_URL}${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', 'X-User-Id': userId(), ...init?.headers },
+    // JSON bodies say so; a FormData body (a photo) lets the browser set its own multipart type.
+    headers: { ...(typeof init?.body === 'string' ? { 'Content-Type': 'application/json' } : {}), 'X-User-Id': userId(), ...init?.headers },
   })
   if (!response.ok) {
     // ASP.NET problem details: { title, errors: { Field: ["message"] } }
@@ -185,6 +186,26 @@ export const saveFoodEntry = (id: string, entry: FoodEntryInput) => api<FoodEntr
 export const deleteFoodEntry = (id: string) => api<void>(`/food-log/${id}`, { method: 'DELETE' })
 
 export const searchFoods = (query: string, signal?: AbortSignal) => api<FoodResult[]>(`/foods?q=${encodeURIComponent(query)}`, { signal })
+
+/** A food read from a photo, per one serving, for you to check before logging. */
+export interface ScannedFood extends Nutrition {
+  name: string // "" when the label doesn't show the product's name
+  serving: string // "1/2 cup (40 g)", or "150 g" for a food on a plate
+}
+
+// Claude takes a few seconds to read a photo: allow longer than ordinary requests.
+const SCAN_TIMEOUT_MS = 60_000
+const photoForm = (photo: Blob) => {
+  const form = new FormData()
+  form.append('image', photo, 'photo.jpg')
+  return { method: 'POST', body: form, signal: AbortSignal.timeout(SCAN_TIMEOUT_MS) }
+}
+
+/** One serving of a packaged food, read from a photo of its Nutrition Facts label. */
+export const scanLabel = (photo: Blob) => api<ScannedFood>('/scan/label', photoForm(photo))
+
+/** Each food on a plate, with an estimated portion, read from a photo. */
+export const scanMeal = (photo: Blob) => api<ScannedFood[]>('/scan/meal', photoForm(photo))
 
 // Anonymous per-device ID that owns your workouts. Settings shows it as your restore code.
 // ponytail: whoever knows the ID can read its workouts; replace with real sign-in (e.g. Sign in with Apple) before launch.

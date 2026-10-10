@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { deleteFoodEntry, foodLogPath, getFoodLog, getProfile, getWeighIns, getWorkouts, MEALS, saveFoodEntry, type FoodEntry } from '../api'
-import { Card, Group, MacroBar, Page, primaryButton, RING, Rings, Status } from '../components'
+import { Card, Group, MacroBar, Page, primaryButton, Rings, Status } from '../components'
 import { addDays, dayLabel, localDate, workoutDay } from '../dates'
 import { FoodSheet } from '../FoodSheet'
+import { PINK, RING } from '../colors'
 import { Icon } from '../icons'
 import { exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
 import { failure, useNow, usePolling } from '../usePolling'
@@ -43,7 +44,7 @@ export default function CaloriesPage() {
           <div className="mt-4 space-y-3">
             <MacroBar label="Protein" value={food.protein} goal={goals.proteinGoal} color={RING.move} />
             <MacroBar label="Carbs" value={food.carbs} goal={goals.carbsGoal} color={RING.eat} />
-            <MacroBar label="Fat" value={food.fat} goal={goals.fatGoal} color="#ff4f8b" />
+            <MacroBar label="Fat" value={food.fat} goal={goals.fatGoal} color={PINK} />
           </div>
         </Summary>
       ) : (
