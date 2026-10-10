@@ -1,11 +1,64 @@
 @import 'tailwindcss';
 
+/*
+ * Sunrise: a warm cream canvas, coral → pink for actions, amber for streaks and records, green for goals met.
+ * Light by default; dark follows the iPhone's setting. The bright brand colors are for graphics (rings, bars, icons);
+ * text and buttons use the deeper "-ink"/"-deep" shades so they pass WCAG AA contrast.
+ */
 @theme {
-  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-sans: system-ui, -apple-system, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-fill: var(--fill);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+
+  --color-coral: #ff6b4a;
+  --color-pink: #ff4f8b;
+  --color-amber: #ffb238;
+  --color-green: #22b573;
+
+  --color-coral-deep: #d63d1e; /* button gradient start: white text 4.6:1 */
+  --color-pink-deep: #d0295f; /* button gradient end: white text 5:1 */
+  --color-green-strong: #1e9e63; /* checked sets: white check 3.4:1 */
+
+  --color-coral-ink: var(--coral-ink);
+  --color-green-ink: var(--green-ink);
+  --color-amber-ink: var(--amber-ink);
+}
+
+:root {
+  --canvas: #fff7f0;
+  --surface: #ffffff;
+  --fill: #f7ece4;
+  --ink: #2a1f1a;
+  --muted: #7d675b;
+  --line: #f0e2d8;
+  --coral-ink: #c93a18;
+  --green-ink: #13784a;
+  --amber-ink: #9a5b00;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #17110e;
+    --surface: #241a15;
+    --fill: #31241d;
+    --ink: #fff3ea;
+    --muted: #b59e90;
+    --line: #3a2a22;
+    --coral-ink: #ff8a6e;
+    --green-ink: #4fd194;
+    --amber-ink: #ffc65c;
+    color-scheme: dark;
+  }
 }
 
 body {
-  @apply bg-neutral-100 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
+  @apply bg-canvas text-[17px] text-ink antialiased;
   /* Feel like an app on iOS: no gray flash on tap, no text-size jump on rotate. */
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
@@ -24,7 +77,7 @@ body {
   }
 }
 
-/* Keyboard focus (and in-page scrolling) keeps the focused item clear of the fixed tab bar and rest timer
+/* Keyboard focus (and in-page scrolling) keeps the focused item clear of the tab bar and rest timer
    (WCAG 2.4.11 Focus Not Obscured). */
 html {
   scroll-padding-bottom: calc(9rem + env(safe-area-inset-bottom));

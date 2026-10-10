@@ -1,61 +1,36 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
-import { addExercise, ApiError, getExercises, getWorkouts, saveWorkout, type Exercise, type Workout } from '../api'
-import { Card, dangerButton, field, linkButton, primaryButton, SearchInput, secondaryButton } from '../components'
-import { emptyDraft, loadDraft, repeatDraft, saveDraft, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
+import { useEffect, useEffectEvent, useState } from 'react'
+import { Navigate, useNavigate } from 'react-router'
+import { ApiError, getExercises, getWorkouts, saveWorkout, type Exercise, type Workout } from '../api'
+import { Card, dangerButton, field, Notice, plainButton, primaryButton, tintedButton } from '../components'
+import { loadDraft, saveDraft, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
+import { ExercisePicker } from '../ExercisePicker'
+import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
-import { formatDay, formatWeight, groupSets, previousSets } from '../workouts'
+import { formatDay, formatWeight, previousSets } from '../workouts'
 
 /** Rest after each checked-off set; −15s / +15s adjust it. */
 const REST_SECONDS = 90
 const restEndsAt = () => Date.now() + REST_SECONDS * 1000
 
-/** The Workout tab: start a workout, or log the one in progress. */
-export default function WorkoutPage() {
+/** The workout in progress (/workouts/active). Started from Home or the Workouts tab, which put it on this phone. */
+export default function LoggerPage() {
   const [draft, setDraft] = useState(loadDraft)
   const workouts = usePolling(getWorkouts, '/workouts')
   const exercises = usePolling(getExercises, '/exercises')
 
   // Every change is kept on this device at once, so a reload or a closed tab loses nothing.
-  const update = (next: Draft | undefined) => {
+  const update = (next: Draft) => {
     saveDraft(next)
     setDraft(next)
   }
 
-  return draft ? (
-    <Logger draft={draft} update={update} workouts={workouts.data ?? []} exercises={exercises.data ?? []} />
-  ) : (
-    <Start onStart={update} last={workouts.data?.[0]} />
-  )
-}
-
-function Start({ onStart, last }: { onStart: (draft: Draft) => void; last: Workout | undefined }) {
-  useTitle('Workout')
-  return (
-    <>
-      <h1 className="text-2xl font-bold">Workout</h1>
-      <button onClick={() => onStart(emptyDraft())} className={primaryButton}>
-        Start an empty workout
-      </button>
-      {last && (
-        <Card>
-          <p className="text-sm font-semibold text-neutral-500 uppercase">Last workout</p>
-          <p className="mt-1 font-semibold">{last.name}</p>
-          <p className="text-sm text-neutral-500">
-            {formatDay(last.startedAt)} · {groupSets(last.sets).length} exercises · {last.sets.length} sets
-          </p>
-          <button onClick={() => onStart(repeatDraft(last))} className={`mt-3 w-full ${secondaryButton}`}>
-            Repeat this workout
-          </button>
-        </Card>
-      )}
-    </>
-  )
+  if (!draft) return <Navigate to="/workouts" replace />
+  return <Logger draft={draft} update={update} workouts={workouts.data ?? []} exercises={exercises.data ?? []} />
 }
 
 function Logger({ draft, update, workouts, exercises }: {
   draft: Draft
-  update: (draft: Draft | undefined) => void
+  update: (draft: Draft) => void
   workouts: Workout[]
   exercises: Exercise[]
 }) {
@@ -68,9 +43,15 @@ function Logger({ draft, update, workouts, exercises }: {
   const names = new Map([...exercises, ...added].map((e) => [e.id, e.name]))
   useTitle(draft.name || 'Workout')
 
+  // The workout is done with this page: leave it, and stop keeping it on the phone.
+  const close = (to: string) => {
+    saveDraft(undefined)
+    navigate(to, { replace: true })
+  }
+
   // A change to the sets means the workout isn't over yet: a new Finish sets the end time again.
-  const setExercises = (list: DraftExercise[], restEndsAt = draft.restEndsAt) =>
-    update({ ...draft, exercises: list, restEndsAt, finishedAt: draft.editing ? draft.finishedAt : undefined })
+  const setExercises = (list: DraftExercise[], rest = draft.restEndsAt) =>
+    update({ ...draft, exercises: list, restEndsAt: rest, finishedAt: draft.editing ? draft.finishedAt : undefined })
   const withSet = (e: number, s: number, change: Partial<DraftSet>) =>
     draft.exercises.map((ex, i) => (i !== e ? ex : { ...ex, sets: ex.sets.map((set, j) => (j !== s ? set : { ...set, ...change })) }))
 
@@ -116,16 +97,14 @@ function Logger({ draft, update, workouts, exercises }: {
     setMessage(undefined)
     try {
       await saveWorkout(pending.id, workout)
-      update(undefined)
-      navigate(`/history/${pending.id}`)
+      close(`/workouts/history/${pending.id}`)
     } catch (error) {
+      setSaving(false)
       setMessage(
         error instanceof ApiError && error.status === 0
           ? "Saved on this phone. It uploads when you're back online, or tap Finish to try again."
           : (error as Error).message,
       )
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -140,42 +119,55 @@ function Logger({ draft, update, workouts, exercises }: {
 
   const discard = () => {
     if (!confirm(draft.editing ? 'Discard your changes to this workout?' : "Discard this workout? Its sets won't be saved.")) return
-    update(undefined)
-    if (draft.editing) navigate(`/history/${draft.id}`)
+    close(draft.editing ? `/workouts/history/${draft.id}` : '/workouts')
   }
 
   const restLeft = draft.restEndsAt ? Math.ceil((draft.restEndsAt - now.getTime()) / 1000) : 0
+  const finishLabel = saving ? 'Saving…' : draft.editing ? 'Save' : 'Finish'
 
   return (
     <>
-      <div className="space-y-1">
+      {/* Like an iOS nav bar: Back keeps the workout going (it stays on this phone); Finish saves it. */}
+      <div className="sticky top-0 z-10 -mx-4 flex items-center justify-between bg-canvas/85 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+        <button onClick={() => navigate('/workouts')} className={plainButton}>
+          <Icon name="chevronLeft" className="size-7" />
+          Workouts
+        </button>
+        <button onClick={finish} disabled={saving} className={`${plainButton} px-3 font-semibold`}>
+          {finishLabel}
+        </button>
+      </div>
+
+      <div>
         <input
           value={draft.name}
           onChange={(e) => update({ ...draft, name: e.target.value })}
           aria-label="Workout name"
           maxLength={100}
-          className="w-full rounded-lg bg-transparent text-2xl font-bold outline-none focus:ring-2 focus:ring-blue-600"
+          className="w-full rounded-lg bg-transparent text-[34px] leading-tight font-bold tracking-tight outline-none focus:ring-2 focus:ring-coral"
         />
-        <p className="text-sm text-neutral-500">
-          {draft.editing ? `Editing · ${formatDay(draft.startedAt)}` : `${formatClock(now.getTime() - Date.parse(draft.startedAt))} · started ${formatDay(draft.startedAt)}`}
+        <p className="text-muted tabular-nums">
+          {draft.editing ? `Editing · ${formatDay(draft.startedAt)}` : formatClock(now.getTime() - Date.parse(draft.startedAt))}
         </p>
       </div>
+
+      {draft.exercises.length === 0 && <p className="text-muted">Add your first exercise to get going.</p>}
 
       {draft.exercises.map((ex, e) => {
         const prev = previous(ex.exerciseId)
         return (
           <Card key={`${ex.exerciseId}-${e}`}>
             <div className="flex items-start justify-between gap-2">
-              <h2 className="pt-2 font-semibold">{names.get(ex.exerciseId) ?? 'Exercise'}</h2>
-              <button onClick={() => removeExercise(e)} className={`-mr-2 text-sm ${linkButton}`}>
+              <h2 className="pt-2.5 font-semibold text-coral-ink">{names.get(ex.exerciseId) ?? 'Exercise'}</h2>
+              <button onClick={() => removeExercise(e)} className={`-mr-1 text-[15px] ${plainButton}`}>
                 Remove
               </button>
             </div>
-            <div className="mt-2 grid grid-cols-[2rem_1fr_4.5rem_4rem_2.75rem] items-center gap-x-2 gap-y-1.5 text-center text-sm">
-              <span className="font-semibold text-neutral-500">Set</span>
-              <span className="font-semibold text-neutral-500">Previous</span>
-              <span className="font-semibold text-neutral-500">lb</span>
-              <span className="font-semibold text-neutral-500">Reps</span>
+            <div className="mt-2 grid grid-cols-[2rem_1fr_4.5rem_4rem_2.75rem] items-center gap-x-2 gap-y-1.5 text-center text-[15px]">
+              <span className="text-[13px] font-semibold text-muted">SET</span>
+              <span className="text-[13px] font-semibold text-muted">PREVIOUS</span>
+              <span className="text-[13px] font-semibold text-muted">LB</span>
+              <span className="text-[13px] font-semibold text-muted">REPS</span>
               {/* A real cell: an sr-only element alone is taken out of the grid and would shift every row. */}
               <span>
                 <span className="sr-only">Done</span>
@@ -196,32 +188,30 @@ function Logger({ draft, update, workouts, exercises }: {
               })}
             </div>
             <div className="mt-2 flex justify-between">
-              <button onClick={() => addSet(e)} className={linkButton}>
-                + Add set
+              <button onClick={() => addSet(e)} className={plainButton}>
+                <Icon name="plus" className="size-5" />
+                Add Set
               </button>
-              <button onClick={() => removeSet(e)} disabled={ex.sets.length <= 1} className={`text-sm ${linkButton}`}>
-                Remove set
+              <button onClick={() => removeSet(e)} disabled={ex.sets.length <= 1} className={`text-[15px] ${plainButton}`}>
+                Remove Set
               </button>
             </div>
           </Card>
         )
       })}
 
-      <button onClick={() => setPicking(true)} className={`w-full ${secondaryButton}`}>
-        + Add exercise
+      <button onClick={() => setPicking(true)} className={`w-full ${tintedButton}`}>
+        <Icon name="plus" className="size-5" />
+        Add Exercise
       </button>
 
-      {message && (
-        <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/60 dark:text-amber-50">
-          {message}
-        </p>
-      )}
+      {message && <Notice>{message}</Notice>}
 
       <button onClick={finish} disabled={saving} className={primaryButton}>
-        {saving ? 'Saving…' : draft.editing ? 'Save changes' : 'Finish'}
+        {saving ? 'Saving…' : draft.editing ? 'Save Changes' : 'Finish Workout'}
       </button>
       <button onClick={discard} className={dangerButton}>
-        {draft.editing ? 'Cancel editing' : 'Discard workout'}
+        {draft.editing ? 'Cancel Editing' : 'Discard Workout'}
       </button>
 
       {restLeft > 0 && (
@@ -248,11 +238,11 @@ function SetRow({ number, set, previous, placeholder, onChange, onToggle }: {
   onChange: (change: Partial<DraftSet>) => void
   onToggle: () => void
 }) {
-  const input = `${field} px-1 text-center ${set.done ? 'bg-green-100 dark:bg-green-950' : ''}`
+  const input = `${field} px-1 text-center ${set.done ? 'bg-green/15' : ''}`
   return (
     <>
       <span className="font-semibold">{number}</span>
-      <span className="truncate text-neutral-500">{previous ?? '–'}</span>
+      <span className="truncate text-muted">{previous ?? '–'}</span>
       <input
         value={set.weight}
         onChange={(e) => onChange({ weight: e.target.value })}
@@ -274,11 +264,9 @@ function SetRow({ number, set, previous, placeholder, onChange, onToggle }: {
         role="checkbox"
         aria-checked={set.done}
         aria-label={`Set ${number} done`}
-        className={`grid size-11 place-items-center rounded-lg ${set.done ? 'bg-green-600 text-white' : 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800'}`}
+        className={`grid size-11 place-items-center rounded-xl transition ${set.done ? 'bg-green-strong text-white' : 'bg-fill text-muted'}`}
       >
-        <svg viewBox="0 0 24 24" className="size-5 fill-none stroke-current stroke-[3] [stroke-linecap:round] [stroke-linejoin:round]" aria-hidden>
-          <path d="m5 12 5 5 9-10" />
-        </svg>
+        <Icon name="check" className="size-5 stroke-[3]" />
       </button>
     </>
   )
@@ -286,11 +274,13 @@ function SetRow({ number, set, previous, placeholder, onChange, onToggle }: {
 
 /** Counts down above the tab bar. It counts to a saved end time, so it stays right across reloads and backgrounding. */
 function RestTimer({ seconds, onAdjust, onSkip }: { seconds: number; onAdjust: (by: number) => void; onSkip: () => void }) {
-  const button = 'min-h-11 rounded-lg bg-white/10 px-3 font-semibold active:bg-white/20'
+  const button = 'min-h-11 rounded-xl bg-coral/12 px-3 text-[15px] font-semibold text-coral-ink active:opacity-70'
   return (
-    <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 bg-neutral-900 text-white">
+    <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 border-t border-line bg-surface/95 backdrop-blur-md">
+      {/* How much rest is left, as a thin Sunrise bar along the top. */}
+      <div className="h-0.5 bg-linear-to-r from-coral to-pink transition-[width] duration-1000 ease-linear" style={{ width: `${Math.min(100, (seconds / REST_SECONDS) * 100)}%` }} />
       <div className="mx-auto flex max-w-xl items-center justify-between gap-2 px-4 py-2">
-        <p role="timer" aria-live="off" className="text-lg font-bold tabular-nums">
+        <p role="timer" aria-live="off" className="text-[20px] font-semibold tabular-nums">
           Rest {formatClock(seconds * 1000)}
         </p>
         <div className="flex gap-2">
@@ -306,70 +296,6 @@ function RestTimer({ seconds, onAdjust, onSkip }: { seconds: number; onAdjust: (
         </div>
       </div>
     </div>
-  )
-}
-
-/** Choose an exercise, or add a new one by name. A full-screen native <dialog>: it traps focus and Escape closes it. */
-function ExercisePicker({ exercises, onPick, onClose }: { exercises: Exercise[]; onPick: (exercise: Exercise) => void; onClose: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  const [query, setQuery] = useState('')
-  const [adding, setAdding] = useState(false)
-  const [error, setError] = useState<string>()
-  useEffect(() => {
-    if (!dialog.current?.open) dialog.current?.showModal() // StrictMode runs this twice in development
-  }, [])
-
-  const q = query.trim()
-  const matches = exercises.filter((e) => e.name.toLowerCase().includes(q.toLowerCase()))
-  const exact = exercises.some((e) => e.name.toLowerCase() === q.toLowerCase())
-
-  const add = async () => {
-    setAdding(true)
-    setError(undefined)
-    try {
-      onPick(await addExercise(q, 'Other'))
-    } catch (e) {
-      setError((e as Error).message)
-      setAdding(false)
-    }
-  }
-
-  return (
-    <dialog
-      ref={dialog}
-      onClose={onClose}
-      aria-labelledby="picker-title"
-      className="m-0 h-full max-h-none w-full max-w-none bg-neutral-100 p-0 text-neutral-900 backdrop:bg-black/60 dark:bg-neutral-950 dark:text-neutral-100"
-    >
-      <div className="mx-auto max-w-xl space-y-3 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(2rem+env(safe-area-inset-bottom))]">
-        <div className="flex items-center justify-between">
-          <h2 id="picker-title" className="text-xl font-bold">
-            Add exercise
-          </h2>
-          <button onClick={() => dialog.current?.close()} className={`-mr-2 ${linkButton}`}>
-            Cancel
-          </button>
-        </div>
-        <SearchInput value={query} onChange={setQuery} placeholder="Search exercises" onSubmit={() => matches[0] && onPick(matches[0])} />
-        {q && !exact && (
-          <button onClick={add} disabled={adding} className={`w-full ${secondaryButton}`}>
-            {adding ? 'Adding…' : `Add “${q}” as a new exercise`}
-          </button>
-        )}
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        <ul className="divide-y divide-neutral-100 rounded-xl bg-white shadow-sm dark:divide-neutral-800 dark:bg-neutral-900">
-          {matches.map((exercise) => (
-            <li key={exercise.id}>
-              <button onClick={() => onPick(exercise)} className="flex min-h-12 w-full items-center justify-between gap-2 px-4 text-left active:bg-neutral-50 dark:active:bg-neutral-800">
-                <span className="font-medium">{exercise.name}</span>
-                <span className="text-sm text-neutral-500">{exercise.muscleGroup}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-        {exercises.length === 0 && <p className="text-sm text-neutral-500">The exercise list needs a connection the first time. Check your signal.</p>}
-      </div>
-    </dialog>
   )
 }
 

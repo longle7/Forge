@@ -1,43 +1,36 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { addExercise, getExercises, MUSCLE_GROUPS } from '../api'
-import { Card, field, primaryButton, SearchInput, Section, Status } from '../components'
-import { failure, usePolling, useTitle } from '../usePolling'
+import { Card, field, Group, Page, primaryButton, Row, SearchInput, Status } from '../components'
+import { failure, usePolling } from '../usePolling'
 
-/** The Exercises tab: every exercise by muscle group, and adding your own. */
+/** Every exercise by muscle group, and adding your own (Workouts → Exercises). */
 export default function ExercisesPage() {
-  useTitle('Exercises')
   const exercises = usePolling(getExercises, '/exercises')
   const [query, setQuery] = useState('')
   const q = query.trim().toLowerCase()
   const matches = exercises.data?.filter((e) => e.name.toLowerCase().includes(q)) ?? []
 
   return (
-    <>
-      <h1 className="text-2xl font-bold">Exercises</h1>
+    <Page title="Exercises" back={{ to: '/workouts', label: 'Workouts' }}>
       <SearchInput value={query} onChange={setQuery} placeholder="Search exercises" />
       <Status loading={exercises.data === undefined && !exercises.error} error={failure(exercises)} />
-      {exercises.data && matches.length === 0 && <p className="text-neutral-500">No exercise matches “{query.trim()}”. Add it below.</p>}
+      {exercises.data && matches.length === 0 && <p className="text-muted">No exercise matches “{query.trim()}”. Add it below.</p>}
       {MUSCLE_GROUPS.map((group) => {
         const list = matches.filter((e) => e.muscleGroup === group)
         if (list.length === 0) return null
         return (
-          <Section key={group} title={group}>
-            <ul className="divide-y divide-neutral-100 rounded-xl bg-white shadow-sm dark:divide-neutral-800 dark:bg-neutral-900">
-              {list.map((exercise) => (
-                <li key={exercise.id}>
-                  <Link to={`/exercises/${exercise.id}`} className="flex min-h-12 items-center justify-between gap-2 px-4">
-                    <span className="font-medium">{exercise.name}</span>
-                    {exercise.isCustom && <span className="text-xs font-semibold text-neutral-500 uppercase">Yours</span>}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Section>
+          <Group key={group} title={group}>
+            {list.map((exercise) => (
+              <Row key={exercise.id} to={`/workouts/exercises/${exercise.id}`} detail={exercise.isCustom ? 'Yours' : undefined}>
+                {exercise.name}
+              </Row>
+            ))}
+          </Group>
         )
       })}
       <AddExercise initialName={query.trim()} />
-    </>
+    </Page>
   )
 }
 
@@ -54,7 +47,7 @@ function AddExercise({ initialName }: { initialName: string }) {
     setError(undefined)
     try {
       const exercise = await addExercise(value.trim(), muscleGroup)
-      navigate(`/exercises/${exercise.id}`)
+      navigate(`/workouts/exercises/${exercise.id}`)
     } catch (e) {
       setError((e as Error).message)
       setSaving(false)
@@ -62,27 +55,26 @@ function AddExercise({ initialName }: { initialName: string }) {
   }
 
   return (
-    <Section title="Add an exercise">
-      <Card>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            void add()
-          }}
-          className="space-y-2"
-        >
-          <input value={value} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Zercher Squat (Barbell)" aria-label="Exercise name" maxLength={100} className={field} />
-          <select value={muscleGroup} onChange={(e) => setMuscleGroup(e.target.value)} aria-label="Muscle group" className={field}>
-            {MUSCLE_GROUPS.map((group) => (
-              <option key={group}>{group}</option>
-            ))}
-          </select>
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-          <button disabled={saving || !value.trim()} className={primaryButton}>
-            {saving ? 'Adding…' : 'Add exercise'}
-          </button>
-        </form>
-      </Card>
-    </Section>
+    <Card>
+      <h2 className="font-semibold">Add an Exercise</h2>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          void add()
+        }}
+        className="mt-3 space-y-2"
+      >
+        <input value={value} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Zercher Squat (Barbell)" aria-label="Exercise name" maxLength={100} className={field} />
+        <select value={muscleGroup} onChange={(e) => setMuscleGroup(e.target.value)} aria-label="Muscle group" className={field}>
+          {MUSCLE_GROUPS.map((group) => (
+            <option key={group}>{group}</option>
+          ))}
+        </select>
+        {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
+        <button disabled={saving || !value.trim()} className={primaryButton}>
+          {saving ? 'Adding…' : 'Add Exercise'}
+        </button>
+      </form>
+    </Card>
   )
 }

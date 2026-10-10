@@ -74,6 +74,9 @@ export function previousSets(workouts: Workout[], exerciseId: number, excludeId?
 /** Total pounds lifted: weight × reps over every set. */
 export const volume = (workout: Workout) => workout.sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
 
+/** "1 exercise", "3 exercises" */
+export const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`
+
 const pounds = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
 
 /** "135", "137.5", "12,345" */
