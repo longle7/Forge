@@ -19,6 +19,11 @@ namespace Forge.Api.Data
         public DbSet<Exercise> Exercises { get; set; } = null!;
         public DbSet<Workout> Workouts { get; set; } = null!;
         public DbSet<WorkoutSet> WorkoutSets { get; set; } = null!;
+        public DbSet<UserProfile> UserProfiles { get; set; } = null!;
+        public DbSet<PlanDay> PlanDays { get; set; } = null!;
+        public DbSet<PlanExercise> PlanExercises { get; set; } = null!;
+        public DbSet<WeighIn> WeighIns { get; set; } = null!;
+        public DbSet<FoodEntry> FoodEntries { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -50,6 +55,60 @@ namespace Forge.Api.Data
                       .WithMany()
                       .HasForeignKey(s => s.ExerciseId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<UserProfile>(entity =>
+            {
+                entity.HasKey(p => p.UserId);
+                entity.Property(p => p.UserId).HasMaxLength(100);
+                entity.Property(p => p.Sex).IsRequired().HasMaxLength(10);
+                entity.Property(p => p.Activity).IsRequired().HasMaxLength(20);
+                entity.Property(p => p.Goal).IsRequired().HasMaxLength(10);
+                entity.Property(p => p.HeightIn).HasPrecision(4, 1);
+                entity.Property(p => p.StartWeight).HasPrecision(5, 1);
+                entity.Property(p => p.Pace).HasPrecision(3, 2);
+            });
+
+            modelBuilder.Entity<PlanDay>(entity =>
+            {
+                entity.HasIndex(d => new { d.UserId, d.DayOfWeek }).IsUnique(); // one plan per weekday
+                entity.Property(d => d.UserId).IsRequired().HasMaxLength(100);
+                entity.Property(d => d.Name).IsRequired().HasMaxLength(50);
+                entity.HasMany(d => d.Exercises)
+                      .WithOne()
+                      .HasForeignKey(e => e.PlanDayId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PlanExercise>(entity =>
+            {
+                entity.HasOne(e => e.Exercise)
+                      .WithMany()
+                      .HasForeignKey(e => e.ExerciseId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<WeighIn>(entity =>
+            {
+                entity.HasKey(w => new { w.UserId, w.Date }); // one per day
+                entity.Property(w => w.UserId).HasMaxLength(100);
+                entity.Property(w => w.Weight).HasPrecision(5, 1);
+            });
+
+            modelBuilder.Entity<FoodEntry>(entity =>
+            {
+                entity.Property(f => f.Id).ValueGeneratedNever(); // the app makes it up (see FoodEntry.Id)
+                entity.HasIndex(f => new { f.UserId, f.Date });
+                entity.Property(f => f.UserId).IsRequired().HasMaxLength(100);
+                entity.Property(f => f.Meal).IsRequired().HasMaxLength(10);
+                entity.Property(f => f.Name).IsRequired().HasMaxLength(200);
+                entity.Property(f => f.Serving).IsRequired().HasMaxLength(100);
+                entity.Property(f => f.Source).IsRequired().HasMaxLength(10);
+                entity.Property(f => f.Servings).HasPrecision(6, 2);
+                entity.Property(f => f.Calories).HasPrecision(7, 1);
+                entity.Property(f => f.Protein).HasPrecision(6, 1);
+                entity.Property(f => f.Carbs).HasPrecision(6, 1);
+                entity.Property(f => f.Fat).HasPrecision(6, 1);
             });
         }
     }

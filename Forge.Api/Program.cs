@@ -29,6 +29,10 @@ builder.Services.AddDbContext<ForgeDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
         sql => sql.EnableRetryOnFailure()));
 
+// Food search: USDA FoodData Central, cached in memory for a day (see UsdaClient). Gives up after 10 seconds.
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<UsdaClient>(client => client.Timeout = TimeSpan.FromSeconds(10));
+
 // Controllers handle the HTTP endpoints.
 builder.Services.AddControllers();
 

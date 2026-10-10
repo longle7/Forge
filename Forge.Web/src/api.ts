@@ -26,6 +26,88 @@ export type WorkoutInput = Omit<Workout, 'id'>
 // The API's ExercisesController.MuscleGroups, in the order the exercise list shows them.
 export const MUSCLE_GROUPS = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Other']
 
+export type Sex = 'male' | 'female'
+export type Activity = 'sedentary' | 'light' | 'active' | 'very-active'
+export type Goal = 'lose' | 'maintain' | 'gain'
+
+/** Your goals, what they were worked out from (Setup), and the Time Out unlock rules. */
+export interface Profile {
+  sex: Sex
+  birthYear: number
+  heightIn: number
+  startWeight: number // pounds, when the goals were set
+  activity: Activity // outside workouts
+  goal: Goal
+  pace: number // pounds a week
+  calorieGoal: number
+  proteinGoal: number // grams
+  carbsGoal: number
+  fatGoal: number
+  unlockAfterWorkout: boolean
+  unlockAfterMeals: number // 0 = no rule
+  unlockAfterWeighIn: boolean
+}
+
+/** One weekday of the weekly plan (0 = Sunday … 6 = Saturday). A weekday without one is a rest day. */
+export interface PlanDay {
+  dayOfWeek: number
+  name: string // "Push Day"
+  createdAt: string // when it was first planned
+  exercises: PlanExercise[]
+}
+
+export interface PlanExercise {
+  exerciseId: number
+  sets: number
+  reps: number
+}
+
+export interface WeighIn {
+  date: string // YYYY-MM-DD, your time zone
+  weight: number // pounds
+}
+
+export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+export const MEALS: { id: Meal; label: string }[] = [
+  { id: 'breakfast', label: 'Breakfast' },
+  { id: 'lunch', label: 'Lunch' },
+  { id: 'dinner', label: 'Dinner' },
+  { id: 'snack', label: 'Snacks' },
+]
+
+/** Nutrition per serving: kcal, then grams. */
+export interface Nutrition {
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
+/** Something you ate: a food, its serving, how many servings, and its nutrition per serving. */
+export interface FoodEntry extends Nutrition {
+  id: string // made up by the app, like a workout's
+  date: string // YYYY-MM-DD it counts toward
+  meal: Meal
+  name: string
+  serving: string // "1 cup (227 g)"
+  servings: number
+  source: 'manual' | 'search' | 'label' | 'photo'
+}
+
+export type FoodEntryInput = Omit<FoodEntry, 'id'>
+
+/** A food from search, per one serving. */
+export interface FoodResult extends Nutrition {
+  name: string
+  brand: string | null
+  serving: string
+}
+
+/** A day's food totals. */
+export interface DayTotals extends Nutrition {
+  date: string
+}
+
 /**
  * A failed request: an HTTP error with the API's own message (e.g. a validation error) when it sent one, or
  * status 0 when there was no answer at all (timed out, or no connection), with a message to show as is.
@@ -79,6 +161,30 @@ export const getWorkouts = () => api<Workout[]>('/workouts')
 export const saveWorkout = (id: string, workout: WorkoutInput) =>
   api<Workout>(`/workouts/${id}`, { method: 'PUT', body: JSON.stringify(workout) })
 export const deleteWorkout = (id: string) => api<void>(`/workouts/${id}`, { method: 'DELETE' })
+
+const put = (body: unknown): RequestInit => ({ method: 'PUT', body: JSON.stringify(body) })
+
+/** Your profile, or null before you've set your goals (the API answers 404). */
+export const getProfile = () => api<Profile>('/profile').catch((e) => (e instanceof ApiError && e.status === 404 ? null : Promise.reject(e)))
+export const saveProfile = (profile: Profile) => api<Profile>('/profile', put(profile))
+
+export const getPlan = () => api<PlanDay[]>('/plan')
+export const savePlanDay = (day: number, plan: { name: string; exercises: PlanExercise[] }) => api<PlanDay>(`/plan/${day}`, put(plan))
+export const makeRestDay = (day: number) => api<void>(`/plan/${day}`, { method: 'DELETE' })
+
+export const getWeighIns = () => api<WeighIn[]>('/weigh-ins')
+export const saveWeighIn = (date: string, weight: number) => api<WeighIn>(`/weigh-ins/${date}`, put({ weight }))
+
+export const foodLogPath = (date: string) => `/food-log?date=${date}`
+export const getFoodLog = (date: string) => api<FoodEntry[]>(foodLogPath(date))
+export const foodDaysPath = (from: string, to: string) => `/food-log/days?from=${from}&to=${to}`
+export const getFoodDays = (from: string, to: string) => api<DayTotals[]>(foodDaysPath(from, to))
+export const getRecentFoods = () => api<FoodEntry[]>('/food-log/recent')
+/** Logs an entry, or replaces it: like saveWorkout, a retry never logs it twice. */
+export const saveFoodEntry = (id: string, entry: FoodEntryInput) => api<FoodEntry>(`/food-log/${id}`, put(entry))
+export const deleteFoodEntry = (id: string) => api<void>(`/food-log/${id}`, { method: 'DELETE' })
+
+export const searchFoods = (query: string, signal?: AbortSignal) => api<FoodResult[]>(`/foods?q=${encodeURIComponent(query)}`, { signal })
 
 // Anonymous per-device ID that owns your workouts. Settings shows it as your restore code.
 // ponytail: whoever knows the ID can read its workouts; replace with real sign-in (e.g. Sign in with Apple) before launch.

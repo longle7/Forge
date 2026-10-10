@@ -23,8 +23,25 @@ public static class TestDb
     {
         var db = Open();
         db.Database.Migrate();
-        db.Workouts.ExecuteDelete(); // their sets go with them; sets point at exercises, so delete workouts first
+        db.FoodEntries.ExecuteDelete();
+        db.WeighIns.ExecuteDelete();
+        db.UserProfiles.ExecuteDelete();
+        // Workout sets and plan exercises point at exercises, so delete them (with their parents) before custom exercises.
+        db.PlanDays.ExecuteDelete();
+        db.Workouts.ExecuteDelete();
         db.Exercises.Where(e => e.UserId != null).ExecuteDelete();
         return db;
     }
+
+    /// <summary>A test server on the test database, and a client for it that sends `userId` as X-User-Id.</summary>
+    public static HttpClient ClientFor(this Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program> factory, string userId)
+    {
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-User-Id", userId);
+        return client;
+    }
+
+    public static Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program> Factory() =>
+        new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program>()
+            .WithWebHostBuilder(b => b.UseSetting("ConnectionStrings:DefaultConnection", ConnectionString));
 }

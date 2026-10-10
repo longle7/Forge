@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { parseRestoreCode, switchUserId, userId } from '../api'
+import { getProfile, parseRestoreCode, switchUserId, userId } from '../api'
 import { forgetRemembered } from '../cache'
 import { Card, field, Group, Notice, Page, primaryButton, Row, tintedButton } from '../components'
 import { loadDraft } from '../draft'
+import { formatKcal } from '../nutrition'
+import { usePolling } from '../usePolling'
 
 /** Settings (from the person button on Home): your restore code and the version. */
 export default function SettingsPage() {
@@ -10,6 +12,7 @@ export default function SettingsPage() {
   const [copied, setCopied] = useState(false)
   const [typed, setTyped] = useState('')
   const [message, setMessage] = useState<string>()
+  const profile = usePolling(getProfile, '/profile')
 
   const copy = async () => {
     try {
@@ -37,6 +40,12 @@ export default function SettingsPage() {
 
   return (
     <Page title="Settings" back={{ to: '/', label: 'Home' }}>
+      <Group>
+        <Row to="/setup" icon="target" detail={profile.data ? `${formatKcal(profile.data.calorieGoal)} kcal` : 'Not set'}>
+          Goals
+        </Row>
+      </Group>
+
       <Group
         title="Your restore code"
         footer="Forge has no accounts. Everything is saved under this code, made up on this device. Keep it somewhere safe, like Notes: if Safari clears this site's data, or you move to another phone, entering it below brings everything back. Anyone with the code can see your data, so keep it private."

@@ -3,14 +3,17 @@ import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router
 import { ErrorBoundary, NotFound, Status } from './components'
 import { Icon, type IconName } from './icons'
 import { useOnline } from './usePolling'
+import AddFoodPage from './pages/AddFoodPage'
 import CaloriesPage from './pages/CaloriesPage'
 import ExercisePage from './pages/ExercisePage'
 import ExercisesPage from './pages/ExercisesPage'
 import HistoryPage from './pages/HistoryPage'
 import HomePage from './pages/HomePage'
 import LoggerPage from './pages/LoggerPage'
+import PlanDayPage from './pages/PlanDayPage'
 import ProgressPage from './pages/ProgressPage'
 import SettingsPage from './pages/SettingsPage'
+import SetupPage from './pages/SetupPage'
 import TimeOutPage from './pages/TimeOutPage'
 import WorkoutDetailPage from './pages/WorkoutDetailPage'
 import WorkoutsPage from './pages/WorkoutsPage'
@@ -54,7 +57,10 @@ function Pages() {
             <Route path="/workouts/history/:id" element={<WorkoutDetailPage />} />
             <Route path="/workouts/exercises" element={<ExercisesPage />} />
             <Route path="/workouts/exercises/:id" element={<ExercisePage />} />
+            <Route path="/workouts/plan/:day" element={<PlanDayPage />} />
             <Route path="/calories" element={<CaloriesPage />} />
+            <Route path="/calories/add" element={<AddFoodPage />} />
+            <Route path="/setup" element={<SetupPage />} />
             <Route path="/timeout" element={<TimeOutPage />} />
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/settings" element={<SettingsPage />} />

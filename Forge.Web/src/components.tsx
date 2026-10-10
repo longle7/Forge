@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from 'react'
+import { Component, useEffect, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { ApiError } from './api'
 import { Icon, type IconName } from './icons'
@@ -137,6 +137,145 @@ export function EmptyState({ icon, title, children }: { icon: IconName; title: s
       <p className="text-[20px] font-semibold">{title}</p>
       <div className="text-muted">{children}</div>
     </div>
+  )
+}
+
+/** The ring colors: Move (workout) coral, Eat (calories) amber, Unlock (Time Out goals) green. */
+export const RING = { move: '#ff6b4a', eat: '#ffb238', unlock: '#22b573' }
+
+/** Apple-style activity rings, outermost first. Each value runs 0 to 1; more than 1 stays a full ring. */
+export function Rings({ rings, size = 128 }: { rings: { label: string; value: number; color: string }[]; size?: number }) {
+  const stroke = 12
+  const gap = 3
+  const center = size / 2
+  return (
+    <svg
+      viewBox={`0 0 ${size} ${size}`}
+      style={{ width: size, height: size }}
+      className="shrink-0"
+      role="img"
+      aria-label={rings.map((r) => `${r.label} ${Math.round(Math.min(1, r.value) * 100)}%`).join(', ')}
+    >
+      {rings.map((ring, i) => {
+        const r = center - stroke / 2 - i * (stroke + gap)
+        const circumference = 2 * Math.PI * r
+        const progress = Math.max(0, Math.min(1, ring.value))
+        return (
+          <g key={ring.label} transform={`rotate(-90 ${center} ${center})`}>
+            <circle cx={center} cy={center} r={r} fill="none" stroke={ring.color} strokeOpacity={0.18} strokeWidth={stroke} />
+            {progress > 0 && (
+              <circle
+                cx={center}
+                cy={center}
+                r={r}
+                fill="none"
+                stroke={ring.color}
+                strokeWidth={stroke}
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={circumference * (1 - progress)}
+                className="transition-[stroke-dashoffset] duration-700 ease-out"
+              />
+            )}
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+/** A macro's progress toward its goal: "Protein 96 / 167 g" over a bar. */
+export function MacroBar({ label, value, goal, color }: { label: string; value: number; goal: number; color: string }) {
+  const progress = goal > 0 ? Math.min(1, value / goal) : 0
+  return (
+    <div>
+      <div className="flex justify-between text-[13px]">
+        <span className="font-semibold">{label}</span>
+        <span className="text-muted tabular-nums">
+          {Math.round(value)} / {goal} g
+        </span>
+      </div>
+      <div className="mt-1 h-2 overflow-hidden rounded-full bg-fill">
+        <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${progress * 100}%`, background: color }} />
+      </div>
+    </div>
+  )
+}
+
+/** − value + buttons, like iOS's stepper. */
+export function Stepper({ value, onChange, min, max, label }: { value: number; onChange: (value: number) => void; min: number; max: number; label: string }) {
+  const button = 'grid size-9 place-items-center rounded-lg bg-fill text-[20px] leading-none text-coral-ink active:opacity-60 disabled:opacity-30'
+  return (
+    <div role="group" aria-label={label} className="flex items-center gap-1">
+      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} aria-label={`Less ${label}`} className={button}>
+        −
+      </button>
+      <span className="min-w-8 text-center font-semibold tabular-nums" aria-live="polite">
+        {value}
+      </span>
+      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} aria-label={`More ${label}`} className={button}>
+        +
+      </button>
+    </div>
+  )
+}
+
+/** iOS's segmented control: a few options, one chosen. */
+export function Segmented<T extends string | number>({ options, value, onChange, label }: {
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (value: T) => void
+  label: string
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="grid auto-cols-fr grid-flow-col gap-1 rounded-xl bg-fill p-1">
+      {options.map((option) => {
+        const selected = option.value === value
+        return (
+          <button
+            key={String(option.value)}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(option.value)}
+            className={`min-h-9 rounded-lg px-2 text-[15px] font-semibold transition ${selected ? 'bg-surface text-ink shadow-[0_1px_3px_rgb(42_31_26/0.12)]' : 'text-muted'}`}
+          >
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * A bottom sheet: a native modal <dialog> sliding up from the bottom, with Cancel at its top left. It traps focus,
+ * and Escape or Cancel calls `onClose`; the owner removes it from the page when it's done.
+ */
+export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    if (!dialog.current?.open) dialog.current?.showModal() // StrictMode runs this twice in development
+  }, [])
+  return (
+    <dialog
+      ref={dialog}
+      onClose={onClose}
+      aria-label={title}
+      className="mx-auto mt-auto mb-0 max-h-[92dvh] w-full max-w-xl rounded-t-3xl bg-canvas p-0 text-ink backdrop:bg-black/40"
+    >
+      <div className="space-y-4 px-4 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        <div className="mx-auto h-1.5 w-10 rounded-full bg-line" aria-hidden />
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={() => dialog.current?.close()} className={plainButton}>
+            Cancel
+          </button>
+          <h2 className="font-semibold">{title}</h2>
+          <span className="w-14" aria-hidden />
+        </div>
+        {children}
+      </div>
+    </dialog>
   )
 }
 

@@ -1,4 +1,4 @@
-import { randomId, type Workout, type WorkoutInput } from './api'
+import { randomId, type PlanDay, type Workout, type WorkoutInput } from './api'
 import { groupSets } from './workouts'
 
 /**
@@ -66,6 +66,19 @@ export const repeatDraft = (workout: Workout, now = new Date()): Draft => ({
   // A name you chose ("Push day") carries over; an automatic one follows the time of day.
   name: /^(Morning|Afternoon|Evening) Workout$/.test(workout.name) ? workoutName(now) : workout.name,
   exercises: draftExercises(workout, false),
+})
+
+/**
+ * A planned workout, ready to log: its exercises with the planned number of sets and reps filled in. Weights stay
+ * empty: the logger shows last time's as hints and uses them when you check a set off.
+ */
+export const planDraft = (plan: PlanDay, now = new Date()): Draft => ({
+  ...emptyDraft(now),
+  name: plan.name,
+  exercises: plan.exercises.map((e) => ({
+    exerciseId: e.exerciseId,
+    sets: Array.from({ length: e.sets }, () => ({ weight: '', reps: String(e.reps), done: false })),
+  })),
 })
 
 /** A saved workout opened for editing: the same ID and times, every set checked off. */

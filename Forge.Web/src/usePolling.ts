@@ -11,16 +11,19 @@ interface PollState<T> {
  * Calls `fetcher` now and every `intervalMs` (if given) while mounted and visible, or until `key` changes.
  * `key` names what's fetched and is where it's remembered, so it must be unique per request: use its API path.
  * Keeps the last good data when a refresh fails. With `remember` (the default), the last good data is also kept on
- * the device and shown at once on the next visit, even offline; `updatedAt` says how old it is.
+ * the device and shown at once on the next visit, even offline; `updatedAt` says how old it is. `reload()` fetches
+ * again now, e.g. right after a change was saved.
  */
 export function usePolling<T>(
   fetcher: () => Promise<T>,
   key: string,
   intervalMs?: number,
   { remember: keep = true }: { remember?: boolean } = {},
-): PollState<T> {
+): PollState<T> & { reload: () => void } {
   const start = (k: string) => ({ key: k, error: undefined, ...((keep && remembered<T>(k)) || { data: undefined, updatedAt: undefined }) })
   const [state, setState] = useState<PollState<T> & { key: string }>(() => start(key))
+  const [reloads, setReloads] = useState(0)
+  const reload = () => setReloads((n) => n + 1)
   // A new key starts from what's remembered for it, not the previous key's data.
   if (state.key !== key) setState(start(key))
 
@@ -50,10 +53,10 @@ export function usePolling<T>(
     }
     // fetcher is recreated every render, so `key` (not fetcher) identifies what is being fetched.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, intervalMs])
+  }, [key, intervalMs, reloads])
 
   // Don't show the previous key's data while the new key loads.
-  return state.key === key ? state : { data: undefined, error: undefined, updatedAt: undefined }
+  return state.key === key ? { ...state, reload } : { data: undefined, error: undefined, updatedAt: undefined, reload }
 }
 
 /** The error worth a red box: only when there's nothing to show. With last-known data, pages say how old it is instead. */

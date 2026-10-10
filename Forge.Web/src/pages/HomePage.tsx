@@ -1,17 +1,44 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
-import { getWorkouts } from '../api'
-import { Card, Page, PrBadge, SectionTitle } from '../components'
+import { foodLogPath, getFoodLog, getPlan, getProfile, getWeighIns, getWorkouts } from '../api'
+import { Card, Page, PrBadge, primaryButton, RING, Rings, SectionTitle } from '../components'
+import { dayLabel, localDate, workoutDay } from '../dates'
 import { Icon } from '../icons'
+import { exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
+import { planFor, workedOut } from '../plan'
 import { useNow, usePolling } from '../usePolling'
+import { WeighInSheet } from '../WeighInSheet'
 import { formatDay, formatDuration, formatWeight, groupSets, personalRecords, plural, volume } from '../workouts'
 import { TodayWorkoutCard } from './WorkoutsPage'
 
-/** Home: today at a glance. */
+/** Home: today at a glance: your rings, today's workout, calories left, your weight, and your latest workout. */
 export default function HomePage() {
   const now = useNow(60_000)
+  const today = localDate(now)
+  const profile = usePolling(getProfile, '/profile')
   const workouts = usePolling(getWorkouts, '/workouts')
+  const plan = usePolling(getPlan, '/plan')
+  const food = usePolling(() => getFoodLog(today), foodLogPath(today))
+  const weighIns = usePolling(getWeighIns, '/weigh-ins')
+  const [weighing, setWeighing] = useState(false)
+
+  const goals = profile.data
+  const planned = planFor(plan.data, today)
+  const restDay = !planned && (plan.data?.length ?? 0) > 0
+  const done = workedOut(workouts.data, today)
+  const eaten = totals(food.data ?? []).calories
+  const weight = weightOn(weighIns.data, today, goals?.startWeight ?? 0)
+  const exercise = (workouts.data ?? []).filter((w) => workoutDay(w) === today).reduce((sum, w) => sum + exerciseCalories(w, weight), 0)
+  const budget = goals ? goals.calorieGoal + exercise : 0
+  const latestWeighIn = weighIns.data?.at(-1)
   const last = workouts.data?.[0]
   const prs = last ? (personalRecords(workouts.data!).get(last.id)?.size ?? 0) : 0
+
+  const moveDetail = planned ? `${planned.name}${done ? ' done' : ' to do'}` : restDay ? 'Rest day' : done ? 'Workout done' : 'No workout yet'
+  const rings = [
+    { label: 'Move', value: done || restDay ? 1 : 0, color: RING.move, detail: moveDetail },
+    { label: 'Eat', value: budget ? eaten / budget : 0, color: RING.eat, detail: goals ? `${formatKcal(eaten)} of ${formatKcal(budget)} kcal` : 'Set your goals' },
+  ]
 
   return (
     <Page
@@ -23,7 +50,64 @@ export default function HomePage() {
         </Link>
       }
     >
-      <TodayWorkoutCard last={last} />
+      {goals === null && (
+        <Card>
+          <p className="text-[13px] font-semibold tracking-wide text-coral-ink uppercase">Welcome to Forge</p>
+          <p className="mt-0.5 text-[22px] font-bold">Set up your goals</p>
+          <p className="text-[15px] text-muted">A minute of details, and Forge works out your daily calories and macros.</p>
+          <Link to="/setup" className={`mt-4 ${primaryButton}`}>
+            Get Started
+          </Link>
+        </Card>
+      )}
+
+      <Card>
+        <div className="flex items-center gap-5">
+          <Rings rings={rings} size={112} />
+          <ul className="min-w-0 flex-1 space-y-2">
+            {rings.map((ring) => (
+              <li key={ring.label}>
+                <span className="flex items-center gap-2 text-[15px] font-semibold">
+                  <span className="size-2.5 rounded-full" style={{ background: ring.color }} aria-hidden />
+                  {ring.label}
+                </span>
+                <span className="block truncate pl-[18px] text-[15px] text-muted">{ring.detail}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Card>
+
+      <TodayWorkoutCard />
+
+      <div className="grid grid-cols-2 gap-3">
+        <Card to="/calories">
+          <p className="text-[13px] font-semibold text-muted uppercase">Calories</p>
+          {goals ? (
+            <>
+              <p className="mt-1 text-[28px] leading-tight font-bold tabular-nums">{formatKcal(Math.abs(remaining(goals.calorieGoal, eaten, exercise)))}</p>
+              <p className={`text-[15px] ${remaining(goals.calorieGoal, eaten, exercise) < 0 ? 'text-amber-ink' : 'text-muted'}`}>
+                {remaining(goals.calorieGoal, eaten, exercise) < 0 ? 'over today' : 'left today'}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-1 text-[28px] leading-tight font-bold tabular-nums">{formatKcal(eaten)}</p>
+              <p className="text-[15px] text-muted">eaten today</p>
+            </>
+          )}
+        </Card>
+        <Card>
+          <div className="flex items-start justify-between">
+            <p className="text-[13px] font-semibold text-muted uppercase">Weight</p>
+            <button onClick={() => setWeighing(true)} aria-label="Log weight" className="-mt-2 -mr-2 grid size-10 place-items-center rounded-full text-coral-ink active:bg-fill">
+              <Icon name="plus" className="size-5" />
+            </button>
+          </div>
+          <p className="text-[28px] leading-tight font-bold tabular-nums">{latestWeighIn ? formatWeight(latestWeighIn.weight) : '–'}</p>
+          <p className="text-[15px] text-muted">{latestWeighIn ? `lb · ${dayLabel(latestWeighIn.date, today)}` : 'Tap + to log'}</p>
+        </Card>
+      </div>
 
       {last && (
         <>
@@ -39,6 +123,18 @@ export default function HomePage() {
             </p>
           </Card>
         </>
+      )}
+
+      {weighing && (
+        <WeighInSheet
+          day={today}
+          current={latestWeighIn?.date === today ? latestWeighIn.weight : undefined}
+          onSaved={() => {
+            setWeighing(false)
+            weighIns.reload()
+          }}
+          onClose={() => setWeighing(false)}
+        />
       )}
     </Page>
   )
