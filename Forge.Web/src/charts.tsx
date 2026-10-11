@@ -115,7 +115,18 @@ export function LineChart({ points, label, color, format, axis = format }: {
       {active !== undefined && <line x1={x(times[active])} x2={x(times[active])} y1={PAD.top} y2={BASE} strokeWidth={1} style={{ stroke: 'var(--muted)' }} />}
       <circle cx={x(times[shown])} cy={y(points[shown].value)} r={4.5} strokeWidth={2} style={{ fill: color, stroke: 'var(--surface)' }} />
       {active === undefined && (
-        <text x={Math.min(x(t1), W - PAD.right)} y={y(end.value) - 10} textAnchor="end" fontSize={13} fontWeight={600} style={{ fill: 'var(--ink)' }}>
+        // Below the point when the line comes down into it, above when it climbs, so the label sits clear of the line;
+        // a halo in the card's color keeps it readable wherever it lands.
+        <text
+          x={Math.min(x(t1), W - PAD.right)}
+          y={points.length > 1 && points.at(-2)!.value > end.value ? y(end.value) + 20 : y(end.value) - 10}
+          textAnchor="end"
+          fontSize={13}
+          fontWeight={600}
+          strokeWidth={4}
+          strokeLinejoin="round"
+          style={{ fill: 'var(--ink)', stroke: 'var(--surface)', paintOrder: 'stroke' }}
+        >
           {format(end.value)}
         </text>
       )}
@@ -185,7 +196,16 @@ export function BarChart({ bars, bucket, goal, label, color, format }: {
       {goal !== undefined && goal > 0 && (
         <g>
           <line x1={PAD.left} x2={W - PAD.right} y1={y(goal)} y2={y(goal)} strokeWidth={1} style={{ stroke: 'var(--ink)' }} strokeOpacity={0.55} />
-          <text x={W - PAD.right} y={y(goal) - 5} textAnchor="end" fontSize={11} fontWeight={600} style={{ fill: 'var(--ink)' }}>
+          <text
+            x={W - PAD.right}
+            y={y(goal) - 5}
+            textAnchor="end"
+            fontSize={11}
+            fontWeight={600}
+            strokeWidth={4}
+            strokeLinejoin="round"
+            style={{ fill: 'var(--ink)', stroke: 'var(--surface)', paintOrder: 'stroke' }}
+          >
             Goal {format(goal)}
           </text>
         </g>

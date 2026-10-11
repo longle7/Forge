@@ -133,7 +133,8 @@ function DayDot({ status }: { status: DayStatus }) {
     )
   if (status === 'missed') return <span className={`${base} border-2 border-muted/40`} />
   if (status === 'planned') return <span className={`${base} border-2 border-coral/50`} />
-  return <span className={`${base} text-muted/50`}>{status === 'rest' ? '–' : ''}</span>
+  // Rest days get a dash; days before the plan began, a faint dot.
+  return <span className={`${base} text-muted/50`}>{status === 'rest' ? '–' : '·'}</span>
 }
 
 function PlanCard({ plan, workouts, from, today, period }: { plan: PlanDay[]; workouts: Workout[]; from: string; today: string; period: string }) {
@@ -150,15 +151,20 @@ function PlanCard({ plan, workouts, from, today, period }: { plan: PlanDay[]; wo
   }
   const days = plannedDays(plan, workouts, from, today)
   const share = adherence(days)
-  const weeks = weekStatuses(plan, workouts, today)
+  // Only the weeks since the plan began: earlier ones would be empty rows.
+  const weeks = weekStatuses(plan, workouts, today).filter((week) => week.some((d) => d.status !== 'none'))
   return (
     <Card>
       <CardTitle icon="calendar" title="Sticking to the plan" />
       <div className="mt-2 grid grid-cols-2 gap-3">
-        <Stat label={`Planned workouts done, ${period}`} value={share === undefined ? '–' : `${Math.round(share * 100)}%`} detail={`${days.filter((d) => d.done).length} of ${days.length}`} />
+        <Stat
+          label="Done as planned"
+          value={share === undefined ? '–' : `${Math.round(share * 100)}%`}
+          detail={days.length ? `${days.filter((d) => d.done).length} of ${days.length}, ${period}` : 'counts from your first planned day'}
+        />
         <Stat label="Streak" value={String(streak(plan, workouts, today))} detail="planned days in a row" />
       </div>
-      <div className="mt-4 grid grid-cols-7 justify-items-center gap-y-2 text-[11px] text-muted" role="table" aria-label="The last four weeks">
+      <div className="mt-4 grid grid-cols-7 justify-items-center gap-y-2 text-[11px] text-muted" role="table" aria-label="Your plan, week by week">
         {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
           <span key={i} role="columnheader" aria-hidden>
             {d}
