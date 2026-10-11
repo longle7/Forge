@@ -7,6 +7,7 @@ import AddFoodPage from './pages/AddFoodPage'
 import CaloriesPage from './pages/CaloriesPage'
 import ExercisePage from './pages/ExercisePage'
 import ExercisesPage from './pages/ExercisesPage'
+import HabitsPage from './pages/HabitsPage'
 import HistoryPage from './pages/HistoryPage'
 import HomePage from './pages/HomePage'
 import LoggerPage from './pages/LoggerPage'
@@ -61,6 +62,7 @@ function Pages() {
             <Route path="/calories" element={<CaloriesPage />} />
             <Route path="/calories/add" element={<AddFoodPage />} />
             <Route path="/setup" element={<SetupPage />} />
+            <Route path="/habits" element={<HabitsPage />} />
             <Route path="/timeout" element={<TimeOutPage />} />
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/settings" element={<SettingsPage />} />

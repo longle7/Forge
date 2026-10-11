@@ -67,6 +67,7 @@ namespace Forge.Api.Controllers
             profile.UnlockAfterWorkout = request.UnlockAfterWorkout;
             profile.UnlockAfterMeals = request.UnlockAfterMeals;
             profile.UnlockAfterWeighIn = request.UnlockAfterWeighIn;
+            profile.UnlockAfterHabits = request.UnlockAfterHabits;
             profile.UpdatedAtUtc = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
@@ -88,11 +89,12 @@ namespace Forge.Api.Controllers
         [Range(0, 600)] int FatGoal,
         bool UnlockAfterWorkout = false,
         [Range(0, 4)] int UnlockAfterMeals = 0,
-        bool UnlockAfterWeighIn = false)
+        bool UnlockAfterWeighIn = false,
+        bool UnlockAfterHabits = false)
     {
         public static ProfileDto From(UserProfile p) => new(
             p.Sex, p.BirthYear, p.HeightIn, p.StartWeight, p.Activity, p.Goal, p.Pace,
             p.CalorieGoal, p.ProteinGoal, p.CarbsGoal, p.FatGoal,
-            p.UnlockAfterWorkout, p.UnlockAfterMeals, p.UnlockAfterWeighIn);
+            p.UnlockAfterWorkout, p.UnlockAfterMeals, p.UnlockAfterWeighIn, p.UnlockAfterHabits);
     }
 }

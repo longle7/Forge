@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodLogPath, getFoodLog, getPlan, getProfile, getWeighIns, getWorkouts, saveProfile, type Profile } from '../api'
+import { foodLogPath, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, saveProfile, type Profile } from '../api'
 import { Card, Group, Notice, Page, primaryButton, Status, Stepper, Switch } from '../components'
 import { localDate } from '../dates'
+import { today as habitsToday } from '../habits'
 import { Icon } from '../icons'
 import { planFor, workedOut } from '../plan'
 import { isUnlocked, unlockGoals, type TodaySoFar } from '../timeout'
@@ -19,6 +20,7 @@ export default function TimeOutPage() {
   const plan = usePolling(getPlan, '/plan')
   const food = usePolling(() => getFoodLog(today), foodLogPath(today))
   const weighIns = usePolling(getWeighIns, '/weigh-ins')
+  const habits = usePolling(getHabits, '/habits')
   // Changes show at once and save in the background; quick taps build on each other, not on the last saved copy.
   const [edits, setEdits] = useState<Partial<Profile>>({})
   const [message, setMessage] = useState<string>()
@@ -52,6 +54,8 @@ export default function TimeOutPage() {
     workedOut: workedOut(workouts.data, today),
     meals: new Set((food.data ?? []).map((e) => e.meal)).size,
     weighedIn: (weighIns.data ?? []).some((w) => w.date === today),
+    habitsDue: habitsToday(habits.data, today).due.length,
+    habitsDone: habitsToday(habits.data, today).done,
   }
   const goals = unlockGoals(rules, day)
   const unlocked = isUnlocked(goals)
@@ -112,6 +116,13 @@ export default function TimeOutPage() {
         <div className="flex min-h-11 items-center gap-3 px-4 py-2.5">
           <span className="flex-1">Weigh in</span>
           <Switch checked={rules.unlockAfterWeighIn} onChange={(on) => change({ unlockAfterWeighIn: on })} label="Weigh in" />
+        </div>
+        <div className="flex min-h-11 items-center gap-3 px-4 py-2.5">
+          <span className="flex-1">
+            Finish today's habits
+            <span className="block text-[15px] text-muted">Every habit due today</span>
+          </span>
+          <Switch checked={rules.unlockAfterHabits ?? false} onChange={(on) => change({ unlockAfterHabits: on })} label="Finish today's habits" />
         </div>
       </Group>
       {message && <Notice>{message}</Notice>}

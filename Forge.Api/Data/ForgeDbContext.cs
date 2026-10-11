@@ -25,6 +25,8 @@ namespace Forge.Api.Data
         public DbSet<WeighIn> WeighIns { get; set; } = null!;
         public DbSet<FoodEntry> FoodEntries { get; set; } = null!;
         public DbSet<ScanUsage> ScanUsage { get; set; } = null!;
+        public DbSet<Habit> Habits { get; set; } = null!;
+        public DbSet<HabitCheck> HabitChecks { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -111,6 +113,21 @@ namespace Forge.Api.Data
                 entity.Property(f => f.Carbs).HasPrecision(6, 1);
                 entity.Property(f => f.Fat).HasPrecision(6, 1);
             });
+
+            modelBuilder.Entity<Habit>(entity =>
+            {
+                entity.Property(h => h.Id).ValueGeneratedNever(); // the app makes it up (see Habit.Id)
+                entity.HasIndex(h => h.UserId);
+                entity.Property(h => h.UserId).IsRequired().HasMaxLength(100);
+                entity.Property(h => h.Name).IsRequired().HasMaxLength(50);
+                entity.Property(h => h.Emoji).IsRequired().HasMaxLength(16);
+                entity.HasMany(h => h.Checks)
+                      .WithOne()
+                      .HasForeignKey(c => c.HabitId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<HabitCheck>(entity => entity.HasKey(c => new { c.HabitId, c.Date })); // one count per day
 
             modelBuilder.Entity<ScanUsage>(entity =>
             {

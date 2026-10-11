@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodLogPath, getFoodLog, getPlan, getProfile, getWeighIns, getWorkouts } from '../api'
+import { foodLogPath, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts } from '../api'
 import { Card, Page, PrBadge, primaryButton, Rings, SectionTitle } from '../components'
 import { dayLabel, localDate, workoutDay } from '../dates'
 import { RING } from '../colors'
 import { Icon } from '../icons'
+import { today as habitsToday } from '../habits'
+import { HabitsCard } from '../HabitsCard'
 import { exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
 import { planFor, workedOut } from '../plan'
 import { isUnlocked, unlockGoals } from '../timeout'
@@ -22,6 +24,7 @@ export default function HomePage() {
   const plan = usePolling(getPlan, '/plan')
   const food = usePolling(() => getFoodLog(today), foodLogPath(today))
   const weighIns = usePolling(getWeighIns, '/weigh-ins')
+  const habits = usePolling(getHabits, '/habits')
   const [weighing, setWeighing] = useState(false)
 
   const goals = profile.data
@@ -44,6 +47,8 @@ export default function HomePage() {
         workedOut: done,
         meals: new Set((food.data ?? []).map((e) => e.meal)).size,
         weighedIn: latestWeighIn?.date === today,
+        habitsDue: habitsToday(habits.data, today).due.length,
+        habitsDone: habitsToday(habits.data, today).done,
       })
     : []
   const met = unlock.filter((g) => g.met).length
@@ -97,6 +102,7 @@ export default function HomePage() {
       </Card>
 
       <TodayWorkoutCard />
+      <HabitsCard />
 
       <div className="grid grid-cols-2 gap-3">
         <Card to="/calories">

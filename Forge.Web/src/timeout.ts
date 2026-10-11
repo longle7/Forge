@@ -8,15 +8,17 @@ export interface TodaySoFar {
   workedOut: boolean
   meals: number // breakfast, lunch, dinner, and snacks with something logged
   weighedIn: boolean
+  habitsDue?: number // habits scheduled today
+  habitsDone?: number
 }
 
 export interface UnlockGoal {
-  id: 'workout' | 'meals' | 'weighIn'
+  id: 'workout' | 'meals' | 'weighIn' | 'habits'
   label: string
   met: boolean
 }
 
-type Rules = Pick<Profile, 'unlockAfterWorkout' | 'unlockAfterMeals' | 'unlockAfterWeighIn'>
+type Rules = Pick<Profile, 'unlockAfterWorkout' | 'unlockAfterMeals' | 'unlockAfterWeighIn' | 'unlockAfterHabits'>
 
 /**
  * Today's Time Out goals: what has to be done before your chosen apps unlock. A rest day counts as a done workout;
@@ -36,6 +38,10 @@ export function unlockGoals(rules: Rules, today: TodaySoFar): UnlockGoal[] {
     goals.push({ id: 'meals', label: `Log ${plural(n, 'meal')} (${Math.min(today.meals, n)} of ${n})`, met: today.meals >= n })
   }
   if (rules.unlockAfterWeighIn) goals.push({ id: 'weighIn', label: 'Weigh in', met: today.weighedIn })
+  if (rules.unlockAfterHabits) {
+    const [done, due] = [today.habitsDone ?? 0, today.habitsDue ?? 0]
+    goals.push(due === 0 ? { id: 'habits', label: 'No habits due today', met: true } : { id: 'habits', label: `Finish today's habits (${done} of ${due})`, met: done >= due })
+  }
   return goals
 }
 

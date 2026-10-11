@@ -46,7 +46,22 @@ export interface Profile {
   unlockAfterWorkout: boolean
   unlockAfterMeals: number // 0 = no rule
   unlockAfterWeighIn: boolean
+  unlockAfterHabits?: boolean // every habit scheduled today done
 }
+
+/** A daily habit and its check-offs (the last 400 days). */
+export interface Habit {
+  id: string // made up by the app
+  name: string
+  emoji: string
+  dailyTarget: number // 1 = a check-off; 8 = "8 glasses"
+  days: number // bitmask: bit 0 = Sunday … bit 6 = Saturday
+  archived: boolean
+  createdAt: string
+  checks: { date: string; count: number }[]
+}
+
+export type HabitInput = Pick<Habit, 'name' | 'emoji' | 'dailyTarget' | 'days' | 'archived'>
 
 /** One weekday of the weekly plan (0 = Sunday … 6 = Saturday). A weekday without one is a rest day. */
 export interface PlanDay {
@@ -172,6 +187,11 @@ export const saveProfile = (profile: Profile) => api<Profile>('/profile', put(pr
 export const getPlan = () => api<PlanDay[]>('/plan')
 export const savePlanDay = (day: number, plan: { name: string; exercises: PlanExercise[] }) => api<PlanDay>(`/plan/${day}`, put(plan))
 export const makeRestDay = (day: number) => api<void>(`/plan/${day}`, { method: 'DELETE' })
+
+export const getHabits = () => api<Habit[]>('/habits')
+export const saveHabit = (id: string, habit: HabitInput) => api<Habit>(`/habits/${id}`, put(habit))
+export const deleteHabit = (id: string) => api<void>(`/habits/${id}`, { method: 'DELETE' })
+export const checkHabit = (id: string, date: string, count: number) => api<void>(`/habits/${id}/checks/${date}`, put({ count }))
 
 export const getWeighIns = () => api<WeighIn[]>('/weigh-ins')
 export const saveWeighIn = (date: string, weight: number) => api<WeighIn>(`/weigh-ins/${date}`, put({ weight }))

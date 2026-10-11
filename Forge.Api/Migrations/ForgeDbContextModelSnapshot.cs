@@ -326,6 +326,61 @@ namespace Forge.Api.Migrations
                     b.ToTable("FoodEntries");
                 });
 
+            modelBuilder.Entity("Forge.Api.Domain.Habit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ArchivedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DailyTarget")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Days")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Emoji")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Habits");
+                });
+
+            modelBuilder.Entity("Forge.Api.Domain.HabitCheck", b =>
+                {
+                    b.Property<Guid>("HabitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("int");
+
+                    b.HasKey("HabitId", "Date");
+
+                    b.ToTable("HabitChecks");
+                });
+
             modelBuilder.Entity("Forge.Api.Domain.PlanDay", b =>
                 {
                     b.Property<int>("Id")
@@ -455,6 +510,9 @@ namespace Forge.Api.Migrations
                         .HasPrecision(5, 1)
                         .HasColumnType("decimal(5,1)");
 
+                    b.Property<bool>("UnlockAfterHabits")
+                        .HasColumnType("bit");
+
                     b.Property<int>("UnlockAfterMeals")
                         .HasColumnType("int");
 
@@ -551,6 +609,15 @@ namespace Forge.Api.Migrations
                     b.ToTable("WorkoutSets");
                 });
 
+            modelBuilder.Entity("Forge.Api.Domain.HabitCheck", b =>
+                {
+                    b.HasOne("Forge.Api.Domain.Habit", null)
+                        .WithMany("Checks")
+                        .HasForeignKey("HabitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Forge.Api.Domain.PlanExercise", b =>
                 {
                     b.HasOne("Forge.Api.Domain.Exercise", "Exercise")
@@ -583,6 +650,11 @@ namespace Forge.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Exercise");
+                });
+
+            modelBuilder.Entity("Forge.Api.Domain.Habit", b =>
+                {
+                    b.Navigation("Checks");
                 });
 
             modelBuilder.Entity("Forge.Api.Domain.PlanDay", b =>

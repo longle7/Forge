@@ -35,6 +35,7 @@ namespace Forge.Api.Domain
         public bool UnlockAfterWorkout { get; set; } // today's planned workout (rest days count as done)
         public int UnlockAfterMeals { get; set; } // this many meals logged today (0 = no rule)
         public bool UnlockAfterWeighIn { get; set; }
+        public bool UnlockAfterHabits { get; set; } // every habit scheduled today done
 
         public DateTime UpdatedAtUtc { get; set; }
     }

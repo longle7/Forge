@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodDaysPath, getExercises, getFoodDays, getPlan, getProfile, getWeighIns, getWorkouts, type PlanDay, type Workout } from '../api'
+import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, type Habit, type PlanDay, type Workout } from '../api'
+import { completion, habitStreak } from '../habits'
 import { BarChart, ChartTable, LineChart, Sparkline } from '../charts'
 import { RING } from '../colors'
 import { Card, Page, plainButton, Segmented, Status } from '../components'
@@ -31,6 +32,7 @@ export default function ProgressPage() {
   const weighIns = usePolling(getWeighIns, '/weigh-ins')
   const exercises = usePolling(getExercises, '/exercises')
   const food = usePolling(() => getFoodDays(from, today), foodDaysPath(from, today))
+  const habits = usePolling(getHabits, '/habits')
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
 
   return (
@@ -41,6 +43,7 @@ export default function ProgressPage() {
 
       <WeightCard weighIns={(weighIns.data ?? []).filter((w) => w.date >= from)} today={today} period={period} onSaved={weighIns.reload} />
       <PlanCard plan={plan.data ?? []} workouts={workouts.data ?? []} from={from} today={today} period={period} />
+      <HabitsCard habits={(habits.data ?? []).filter((h) => !h.archived)} from={from} today={today} period={period} />
       <CaloriesCard days={food.data ?? []} goal={profile.data?.calorieGoal} from={from} today={today} period={period} />
       <StrengthCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
       <RecordsCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
@@ -186,6 +189,39 @@ function PlanCard({ plan, workouts, from, today, period }: { plan: PlanDay[]; wo
           </span>
         ))}
       </div>
+    </Card>
+  )
+}
+
+/** Each habit's streak, and how often it was done in the range: a meter in the Unlock green, the number beside it. */
+function HabitsCard({ habits, from, today, period }: { habits: Habit[]; from: string; today: string; period: string }) {
+  if (habits.length === 0) return null
+  return (
+    <Card>
+      <CardTitle icon="check" title="Habit streaks" detail={`done of scheduled days, ${period}`} />
+      <ul className="mt-2 divide-y divide-line">
+        {habits.map((habit) => {
+          const { done, scheduled } = completion(habit, from, today)
+          const share = scheduled ? done / scheduled : 0
+          const streak = habitStreak(habit, today)
+          return (
+            <li key={habit.id} className="py-2.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0 truncate font-medium">
+                  {habit.emoji} {habit.name}
+                </span>
+                <span className="shrink-0 text-[13px] text-muted">{streak ? `${streak}-day streak` : 'No streak yet'}</span>
+              </div>
+              <div className="mt-1.5 flex items-center gap-3">
+                <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ background: 'color-mix(in oklab, var(--chart-unlock) 18%, transparent)' }}>
+                  <div className="h-full rounded-full" style={{ width: `${share * 100}%`, background: 'var(--chart-unlock)' }} />
+                </div>
+                <span className="w-24 shrink-0 text-right text-[13px] text-muted tabular-nums">{scheduled ? `${done} of ${scheduled} days` : 'Starts today'}</span>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
     </Card>
   )
 }
