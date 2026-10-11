@@ -4,6 +4,7 @@ import { ApiError, getExercises, getWorkouts, isCardio, saveWorkout, type Exerci
 import { Card, dangerButton, field, Notice, plainButton, primaryButton, Sheet, tintedButton } from '../components'
 import { loadDraft, saveDraft, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
+import { notifyRestEnd } from '../notify'
 import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
 import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, parseDuration, platesPerSide, previousSets, progressionStep } from '../workouts'
@@ -90,6 +91,7 @@ function Logger({ draft, update, workouts, exercises }: {
   // The workout is done with this page: leave it, and stop keeping it on the phone.
   const close = (to: string) => {
     saveDraft(undefined)
+    void notifyRestEnd(undefined)
     navigate(to, { replace: true })
   }
 
@@ -205,6 +207,10 @@ function Logger({ draft, update, workouts, exercises }: {
   useEffect(() => {
     if (restOver) endRest()
   }, [restOver])
+  // In the iPhone app, the end of the rest also comes as a notification, for a locked phone.
+  useEffect(() => {
+    void notifyRestEnd(draft.restEndsAt)
+  }, [draft.restEndsAt])
 
   const finishLabel = saving ? 'Saving…' : draft.editing ? 'Save' : 'Finish'
 
