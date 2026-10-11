@@ -7,6 +7,7 @@ import { RING } from '../colors'
 import { Icon } from '../icons'
 import { exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
 import { planFor, workedOut } from '../plan'
+import { isUnlocked, unlockGoals } from '../timeout'
 import { useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
 import { formatDay, formatDuration, formatWeight, groupSets, personalRecords, plural, volume } from '../workouts'
@@ -36,9 +37,25 @@ export default function HomePage() {
   const prs = last ? (personalRecords(workouts.data!).get(last.id)?.size ?? 0) : 0
 
   const moveDetail = planned ? `${planned.name}${done ? ' done' : ' to do'}` : restDay ? 'Rest day' : done ? 'Workout done' : 'No workout yet'
+  const unlock = goals
+    ? unlockGoals(goals, {
+        planName: planned?.name,
+        restDay,
+        workedOut: done,
+        meals: new Set((food.data ?? []).map((e) => e.meal)).size,
+        weighedIn: latestWeighIn?.date === today,
+      })
+    : []
+  const met = unlock.filter((g) => g.met).length
   const rings = [
     { label: 'Move', value: done || restDay ? 1 : 0, color: RING.move, detail: moveDetail },
     { label: 'Eat', value: budget ? eaten / budget : 0, color: RING.eat, detail: goals ? `${formatKcal(eaten)} of ${formatKcal(budget)} kcal` : 'Set your goals' },
+    {
+      label: 'Unlock',
+      value: unlock.length ? met / unlock.length : 0,
+      color: RING.unlock,
+      detail: unlock.length === 0 ? 'Set goals in Time Out' : isUnlocked(unlock) ? 'Apps unlocked' : `Locked · ${met} of ${unlock.length} goals`,
+    },
   ]
 
   return (
@@ -86,14 +103,14 @@ export default function HomePage() {
           <p className="text-[13px] font-semibold text-muted uppercase">Calories</p>
           {goals ? (
             <>
-              <p className="mt-1 text-[28px] leading-tight font-bold tabular-nums">{formatKcal(Math.abs(remaining(goals.calorieGoal, eaten, exercise)))}</p>
+              <p className="mt-1 text-[28px] leading-tight font-bold">{formatKcal(Math.abs(remaining(goals.calorieGoal, eaten, exercise)))}</p>
               <p className={`text-[15px] ${remaining(goals.calorieGoal, eaten, exercise) < 0 ? 'text-amber-ink' : 'text-muted'}`}>
                 {remaining(goals.calorieGoal, eaten, exercise) < 0 ? 'over today' : 'left today'}
               </p>
             </>
           ) : (
             <>
-              <p className="mt-1 text-[28px] leading-tight font-bold tabular-nums">{formatKcal(eaten)}</p>
+              <p className="mt-1 text-[28px] leading-tight font-bold">{formatKcal(eaten)}</p>
               <p className="text-[15px] text-muted">eaten today</p>
             </>
           )}
@@ -105,7 +122,7 @@ export default function HomePage() {
               <Icon name="plus" className="size-5" />
             </button>
           </div>
-          <p className="text-[28px] leading-tight font-bold tabular-nums">{latestWeighIn ? formatWeight(latestWeighIn.weight) : '–'}</p>
+          <p className="text-[28px] leading-tight font-bold">{latestWeighIn ? formatWeight(latestWeighIn.weight) : '–'}</p>
           <p className="text-[15px] text-muted">{latestWeighIn ? `lb · ${dayLabel(latestWeighIn.date, today)}` : 'Tap + to log'}</p>
         </Card>
       </div>

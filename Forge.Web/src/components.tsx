@@ -159,14 +159,14 @@ export function Rings({ rings, size = 128 }: { rings: { label: string; value: nu
         const progress = Math.max(0, Math.min(1, ring.value))
         return (
           <g key={ring.label} transform={`rotate(-90 ${center} ${center})`}>
-            <circle cx={center} cy={center} r={r} fill="none" stroke={ring.color} strokeOpacity={0.18} strokeWidth={stroke} />
+            <circle cx={center} cy={center} r={r} fill="none" style={{ stroke: ring.color }} strokeOpacity={0.18} strokeWidth={stroke} />
             {progress > 0 && (
               <circle
                 cx={center}
                 cy={center}
                 r={r}
                 fill="none"
-                stroke={ring.color}
+                style={{ stroke: ring.color }}
                 strokeWidth={stroke}
                 strokeLinecap="round"
                 strokeDasharray={circumference}
@@ -214,6 +214,23 @@ export function Stepper({ value, onChange, min, max, label }: { value: number; o
         +
       </button>
     </div>
+  )
+}
+
+/** iOS's on/off switch. */
+export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (checked: boolean) => void; label: string; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative h-8 w-13 shrink-0 rounded-full transition disabled:opacity-50 ${checked ? 'bg-green-strong' : 'bg-fill'}`}
+    >
+      <span className={`absolute top-1 left-1 size-6 rounded-full bg-white shadow transition ${checked ? 'translate-x-5' : ''}`} />
+    </button>
   )
 }
 

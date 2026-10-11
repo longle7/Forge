@@ -4,7 +4,7 @@ import { deleteFoodEntry, foodLogPath, getFoodLog, getProfile, getWeighIns, getW
 import { Card, Group, MacroBar, Page, primaryButton, Rings, Status } from '../components'
 import { addDays, dayLabel, localDate, workoutDay } from '../dates'
 import { FoodSheet } from '../FoodSheet'
-import { PINK, RING } from '../colors'
+import { FAT, RING } from '../colors'
 import { Icon } from '../icons'
 import { exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
 import { failure, useNow, usePolling } from '../usePolling'
@@ -44,7 +44,7 @@ export default function CaloriesPage() {
           <div className="mt-4 space-y-3">
             <MacroBar label="Protein" value={food.protein} goal={goals.proteinGoal} color={RING.move} />
             <MacroBar label="Carbs" value={food.carbs} goal={goals.carbsGoal} color={RING.eat} />
-            <MacroBar label="Fat" value={food.fat} goal={goals.fatGoal} color={PINK} />
+            <MacroBar label="Fat" value={food.fat} goal={goals.fatGoal} color={FAT} />
           </div>
         </Summary>
       ) : (
@@ -117,7 +117,7 @@ function Summary({ goal, food, exercise, children }: { goal: number; food: numbe
       <div className="flex items-center gap-4">
         <Rings size={92} rings={[{ label: 'Eaten', value: food / (goal + exercise), color: RING.eat }]} />
         <div>
-          <p className="text-[34px] leading-tight font-bold tabular-nums">{formatKcal(Math.abs(left))}</p>
+          <p className="text-[34px] leading-tight font-bold">{formatKcal(Math.abs(left))}</p>
           <p className={left < 0 ? 'font-semibold text-amber-ink' : 'text-muted'}>{left < 0 ? 'kcal over' : 'kcal left'}</p>
         </div>
       </div>

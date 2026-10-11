@@ -29,6 +29,11 @@
   --color-amber-ink: var(--amber-ink);
 }
 
+/*
+ * Chart colors (rings, bars, lines): the Sunrise hues stepped per mode so they pass the dataviz checks on the card
+ * surface (lightness band, colorblind separation ≥ 8, normal-vision separation ≥ 15; validate_palette.js --pairs all).
+ * Light amber sits under 3:1 on white, so every ring and bar also carries a text label.
+ */
 :root {
   --canvas: #fff7f0;
   --surface: #ffffff;
@@ -39,6 +44,10 @@
   --coral-ink: #c93a18;
   --green-ink: #13784a;
   --amber-ink: #9a5b00;
+  --chart-move: #ec4a2c;
+  --chart-eat: #eaa200;
+  --chart-unlock: #14a374;
+  --chart-fat: #e2306f;
   color-scheme: light;
 }
 
@@ -53,6 +62,10 @@
     --coral-ink: #ff8a6e;
     --green-ink: #4fd194;
     --amber-ink: #ffc65c;
+    --chart-move: #c43c2a;
+    --chart-eat: #bf8900;
+    --chart-unlock: #13a06f;
+    --chart-fat: #c8305f;
     color-scheme: dark;
   }
 }

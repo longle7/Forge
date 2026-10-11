@@ -151,7 +151,7 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
             <AdjustGoals goals={custom} onChange={setCustom} />
           ) : (
             <>
-              <p className="mt-1 text-[34px] leading-tight font-bold tabular-nums">
+              <p className="mt-1 text-[34px] leading-tight font-bold">
                 {formatKcal(goals.calories)} <span className="text-[17px] font-semibold text-muted">kcal</span>
               </p>
               <p className="text-[15px] text-muted">
