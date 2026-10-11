@@ -270,6 +270,19 @@ export function parseRestoreCode(text: string): string | undefined {
   return /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32})$/.test(code) ? code : undefined
 }
 
+/** Settings → Delete my data: everything saved under this device's ID, gone from the server. */
+export const deleteMyData = () => api<void>('/me', { method: 'DELETE' })
+
+/** After Delete my data: the next request starts a fresh anonymous ID. */
+export function forgetUserId() {
+  sessionUserId = undefined
+  try {
+    localStorage.removeItem(USER_ID_KEY)
+  } catch {
+    // storage blocked: nothing stored to forget
+  }
+}
+
 /** Settings → Use a restore code: from now on this device shows the workouts saved under that code. */
 export function switchUserId(code: string) {
   sessionUserId = code

@@ -56,7 +56,7 @@ export default function AddFoodPage() {
           { value: 'search', label: 'Search' },
           { value: 'recent', label: 'Recent' },
           { value: 'meals', label: 'Meals' },
-          { value: 'quick', label: 'Quick Add' },
+          { value: 'quick', label: 'Quick' },
         ]}
         value={tab}
         onChange={setTab}

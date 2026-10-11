@@ -1,18 +1,43 @@
 import { useState, type FormEvent } from 'react'
-import { getProfile, parseRestoreCode, switchUserId, userId } from '../api'
+import { deleteMyData, forgetUserId, getProfile, parseRestoreCode, switchUserId, userId } from '../api'
 import { forgetRemembered } from '../cache'
-import { Card, field, Group, Notice, Page, primaryButton, Row, tintedButton } from '../components'
-import { loadDraft } from '../draft'
+import { Card, dangerButton, field, Group, Notice, Page, primaryButton, Row, tintedButton } from '../components'
+import { loadDraft, saveDraft } from '../draft'
 import { formatKcal } from '../nutrition'
 import { usePolling } from '../usePolling'
 
-/** Settings (from the person button on Home): your restore code and the version. */
+/** Settings (from the person button on Home): goals, your restore code, Delete my data, the legal pages, and the version. */
 export default function SettingsPage() {
   const [code, setCode] = useState(userId)
   const [copied, setCopied] = useState(false)
   const [typed, setTyped] = useState('')
   const [message, setMessage] = useState<string>()
+  const [deleting, setDeleting] = useState(false)
   const profile = usePolling(getProfile, '/profile')
+
+  // Everything goes: what's on the server under this code, and what Forge kept on this device. A fresh code follows.
+  const deleteEverything = async () => {
+    if (!confirm("Delete everything you've logged in Forge, on our server and on this device? This can't be undone.")) return
+    setDeleting(true)
+    setMessage(undefined)
+    try {
+      await deleteMyData()
+      forgetUserId()
+      forgetRemembered()
+      saveDraft(undefined)
+      try {
+        for (const key of ['forge.rest', 'forge.scanConsent']) localStorage.removeItem(key)
+      } catch {
+        // storage blocked: nothing stored
+      }
+      setCode(userId())
+      setCopied(false)
+      setMessage('Your data was deleted. Forge starts fresh on this device, with a new restore code.')
+    } catch (error) {
+      setMessage(`Couldn't delete your data: ${(error as Error).message}`)
+    }
+    setDeleting(false)
+  }
 
   const copy = async () => {
     try {
@@ -70,6 +95,20 @@ export default function SettingsPage() {
         </form>
       </Card>
       {message && <Notice>{message}</Notice>}
+
+      <Group title="Your data" footer="Removes your workouts, food, weigh-ins, habits, plan, and goals from our server right away, and clears what Forge kept on this device.">
+        <div className="p-4">
+          <button onClick={deleteEverything} disabled={deleting} className={dangerButton}>
+            {deleting ? 'Deleting…' : 'Delete My Data'}
+          </button>
+        </div>
+      </Group>
+
+      <Group title="Legal">
+        <Row to="/privacy">Privacy Policy</Row>
+        <Row to="/terms">Terms of Use</Row>
+        <Row to="/support">Help &amp; Support</Row>
+      </Group>
 
       <Group title="About">
         <Row detail={__APP_VERSION__}>Version</Row>

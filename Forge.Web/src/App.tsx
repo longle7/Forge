@@ -18,6 +18,8 @@ import SetupPage from './pages/SetupPage'
 import TimeOutPage from './pages/TimeOutPage'
 import WorkoutDetailPage from './pages/WorkoutDetailPage'
 import WorkoutsPage from './pages/WorkoutsPage'
+import { PrivacyPage, SupportPage, TermsPage } from './pages/LegalPages'
+import Welcome from './Welcome'
 
 const TABS: { to: string; label: string; icon: IconName }[] = [
   { to: '/', label: 'Home', icon: 'home' },
@@ -38,6 +40,7 @@ export default function App() {
         <Pages />
       </main>
       <TabBar />
+      <Welcome />
     </BrowserRouter>
   )
 }
@@ -66,6 +69,9 @@ function Pages() {
             <Route path="/timeout" element={<TimeOutPage />} />
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/support" element={<SupportPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
