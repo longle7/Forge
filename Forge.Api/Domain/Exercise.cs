@@ -1,7 +1,8 @@
 namespace Forge.Api.Domain
 {
     /// <summary>
-    /// Something you lift, e.g. "Bench Press (Barbell)". Built-in exercises (no UserId) are there for everyone
+    /// Something you lift, e.g. "Bench Press (Barbell)", or cardio like "Running" (MuscleGroup "Cardio"), which is
+    /// logged as distance and time instead of weight and reps. Built-in exercises (no UserId) are there for everyone
     /// (Data/BuiltInExercises.cs); the ones you add are yours alone.
     /// </summary>
     public class Exercise

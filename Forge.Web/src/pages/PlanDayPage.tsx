@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { getExercises, getPlan, makeRestDay, savePlanDay, type Exercise, type PlanDay, type PlanExercise } from '../api'
+import { getExercises, getPlan, isCardio, makeRestDay, savePlanDay, type Exercise, type PlanDay, type PlanExercise } from '../api'
 import { Card, dangerButton, field, Notice, NotFound, Page, primaryButton, Status, Stepper, tintedButton } from '../components'
 import { DAY_NAMES } from '../dates'
 import { ExercisePicker } from '../ExercisePicker'
@@ -36,6 +36,7 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string>()
   const names = new Map([...exercises, ...added].map((e) => [e.id, e.name]))
+  const cardio = new Set([...exercises, ...added].filter(isCardio).map((e) => e.id))
 
   const change = (i: number, update: Partial<PlanExercise>) => setItems(items.map((item, j) => (j === i ? { ...item, ...update } : item)))
   const move = (i: number, by: number) => {
@@ -46,7 +47,7 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
   const pick = (exercise: Exercise) => {
     setPicking(false)
     if (!names.has(exercise.id)) setAdded((list) => [...list, exercise])
-    setItems([...items, { exerciseId: exercise.id, sets: 3, reps: 10 }])
+    setItems([...items, isCardio(exercise) ? { exerciseId: exercise.id, sets: 1, reps: 1 } : { exerciseId: exercise.id, sets: 3, reps: 10 }])
   }
 
   const save = async () => {
@@ -104,14 +105,18 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
                 </button>
               </div>
             </div>
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 text-[15px] text-muted">
-                Sets <Stepper value={item.sets} onChange={(sets) => change(i, { sets })} min={1} max={20} label={`sets of ${label}`} />
-              </span>
-              <span className="flex items-center gap-2 text-[15px] text-muted">
-                Reps <Stepper value={item.reps} onChange={(reps) => change(i, { reps })} min={1} max={100} label={`reps of ${label}`} />
-              </span>
-            </div>
+            {cardio.has(item.exerciseId) ? (
+              <p className="text-[15px] text-muted">You'll log the distance and time when you go.</p>
+            ) : (
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-[15px] text-muted">
+                  Sets <Stepper value={item.sets} onChange={(sets) => change(i, { sets })} min={1} max={20} label={`sets of ${label}`} />
+                </span>
+                <span className="flex items-center gap-2 text-[15px] text-muted">
+                  Reps <Stepper value={item.reps} onChange={(reps) => change(i, { reps })} min={1} max={100} label={`reps of ${label}`} />
+                </span>
+              </div>
+            )}
           </Card>
         )
       })}

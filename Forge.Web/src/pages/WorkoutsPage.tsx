@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router'
-import { getExercises, getPlan, getWorkouts } from '../api'
+import { getExercises, getPlan, getWorkouts, isCardio } from '../api'
 import { Card, Group, Page, plainButton, PrBadge, primaryButton, Row, SectionTitle, Status, tintedButton } from '../components'
 import { addDays, DAY_NAMES, localDate, WEEK, weekday } from '../dates'
 import { emptyDraft, loadDraft, planDraft, repeatDraft, saveDraft, type Draft } from '../draft'
@@ -80,6 +80,7 @@ export function TodayWorkoutCard() {
   const done = workedOut(workouts.data, today)
   const last = workouts.data?.[0]
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
+  const cardio = new Set(exercises.data?.filter(isCardio).map((e) => e.id))
 
   const start = (next: Draft) => {
     saveDraft(next)
@@ -125,9 +126,9 @@ export function TodayWorkoutCard() {
         {eyebrow("Today's plan")}
         <p className="mt-0.5 text-[22px] font-bold">{planned.name}</p>
         <p className="text-[15px] text-muted">
-          {planned.exercises.map((e) => `${names.get(e.exerciseId) ?? 'Exercise'} ${e.sets}×${e.reps}`).join(' · ')}
+          {planned.exercises.map((e) => `${names.get(e.exerciseId) ?? 'Exercise'}${cardio.has(e.exerciseId) ? '' : ` ${e.sets}×${e.reps}`}`).join(' · ')}
         </p>
-        <button onClick={() => start(planDraft(planned))} className={`mt-4 ${primaryButton}`}>
+        <button onClick={() => start(planDraft(planned, cardio))} className={`mt-4 ${primaryButton}`}>
           <Icon name="play" className="size-5 fill-current" />
           Start {planned.name}
         </button>

@@ -5,7 +5,7 @@ import { Card, dangerButton, Notice, NotFound, Page, PrBadge, Status, tintedButt
 import { editDraft, loadDraft, repeatDraft, saveDraft, type Draft } from '../draft'
 import { Icon } from '../icons'
 import { failure, usePolling, useSettled } from '../usePolling'
-import { formatDay, formatDuration, formatSet, formatTime, formatWeight, groupSets, personalRecords, volume } from '../workouts'
+import { formatDay, formatDuration, formatSet, formatTime, groupSets, personalRecords, workoutLength, workoutTotals } from '../workouts'
 
 const BACK = { to: '/workouts/history', label: 'History' }
 
@@ -60,8 +60,7 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
   return (
     <Page title={workout.name} back={BACK}>
       <p className="-mt-3 text-muted">
-        {formatDay(workout.startedAt)} · {formatTime(workout.startedAt)} · {formatDuration(Date.parse(workout.finishedAt) - Date.parse(workout.startedAt))} ·{' '}
-        {formatWeight(volume(workout))} lb
+        {[formatDay(workout.startedAt), formatTime(workout.startedAt), formatDuration(workoutLength(workout)), workoutTotals(workout)].filter(Boolean).join(' · ')}
       </p>
 
       {groupSets(workout.sets).map((group) => (

@@ -15,7 +15,10 @@ namespace Forge.Api.Controllers
     [Route("exercises")]
     public class ExercisesController : ControllerBase
     {
-        public static readonly string[] MuscleGroups = { "Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Other" };
+        public static readonly string[] MuscleGroups = { "Chest", "Back", "Legs", "Shoulders", "Arms", "Core", Cardio, "Other" };
+
+        // Exercises in this group are cardio: their sets are a distance and a time, not weight and reps.
+        public const string Cardio = "Cardio";
 
         // Far more than anyone needs; stops a buggy or abusive client from filling the database.
         public const int MaxCustomPerUser = 200;

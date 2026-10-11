@@ -1,4 +1,5 @@
 import type { Activity, Goal, Nutrition, Sex, WeighIn, Workout } from './api'
+import { isCardioSet } from './workouts'
 
 /**
  * How active you are outside workouts. Workouts aren't part of this: their calories are added back separately
@@ -44,14 +45,37 @@ export function calculateGoals(inputs: GoalInputs, year: number): Nutrition & { 
   return { maintenance, calories, protein, carbs, fat }
 }
 
+/** Cardio by name: its MET at a typical pace, and that pace in mph (Compendium of Physical Activities). */
+const CARDIO = [
+  { match: /run|jog/i, met: 9.8, mph: 6 },
+  { match: /walk|hik/i, met: 3.5, mph: 3 },
+  { match: /cycl|bik|spin/i, met: 7.5, mph: 12 },
+  { match: /row/i, met: 7, mph: 7.5 },
+  { match: /ellip/i, met: 5, mph: 5 },
+]
+const OTHER_CARDIO = { met: 6, mph: 5 }
+
 /**
- * Calories a strength workout burned, estimated: MET 3.5 (moderate weight training, rests included) × body weight in
- * kg × hours, counting at most 2.5 hours. On the low side on purpose, so eating them back doesn't undo a deficit.
- * Apple Health's real numbers replace this in the iPhone app.
+ * Calories a workout burned, estimated as MET × body weight in kg × hours.
+ * - Cardio sets: the activity's MET, scaled with your speed when the set has a distance and a time (at most double);
+ *   a set with only a distance takes the typical pace's time.
+ * - The rest of the workout: strength training at MET 3.5 (moderate, rests included), counting at most 2.5 hours.
+ * On the low side on purpose, so eating them back doesn't undo a deficit. Apple Health's real numbers replace this in
+ * the iPhone app.
  */
-export function exerciseCalories(workout: Workout, weightLb: number): number {
+export function exerciseCalories(workout: Workout, weightLb: number, names: Map<number, string>): number {
+  const kg = weightLb * KG_PER_LB
+  let cardioHours = 0
+  let cardio = 0
+  for (const set of workout.sets.filter(isCardioSet)) {
+    const { met, mph } = CARDIO.find((c) => c.match.test(names.get(set.exerciseId) ?? '')) ?? OTHER_CARDIO
+    const hours = set.durationSeconds ? set.durationSeconds / 3600 : (set.distance ?? 0) / mph
+    const speed = set.distance && set.durationSeconds ? set.distance / hours : mph
+    cardio += (1 + (met - 1) * Math.min(2, speed / mph)) * kg * hours
+    cardioHours += hours
+  }
   const hours = Math.min(2.5, Math.max(0, Date.parse(workout.finishedAt) - Date.parse(workout.startedAt)) / 3_600_000)
-  return Math.round(3.5 * weightLb * KG_PER_LB * hours)
+  return Math.round(cardio + 3.5 * kg * Math.max(0, hours - cardioHours))
 }
 
 /** Your weight on a day: the latest weigh-in on or before it, else `fallback` (the weight you set your goals with). */

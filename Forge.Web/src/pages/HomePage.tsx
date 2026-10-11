@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodLogPath, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts } from '../api'
+import { foodLogPath, getExercises, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts } from '../api'
 import { Card, Page, PrBadge, primaryButton, Rings, SectionTitle } from '../components'
 import { dayLabel, localDate, workoutDay } from '../dates'
 import { RING } from '../colors'
@@ -12,7 +12,7 @@ import { planFor, workedOut } from '../plan'
 import { isUnlocked, unlockGoals } from '../timeout'
 import { useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
-import { formatDay, formatDuration, formatWeight, groupSets, personalRecords, plural, volume } from '../workouts'
+import { formatDay, formatDuration, formatWeight, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
 import { TodayWorkoutCard } from './WorkoutsPage'
 
 /** Home: today at a glance: your rings, today's workout, calories left, your weight, and your latest workout. */
@@ -25,7 +25,9 @@ export default function HomePage() {
   const food = usePolling(() => getFoodLog(today), foodLogPath(today))
   const weighIns = usePolling(getWeighIns, '/weigh-ins')
   const habits = usePolling(getHabits, '/habits')
+  const exercises = usePolling(getExercises, '/exercises')
   const [weighing, setWeighing] = useState(false)
+  const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
 
   const goals = profile.data
   const planned = planFor(plan.data, today)
@@ -33,7 +35,7 @@ export default function HomePage() {
   const done = workedOut(workouts.data, today)
   const eaten = totals(food.data ?? []).calories
   const weight = weightOn(weighIns.data, today, goals?.startWeight ?? 0)
-  const exercise = (workouts.data ?? []).filter((w) => workoutDay(w) === today).reduce((sum, w) => sum + exerciseCalories(w, weight), 0)
+  const exercise = (workouts.data ?? []).filter((w) => workoutDay(w) === today).reduce((sum, w) => sum + exerciseCalories(w, weight, names), 0)
   const budget = goals ? goals.calorieGoal + exercise : 0
   const latestWeighIn = weighIns.data?.at(-1)
   const last = workouts.data?.[0]
@@ -142,8 +144,7 @@ export default function HomePage() {
               {prs > 0 && <PrBadge />}
             </div>
             <p className="text-[15px] text-muted">
-              {formatDay(last.startedAt)} · {formatDuration(Date.parse(last.finishedAt) - Date.parse(last.startedAt))} · {plural(groupSets(last.sets).length, 'exercise')} ·{' '}
-              {formatWeight(volume(last))} lb
+              {[formatDay(last.startedAt), formatDuration(workoutLength(last)), plural(groupSets(last.sets).length, 'exercise'), workoutTotals(last)].filter(Boolean).join(' · ')}
             </p>
           </Card>
         </>

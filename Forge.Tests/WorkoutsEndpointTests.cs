@@ -124,6 +124,50 @@ public class WorkoutsEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task CardioSets_KeepDistanceAndTime_AndStrengthSetsKeepWeightAndReps()
+    {
+        using var alice = ClientFor("alice");
+        var exercises = await alice.GetFromJsonAsync<List<ExerciseResponse>>("/exercises");
+        var running = exercises!.Single(e => e.Name == "Running").Id;
+        var elliptical = exercises!.Single(e => e.Name == "Elliptical (Machine)").Id;
+        var stairs = (await (await alice.PostAsJsonAsync("/exercises", new ExerciseRequest("Stair Climber", "Cardio")))
+            .Content.ReadFromJsonAsync<ExerciseResponse>())!.Id; // your own exercise in Cardio is cardio too
+        var id = Guid.NewGuid();
+
+        var response = await alice.PutAsJsonAsync($"/workouts/{id}", Request() with
+        {
+            Sets =
+            [
+                new(running, Weight: 50, Reps: 3, Distance: 3.1m, DurationSeconds: 1620), // weight and reps don't apply
+                new(elliptical, 0, 0, DurationSeconds: 1800), // time only
+                new(stairs, 0, 0, Distance: 0, DurationSeconds: 600),
+                new(Bench, 135, 8, Distance: 2, DurationSeconds: 60), // distance and time don't apply
+            ],
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var sets = (await alice.GetFromJsonAsync<WorkoutResponse>($"/workouts/{id}"))!.Sets;
+        Assert.Equal(
+            [(running, 0m, 0, 3.1m, 1620), (elliptical, 0m, 0, null, 1800), (stairs, 0m, 0, null, 600), (Bench, 135m, 8, null, (int?)null)],
+            sets.Select(s => (s.ExerciseId, s.Weight, s.Reps, s.Distance, s.DurationSeconds)));
+
+        WorkoutSetRequest[] invalid =
+        [
+            new(running, 0, 5), // reps, but no distance or time
+            new(running, 0, 0, Distance: 0, DurationSeconds: 0),
+            new(running, 0, 0, Distance: -1, DurationSeconds: 600),
+            new(running, 0, 0, DurationSeconds: 90_000), // over 24 hours
+            new(Bench, 0, 0, Distance: 3), // a strength set needs reps
+        ];
+        foreach (var set in invalid)
+        {
+            var bad = await alice.PutAsJsonAsync($"/workouts/{Guid.NewGuid()}", Request() with { Sets = [set] });
+            Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+        }
+        Assert.Single(await ListAsync(alice));
+    }
+
+    [Fact]
     public async Task Put_WithYourOwnExercise_AndNoName_SavesAsWorkout()
     {
         using var alice = ClientFor("alice");

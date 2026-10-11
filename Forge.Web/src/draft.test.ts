@@ -2,6 +2,8 @@ import { expect, it } from 'vitest'
 import type { Workout } from './api'
 import { editDraft, emptyDraft, repeatDraft, toWorkout, workoutName, type Draft } from './draft'
 
+const RUNNING = 36
+
 const saved: Workout = {
   id: 'w1',
   name: 'Push day',
@@ -82,4 +84,32 @@ it('toWorkout saves only checked-off sets with reps; an empty weight is bodyweig
       { exerciseId: 8, weight: 0, reps: 10 },
     ],
   })
+})
+
+it('toWorkout saves cardio as distance and time, and repeating one shows its time as m:ss', () => {
+  const draft: Draft = {
+    ...emptyDraft(new Date('2026-10-10T21:00:00Z')),
+    exercises: [
+      {
+        exerciseId: RUNNING,
+        sets: [
+          { weight: '', reps: '', distance: '3.1', time: '27:00', done: true },
+          { weight: '', reps: '', distance: '', time: '10', done: true }, // minutes
+          { weight: '', reps: '', distance: '', time: '', done: true }, // nothing to save
+          { weight: '', reps: '', distance: '1', time: '', done: false }, // not checked off
+        ],
+      },
+    ],
+  }
+
+  const sets = toWorkout(draft, '2026-10-10T21:30:00.000Z').sets
+
+  expect(sets).toEqual([
+    { exerciseId: RUNNING, weight: 0, reps: 0, distance: 3.1, durationSeconds: 1620 },
+    { exerciseId: RUNNING, weight: 0, reps: 0, distance: null, durationSeconds: 600 },
+  ])
+  expect(repeatDraft({ ...saved, sets }).exercises[0].sets).toEqual([
+    { weight: '', reps: '', distance: '3.1', time: '27:00', done: false },
+    { weight: '', reps: '', distance: '', time: '10:00', done: false },
+  ])
 })

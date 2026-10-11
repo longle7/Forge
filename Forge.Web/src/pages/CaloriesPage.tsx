@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { deleteFoodEntry, foodLogPath, getFoodLog, getProfile, getWeighIns, getWorkouts, MEALS, saveFoodEntry, type FoodEntry } from '../api'
+import { deleteFoodEntry, foodLogPath, getExercises, getFoodLog, getProfile, getWeighIns, getWorkouts, MEALS, saveFoodEntry, type FoodEntry } from '../api'
 import { Card, Group, MacroBar, Page, primaryButton, Rings, Status } from '../components'
 import { addDays, dayLabel, localDate, workoutDay } from '../dates'
 import { FoodSheet } from '../FoodSheet'
@@ -20,12 +20,14 @@ export default function CaloriesPage() {
   const log = usePolling(() => getFoodLog(date), foodLogPath(date))
   const workouts = usePolling(getWorkouts, '/workouts')
   const weighIns = usePolling(getWeighIns, '/weigh-ins')
+  const exercises = usePolling(getExercises, '/exercises')
   const [editing, setEditing] = useState<FoodEntry>()
+  const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
 
   const goals = profile.data
   const food = totals(log.data ?? [])
   const weight = weightOn(weighIns.data, date, goals?.startWeight ?? 0)
-  const exercise = (workouts.data ?? []).filter((w) => workoutDay(w) === date).reduce((sum, w) => sum + exerciseCalories(w, weight), 0)
+  const exercise = (workouts.data ?? []).filter((w) => workoutDay(w) === date).reduce((sum, w) => sum + exerciseCalories(w, weight, names), 0)
 
   return (
     <Page title="Calories">

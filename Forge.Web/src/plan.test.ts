@@ -35,10 +35,16 @@ it('workedOut checks the local day a workout started', () => {
 })
 
 it('planDraft fills in the planned sets and reps, weights left for last time’s hints', () => {
-  const draft = planDraft(pushDay, new Date(2026, 9, 12, 18))
+  const draft = planDraft(pushDay, new Set(), new Date(2026, 9, 12, 18))
   expect(draft.name).toBe('Push Day')
   expect(draft.exercises).toEqual([
     { exerciseId: 1, sets: Array(3).fill({ weight: '', reps: '8', done: false }) },
     { exerciseId: 10, sets: Array(2).fill({ weight: '', reps: '12', done: false }) },
   ])
+})
+
+it('planDraft gives a planned cardio exercise one set, for its distance and time', () => {
+  const RUNNING = 36
+  const draft = planDraft({ ...pushDay, exercises: [{ exerciseId: RUNNING, sets: 1, reps: 1 }] }, new Set([RUNNING]))
+  expect(draft.exercises).toEqual([{ exerciseId: RUNNING, sets: [{ weight: '', reps: '', distance: '', time: '', done: false }] }])
 })

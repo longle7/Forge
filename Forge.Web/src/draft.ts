@@ -1,5 +1,5 @@
-import { randomId, type PlanDay, type Workout, type WorkoutInput } from './api'
-import { groupSets } from './workouts'
+import { randomId, type PlanDay, type Workout, type WorkoutInput, type WorkoutSet } from './api'
+import { formatClock, groupSets, isCardioSet, parseDuration } from './workouts'
 
 /**
  * The workout in progress. It lives on this device (localStorage) until Finish uploads it, so a reload, a closed tab,
@@ -13,6 +13,7 @@ export interface Draft {
   editing?: boolean // a saved workout opened from History
   exercises: DraftExercise[]
   restEndsAt?: number // the rest timer, ms since epoch
+  restTotal?: number // its length in seconds
 }
 
 export interface DraftExercise {
@@ -23,6 +24,8 @@ export interface DraftExercise {
 export interface DraftSet {
   weight: string // text while typing, so a field can be empty
   reps: string
+  distance?: string // cardio: miles
+  time?: string // cardio: "27:30", or minutes
   done: boolean // checked off; only these are saved
 }
 
@@ -57,7 +60,11 @@ export const emptyDraft = (now = new Date()): Draft => ({ id: randomId(), name: 
 const draftExercises = (workout: Workout, done: boolean): DraftExercise[] =>
   groupSets(workout.sets).map(({ exerciseId, sets }) => ({
     exerciseId,
-    sets: sets.map((s) => ({ weight: String(s.weight), reps: String(s.reps), done })),
+    sets: sets.map((s) =>
+      isCardioSet(s)
+        ? { weight: '', reps: '', distance: s.distance ? String(s.distance) : '', time: s.durationSeconds ? formatClock(s.durationSeconds * 1000) : '', done }
+        : { weight: String(s.weight), reps: String(s.reps), done },
+    ),
   }))
 
 /** A new workout with the same exercises and sets as `workout`, values filled in, nothing checked off yet. */
@@ -69,15 +76,18 @@ export const repeatDraft = (workout: Workout, now = new Date()): Draft => ({
 })
 
 /**
- * A planned workout, ready to log: its exercises with the planned number of sets and reps filled in. Weights stay
- * empty: the logger shows last time's as hints and uses them when you check a set off.
+ * A planned workout, ready to log: its exercises with the planned number of sets and reps filled in, and one set for
+ * each cardio exercise (`cardio`: their IDs). Weights stay empty: the logger shows last time's as hints and uses them
+ * when you check a set off.
  */
-export const planDraft = (plan: PlanDay, now = new Date()): Draft => ({
+export const planDraft = (plan: PlanDay, cardio: Set<number>, now = new Date()): Draft => ({
   ...emptyDraft(now),
   name: plan.name,
   exercises: plan.exercises.map((e) => ({
     exerciseId: e.exerciseId,
-    sets: Array.from({ length: e.sets }, () => ({ weight: '', reps: String(e.reps), done: false })),
+    sets: cardio.has(e.exerciseId)
+      ? [{ weight: '', reps: '', distance: '', time: '', done: false }]
+      : Array.from({ length: e.sets }, () => ({ weight: '', reps: String(e.reps), done: false })),
   })),
 })
 
@@ -91,7 +101,10 @@ export const editDraft = (workout: Workout): Draft => ({
   exercises: draftExercises(workout, true),
 })
 
-/** What Finish saves: the checked-off sets that have reps, in order. An empty weight counts as 0 (bodyweight). */
+/**
+ * What Finish saves: the checked-off sets, in order, that have reps (an empty weight counts as 0, bodyweight) or, for
+ * cardio, a distance or time.
+ */
 export function toWorkout(draft: Draft, finishedAt: string): WorkoutInput {
   return {
     name: draft.name.trim(),
@@ -99,8 +112,14 @@ export function toWorkout(draft: Draft, finishedAt: string): WorkoutInput {
     finishedAt,
     sets: draft.exercises.flatMap(({ exerciseId, sets }) =>
       sets
-        .filter((s) => s.done && Number(s.reps) > 0)
-        .map((s) => ({ exerciseId, weight: Number(s.weight) || 0, reps: Math.round(Number(s.reps)) })),
+        .filter((s) => s.done)
+        .flatMap((s): WorkoutSet[] => {
+          const distance = Number(s.distance) || 0
+          const seconds = parseDuration(s.time ?? '')
+          if (distance > 0 || seconds > 0) return [{ exerciseId, weight: 0, reps: 0, distance: distance > 0 ? distance : null, durationSeconds: seconds > 0 ? seconds : null }]
+          const reps = Math.round(Number(s.reps))
+          return reps > 0 ? [{ exerciseId, weight: Number(s.weight) || 0, reps }] : []
+        }),
     ),
   }
 }

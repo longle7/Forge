@@ -28,6 +28,7 @@ const PATHS = {
   target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01',
   moon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
   bolt: 'M13 2 4 14h7l-1 8 9-12h-7z',
+  plates: 'M2 12h20M5 8v8M8 5v14M16 5v14M19 8v8',
 } as const
 
 export type IconName = keyof typeof PATHS

@@ -39,8 +39,9 @@ public class ExercisesEndpointTests : IDisposable
 
         var exercises = await ListAsync(alice);
 
-        Assert.Equal(BuiltInExercises.All.Length, exercises.Count);
+        Assert.Equal(BuiltInExercises.All.Length + 5, exercises.Count); // + the cardio ones from the AddCardio migration
         Assert.Contains(exercises, e => e.Name == "Bench Press (Barbell)" && e.MuscleGroup == "Chest" && !e.IsCustom);
+        Assert.Contains(exercises, e => e.Name == "Running" && e.MuscleGroup == "Cardio" && !e.IsCustom);
         Assert.Equal(exercises.Select(e => e.Name).Order(StringComparer.OrdinalIgnoreCase), exercises.Select(e => e.Name));
     }
 

@@ -1,7 +1,7 @@
 import { getExercises, getWorkouts } from '../api'
 import { Card, Page, PrBadge, Status } from '../components'
 import { failure, usePolling } from '../usePolling'
-import { formatDay, formatDuration, formatTime, formatWeight, groupSets, personalRecords, volume } from '../workouts'
+import { formatDay, formatDuration, formatSet, formatTime, groupSets, isCardioSet, personalRecords, workoutLength, workoutTotals } from '../workouts'
 
 const MAX_EXERCISES_SHOWN = 4
 
@@ -30,13 +30,14 @@ export default function HistoryPage() {
               )}
             </div>
             <p className="text-[15px] text-muted">
-              {formatDay(workout.startedAt)} · {formatTime(workout.startedAt)} · {formatDuration(Date.parse(workout.finishedAt) - Date.parse(workout.startedAt))} ·{' '}
-              {formatWeight(volume(workout))} lb
+              {[formatDay(workout.startedAt), formatTime(workout.startedAt), formatDuration(workoutLength(workout)), workoutTotals(workout)].filter(Boolean).join(' · ')}
             </p>
             <ul className="mt-2 space-y-0.5 text-[15px]">
               {groups.slice(0, MAX_EXERCISES_SHOWN).map((g) => (
                 <li key={g.exerciseId}>
-                  {g.sets.length} × {names.get(g.exerciseId) ?? 'Exercise'}
+                  {g.sets.length === 1 && isCardioSet(g.sets[0])
+                    ? `${names.get(g.exerciseId) ?? 'Exercise'} · ${formatSet(g.sets[0])}`
+                    : `${g.sets.length} × ${names.get(g.exerciseId) ?? 'Exercise'}`}
                 </li>
               ))}
               {groups.length > MAX_EXERCISES_SHOWN && <li className="text-muted">and {groups.length - MAX_EXERCISES_SHOWN} more</li>}

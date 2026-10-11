@@ -67,7 +67,8 @@ namespace Forge.Api.Controllers
                 return NotFound(); // someone else's: the same answer as a missing one
             }
 
-            if (!await ValidateAsync(request, userId))
+            var cardio = await ValidateAsync(request, userId);
+            if (cardio is null)
             {
                 return ValidationProblem();
             }
@@ -83,13 +84,22 @@ namespace Forge.Api.Controllers
             workout.StartedAtUtc = request.StartedAt.UtcDateTime;
             workout.FinishedAtUtc = request.FinishedAt.UtcDateTime;
             workout.Sets.Clear(); // the old sets are deleted (orphans of a required relationship)
-            workout.Sets.AddRange(request.Sets.Select((s, i) => new WorkoutSet
-            {
-                ExerciseId = s.ExerciseId,
-                Position = i,
-                Weight = s.Weight,
-                Reps = s.Reps,
-            }));
+            // Each set keeps only what its kind uses: weight and reps, or a cardio distance and time.
+            workout.Sets.AddRange(request.Sets.Select((s, i) => cardio.Contains(s.ExerciseId)
+                ? new WorkoutSet
+                {
+                    ExerciseId = s.ExerciseId,
+                    Position = i,
+                    Distance = s.Distance > 0 ? s.Distance : null,
+                    DurationSeconds = s.DurationSeconds > 0 ? s.DurationSeconds : null,
+                }
+                : new WorkoutSet
+                {
+                    ExerciseId = s.ExerciseId,
+                    Position = i,
+                    Weight = s.Weight,
+                    Reps = s.Reps,
+                }));
             await _db.SaveChangesAsync();
 
             var response = WorkoutResponse.From(workout);
@@ -104,9 +114,9 @@ namespace Forge.Api.Controllers
             return deleted == 0 ? NotFound() : NoContent();
         }
 
-        // Checks what the attributes on the request can't: the sets' exercises and the times.
-        // Adds errors to ModelState and returns false when invalid.
-        private async Task<bool> ValidateAsync(WorkoutRequest request, string userId)
+        // Checks what the attributes on the request can't: the sets' exercises, what each set needs for its kind, and
+        // the times. Returns the IDs of the cardio exercises, or adds errors to ModelState and returns null when invalid.
+        private async Task<HashSet<int>?> ValidateAsync(WorkoutRequest request, string userId)
         {
             if (request.Sets.Count == 0)
             {
@@ -118,10 +128,16 @@ namespace Forge.Api.Controllers
             }
 
             var exerciseIds = request.Sets.Select(s => s.ExerciseId).Distinct().ToList();
-            var known = await _db.Exercises.CountAsync(e => exerciseIds.Contains(e.Id) && (e.UserId == null || e.UserId == userId));
-            if (known != exerciseIds.Count)
+            var known = await _db.Exercises
+                .Where(e => exerciseIds.Contains(e.Id) && (e.UserId == null || e.UserId == userId))
+                .ToDictionaryAsync(e => e.Id, e => e.MuscleGroup == ExercisesController.Cardio);
+            if (known.Count != exerciseIds.Count)
             {
                 ModelState.AddModelError(nameof(request.Sets), "A set has an unknown exercise.");
+            }
+            else if (request.Sets.Any(s => known[s.ExerciseId] ? !(s.Distance > 0 || s.DurationSeconds > 0) : s.Reps < 1))
+            {
+                ModelState.AddModelError(nameof(request.Sets), "Each set needs its reps, or for cardio a distance or time.");
             }
 
             if (request.FinishedAt < request.StartedAt)
@@ -133,7 +149,7 @@ namespace Forge.Api.Controllers
                 ModelState.AddModelError(nameof(request.FinishedAt), "A workout can last up to 24 hours.");
             }
 
-            return ModelState.IsValid;
+            return ModelState.IsValid ? [.. known.Where(e => e.Value).Select(e => e.Key)] : null;
         }
     }
 
@@ -143,10 +159,13 @@ namespace Forge.Api.Controllers
         DateTimeOffset FinishedAt,
         [Required] List<WorkoutSetRequest> Sets);
 
+    // A cardio set sends Distance (miles) and/or DurationSeconds instead of Weight and Reps.
     public record WorkoutSetRequest(
         int ExerciseId,
         [Range(0, 2000)] decimal Weight,
-        [Range(1, 1000)] int Reps);
+        [Range(0, 1000)] int Reps,
+        [Range(0, 1000)] decimal? Distance = null,
+        [Range(0, 86_400)] int? DurationSeconds = null);
 
     public record WorkoutResponse(Guid Id, string Name, DateTime StartedAt, DateTime FinishedAt, IEnumerable<WorkoutSetResponse> Sets)
     {
@@ -156,8 +175,8 @@ namespace Forge.Api.Controllers
             w.Name,
             DateTime.SpecifyKind(w.StartedAtUtc, DateTimeKind.Utc),
             DateTime.SpecifyKind(w.FinishedAtUtc, DateTimeKind.Utc),
-            w.Sets.OrderBy(s => s.Position).Select(s => new WorkoutSetResponse(s.ExerciseId, s.Weight, s.Reps)));
+            w.Sets.OrderBy(s => s.Position).Select(s => new WorkoutSetResponse(s.ExerciseId, s.Weight, s.Reps, s.Distance, s.DurationSeconds)));
     }
 
-    public record WorkoutSetResponse(int ExerciseId, decimal Weight, int Reps);
+    public record WorkoutSetResponse(int ExerciseId, decimal Weight, int Reps, decimal? Distance, int? DurationSeconds);
 }

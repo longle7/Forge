@@ -54,6 +54,7 @@ namespace Forge.Api.Data
             modelBuilder.Entity<WorkoutSet>(entity =>
             {
                 entity.Property(s => s.Weight).HasPrecision(6, 2); // up to 9999.99 lb
+                entity.Property(s => s.Distance).HasPrecision(6, 2); // miles
                 entity.HasOne(s => s.Exercise)
                       .WithMany()
                       .HasForeignKey(s => s.ExerciseId)

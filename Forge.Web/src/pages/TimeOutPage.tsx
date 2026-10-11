@@ -101,7 +101,7 @@ export default function TimeOutPage() {
         )}
       </Card>
 
-      <Group title="Unlock goals" footer="Each day, your chosen apps stay locked until these are done. A rest day in your plan counts as a done workout.">
+      <Group title="Unlock goals" footer="Each day, your chosen apps stay locked until these are done. A run or other cardio counts as a workout, and so does a rest day in your plan.">
         <div className="flex min-h-11 items-center gap-3 px-4 py-2.5">
           <span className="flex-1">Finish today's workout</span>
           <Switch checked={rules.unlockAfterWorkout} onChange={(on) => change({ unlockAfterWorkout: on })} label="Finish today's workout" />

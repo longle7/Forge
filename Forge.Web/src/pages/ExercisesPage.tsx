@@ -70,6 +70,7 @@ function AddExercise({ initialName }: { initialName: string }) {
             <option key={group}>{group}</option>
           ))}
         </select>
+        {muscleGroup === 'Cardio' && <p className="text-[15px] text-muted">Cardio is logged as a distance and time instead of weight and reps.</p>}
         {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
         <button disabled={saving || !value.trim()} className={primaryButton}>
           {saving ? 'Adding…' : 'Add Exercise'}

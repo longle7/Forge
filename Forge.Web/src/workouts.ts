@@ -14,11 +14,17 @@ export function groupSets(sets: WorkoutSet[]): { exerciseId: number; sets: Worko
 /** Estimated one-rep max (Epley): what 8 reps at 135 lb says you could lift once (171 lb). */
 export const oneRepMax = (weight: number, reps: number) => (reps === 1 ? weight : weight * (1 + reps / 30))
 
+/** A cardio set: a distance and/or a time instead of weight and reps. */
+export const isCardioSet = (set: WorkoutSet) => set.distance != null || set.durationSeconds != null
+
 /**
- * How a set ranks for records: its estimated 1RM, or its reps for a bodyweight set.
- * ponytail: bodyweight sets score by reps, so mixing bodyweight and weighted sets of one exercise can mislabel PRs.
+ * How a set ranks for records: its estimated 1RM, its reps for a bodyweight set, or for cardio its distance (minutes
+ * when it has no distance), so a cardio PR is your longest one.
+ * ponytail: bodyweight sets score by reps and time-only cardio by minutes, so mixing those with weighted or distance
+ * sets of one exercise can mislabel PRs.
  */
-const score = (set: WorkoutSet) => (set.weight > 0 ? oneRepMax(set.weight, set.reps) : set.reps)
+const score = (set: WorkoutSet) =>
+  isCardioSet(set) ? set.distance || (set.durationSeconds ?? 0) / 60 : set.weight > 0 ? oneRepMax(set.weight, set.reps) : set.reps
 
 const byStart = (a: Workout, b: Workout) => Date.parse(a.startedAt) - Date.parse(b.startedAt)
 
@@ -74,16 +80,84 @@ export function previousSets(workouts: Workout[], exerciseId: number, excludeId?
 /** Total pounds lifted: weight × reps over every set. */
 export const volume = (workout: Workout) => workout.sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
 
+/** What a workout added up to: "12,345 lb", "3.1 mi", both, or "" (bodyweight and timed cardio only). */
+export function workoutTotals(workout: Workout): string {
+  const miles = workout.sets.reduce((sum, s) => sum + (s.distance ?? 0), 0)
+  return [volume(workout) > 0 && `${formatWeight(volume(workout))} lb`, miles > 0 && `${formatMiles(miles)} mi`].filter(Boolean).join(' · ')
+}
+
+/** How long a workout took: start to finish, or its cardio time when that's longer (a run logged afterwards). */
+export function workoutLength(workout: Workout): number {
+  const cardio = workout.sets.reduce((sum, s) => sum + (s.durationSeconds ?? 0), 0) * 1000
+  return Math.max(Date.parse(workout.finishedAt) - Date.parse(workout.startedAt), cardio)
+}
+
+/** Seconds per mile, for a cardio set with both a distance and a time. */
+export const pace = (set: WorkoutSet) => (set.distance && set.durationSeconds ? set.durationSeconds / set.distance : undefined)
+
+/**
+ * How much weight to add this time: 5 lb (10 for legs) when last time's sets all hit their target reps (this
+ * workout's reps, which a plan fills in), with at least as many sets; otherwise 0, as with no weights to go on.
+ */
+export function progressionStep(previous: WorkoutSet[], targets: number[], legs: boolean): number {
+  const hitEveryRep =
+    targets.length > 0 && previous.length >= targets.length && targets.every((reps, i) => reps > 0 && previous[i].weight > 0 && previous[i].reps >= reps)
+  return hitEveryRep ? (legs ? 10 : 5) : 0
+}
+
+export const BAR = 45
+const PLATES = [45, 35, 25, 10, 5, 2.5]
+
+/** The plates for each side of a 45 lb bar, heaviest first, and the total they make (less when it can't be exact). */
+export function platesPerSide(total: number): { plates: number[]; loaded: number } {
+  const plates: number[] = []
+  let side = (total - BAR) / 2
+  for (const plate of PLATES) {
+    while (side >= plate) {
+      plates.push(plate)
+      side -= plate
+    }
+  }
+  return { plates, loaded: BAR + 2 * plates.reduce((sum, p) => sum + p, 0) }
+}
+
 /** "1 exercise", "3 exercises" */
 export const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`
 
-const pounds = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
+const decimals = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
 
 /** "135", "137.5", "12,345" */
-export const formatWeight = (weight: number) => pounds.format(weight)
+export const formatWeight = (weight: number) => decimals.format(weight)
 
-/** "135 lb × 8", or "12 reps" for a bodyweight set. */
-export const formatSet = (set: WorkoutSet) => (set.weight > 0 ? `${formatWeight(set.weight)} lb × ${set.reps}` : `${set.reps} reps`)
+/** "3.1", "26.22" */
+export const formatMiles = (miles: number) => decimals.format(miles)
+
+/** "135 lb × 8", "12 reps" for a bodyweight set, or "3.1 mi · 27:00 · 8:42 /mi" for cardio. */
+export function formatSet(set: WorkoutSet): string {
+  if (!isCardioSet(set)) return set.weight > 0 ? `${formatWeight(set.weight)} lb × ${set.reps}` : `${set.reps} reps`
+  const perMile = pace(set)
+  return [set.distance && `${formatMiles(set.distance)} mi`, set.durationSeconds && formatClock(set.durationSeconds * 1000), perMile && `${formatClock(perMile * 1000)} /mi`]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+/** A cardio set in short: "3.1 mi", or its time ("30:00") when it has no distance. */
+export const formatCardio = (set: WorkoutSet) => (set.distance ? `${formatMiles(set.distance)} mi` : formatClock((set.durationSeconds ?? 0) * 1000))
+
+/** "4:05", "1:02:03" */
+export function formatClock(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const [h, m, s] = [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60]
+  const mm = h > 0 ? String(m).padStart(2, '0') : String(m)
+  return `${h > 0 ? `${h}:` : ''}${mm}:${String(s).padStart(2, '0')}`
+}
+
+/** Seconds from "27:30" or "1:05:00", or from minutes as a number ("27", "27.5"). NaN when it isn't a time. */
+export function parseDuration(text: string): number {
+  const parts = text.trim().split(':')
+  if (parts.length === 1) return parts[0] ? Math.round(Number(parts[0]) * 60) : NaN
+  return parts.length <= 3 && parts.every((p) => /^\d+$/.test(p)) ? parts.reduce((total, p) => total * 60 + Number(p), 0) : NaN
+}
 
 /** "48m", "1h 5m" */
 export function formatDuration(ms: number): string {

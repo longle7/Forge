@@ -9,8 +9,10 @@ export interface Exercise {
 
 export interface WorkoutSet {
   exerciseId: number
-  weight: number // pounds; 0 for bodyweight
-  reps: number
+  weight: number // pounds; 0 for bodyweight and cardio
+  reps: number // 0 for cardio
+  distance?: number | null // cardio only: miles
+  durationSeconds?: number | null // cardio only; a cardio set has a distance, a time, or both
 }
 
 export interface Workout {
@@ -24,7 +26,10 @@ export interface Workout {
 export type WorkoutInput = Omit<Workout, 'id'>
 
 // The API's ExercisesController.MuscleGroups, in the order the exercise list shows them.
-export const MUSCLE_GROUPS = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Other']
+export const MUSCLE_GROUPS = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio', 'Other']
+
+/** Cardio exercises (Running, Cycling, …) log a distance and time instead of weight and reps. */
+export const isCardio = (exercise: Exercise) => exercise.muscleGroup === 'Cardio'
 
 export type Sex = 'male' | 'female'
 export type Activity = 'sedentary' | 'light' | 'active' | 'very-active'

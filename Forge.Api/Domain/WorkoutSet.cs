@@ -1,7 +1,8 @@
 namespace Forge.Api.Domain
 {
     /// <summary>
-    /// One set: an exercise, the weight, and how many reps. Belongs to a Workout and is deleted with it.
+    /// One set: an exercise, the weight, and how many reps, or for cardio the distance and time. Belongs to a Workout
+    /// and is deleted with it.
     /// </summary>
     public class WorkoutSet
     {
@@ -22,6 +23,11 @@ namespace Forge.Api.Domain
         // ponytail: pounds only, add a kg display toggle if ever wanted.
         public decimal Weight { get; set; }
 
+        // 0 for cardio.
         public int Reps { get; set; }
+
+        // Cardio only (null otherwise): miles, and how long it took. A cardio set has at least one of them.
+        public decimal? Distance { get; set; }
+        public int? DurationSeconds { get; set; }
     }
 }
