@@ -1,4 +1,4 @@
-import type { Activity, Goal, Nutrition, Sex, WeighIn, Workout } from './api'
+import type { Activity, Goal, Nutrition, Profile, Sex, WeighIn, Workout } from './api'
 import { isCardioSet } from './workouts'
 
 /**
@@ -76,6 +76,15 @@ export function exerciseCalories(workout: Workout, weightLb: number, names: Map<
   }
   const hours = Math.min(2.5, Math.max(0, Date.parse(workout.finishedAt) - Date.parse(workout.startedAt)) / 3_600_000)
   return Math.round(cardio + 3.5 * kg * Math.max(0, hours - cardioHours))
+}
+
+/**
+ * A day's goals: your goals, less your rest-day calories on a rest day in your weekly plan. They come off carbs;
+ * protein and fat stay.
+ */
+export function dayGoals(profile: Profile, restDay: boolean): Nutrition {
+  const adjust = restDay ? (profile.restDayCalorieAdjust ?? 0) : 0
+  return { calories: profile.calorieGoal + adjust, protein: profile.proteinGoal, carbs: Math.max(0, profile.carbsGoal + Math.round(adjust / 4)), fat: profile.fatGoal }
 }
 
 /** Your weight on a day: the latest weigh-in on or before it, else `fallback` (the weight you set your goals with). */

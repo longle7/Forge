@@ -1,33 +1,73 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { deleteFoodEntry, foodLogPath, getExercises, getFoodLog, getProfile, getWeighIns, getWorkouts, MEALS, saveFoodEntry, type FoodEntry } from '../api'
-import { Card, Group, MacroBar, Page, primaryButton, Rings, Status } from '../components'
+import {
+  deleteFoodEntry,
+  foodLogPath,
+  getExercises,
+  getFoodLog,
+  getPlan,
+  getProfile,
+  getWeighIns,
+  getWorkouts,
+  MEALS,
+  randomId,
+  saveFoodEntry,
+  saveSavedMeal,
+  type FoodEntry,
+} from '../api'
+import { Card, field, Group, MacroBar, Notice, Page, primaryButton, Rings, Sheet, Status, tintedButton } from '../components'
 import { addDays, dayLabel, localDate, workoutDay } from '../dates'
 import { FoodSheet } from '../FoodSheet'
 import { FAT, RING } from '../colors'
 import { Icon } from '../icons'
-import { exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
+import { dayGoals, exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
+import { planFor } from '../plan'
 import { failure, useNow, usePolling } from '../usePolling'
 
-/** The Calories tab: a day's food by meal, and what's left of its calories (Goal − Food + Exercise) and macros. */
+/**
+ * The Calories tab: a day's food by meal, and what's left of its calories (Goal − Food + Exercise) and macros. A meal
+ * can be copied from the day before, or saved to log again in one tap.
+ */
 export default function CaloriesPage() {
   const [params, setParams] = useSearchParams()
   const today = localDate(useNow(60_000))
   const date = params.get('date') ?? today
   const setDate = (day: string) => setParams(day === today ? {} : { date: day }, { replace: true })
+  const dayBefore = addDays(date, -1)
 
   const profile = usePolling(getProfile, '/profile')
   const log = usePolling(() => getFoodLog(date), foodLogPath(date))
+  const before = usePolling(() => getFoodLog(dayBefore), foodLogPath(dayBefore))
   const workouts = usePolling(getWorkouts, '/workouts')
   const weighIns = usePolling(getWeighIns, '/weigh-ins')
   const exercises = usePolling(getExercises, '/exercises')
+  const plan = usePolling(getPlan, '/plan')
   const [editing, setEditing] = useState<FoodEntry>()
+  const [toSave, setToSave] = useState<FoodEntry[]>() // a meal's foods, being saved as a meal
+  const [copying, setCopying] = useState(false)
+  const [message, setMessage] = useState<string>()
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
 
-  const goals = profile.data
+  const restDay = !!plan.data?.length && !planFor(plan.data, date)
+  const goals = profile.data && dayGoals(profile.data, restDay)
   const food = totals(log.data ?? [])
-  const weight = weightOn(weighIns.data, date, goals?.startWeight ?? 0)
+  const weight = weightOn(weighIns.data, date, profile.data?.startWeight ?? 0)
   const exercise = (workouts.data ?? []).filter((w) => workoutDay(w) === date).reduce((sum, w) => sum + exerciseCalories(w, weight, names), 0)
+  const beforeLabel = date === today ? 'yesterday' : dayLabel(dayBefore, today)
+  const restDayCut = restDay ? -(profile.data?.restDayCalorieAdjust ?? 0) : 0
+
+  // Logs the day before's foods again on this day, in the same order. They're new entries: the originals stay.
+  const copy = async (entries: FoodEntry[]) => {
+    setCopying(true)
+    setMessage(undefined)
+    try {
+      for (const entry of entries) await saveFoodEntry(randomId(), { ...entry, date })
+    } catch (error) {
+      setMessage(`Couldn't copy all of it: ${(error as Error).message}`)
+    }
+    setCopying(false)
+    log.reload()
+  }
 
   return (
     <Page title="Calories">
@@ -42,12 +82,13 @@ export default function CaloriesPage() {
       </div>
 
       {goals ? (
-        <Summary goal={goals.calorieGoal} food={food.calories} exercise={exercise}>
+        <Summary goal={goals.calories} food={food.calories} exercise={exercise}>
           <div className="mt-4 space-y-3">
-            <MacroBar label="Protein" value={food.protein} goal={goals.proteinGoal} color={RING.move} />
-            <MacroBar label="Carbs" value={food.carbs} goal={goals.carbsGoal} color={RING.eat} />
-            <MacroBar label="Fat" value={food.fat} goal={goals.fatGoal} color={FAT} />
+            <MacroBar label="Protein" value={food.protein} goal={goals.protein} color={RING.move} />
+            <MacroBar label="Carbs" value={food.carbs} goal={goals.carbs} color={RING.eat} />
+            <MacroBar label="Fat" value={food.fat} goal={goals.fat} color={FAT} />
           </div>
+          {restDayCut > 0 && <p className="mt-3 text-[13px] text-muted">Rest day: {formatKcal(restDayCut)} kcal less, from carbs.</p>}
         </Summary>
       ) : (
         goals === null && (
@@ -61,10 +102,19 @@ export default function CaloriesPage() {
         )
       )}
 
+      {log.data?.length === 0 && !!before.data?.length && (
+        <button onClick={() => copy(before.data!)} disabled={copying} className={`w-full ${tintedButton}`}>
+          <Icon name="repeat" className="size-5" />
+          {copying ? 'Copying…' : `Copy all of ${beforeLabel} · ${formatKcal(totals(before.data).calories)} kcal`}
+        </button>
+      )}
+      {message && <Notice>{message}</Notice>}
+
       <Status loading={log.data === undefined && !log.error} error={failure(log)} rows={2} />
       {log.data &&
         MEALS.map(({ id, label }) => {
           const entries = log.data!.filter((e) => e.meal === id)
+          const earlier = before.data?.filter((e) => e.meal === id) ?? []
           const mealTotal = totals(entries).calories
           return (
             <Group key={id} title={entries.length ? `${label} · ${formatKcal(mealTotal)} kcal` : label}>
@@ -79,10 +129,26 @@ export default function CaloriesPage() {
                   <span className="shrink-0 text-muted tabular-nums">{formatKcal(entry.calories * entry.servings)}</span>
                 </button>
               ))}
-              <Link to={`/calories/add?date=${date}&meal=${id}`} className="flex min-h-11 items-center gap-2 px-4 text-coral-ink active:bg-fill">
-                <Icon name="plus" className="size-5" />
-                Add Food
-              </Link>
+              {entries.length === 0 && earlier.length > 0 && (
+                <button onClick={() => copy(earlier)} disabled={copying} className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-coral-ink active:bg-fill disabled:opacity-50">
+                  <Icon name="repeat" className="size-5" />
+                  <span className="flex-1">
+                    Copy {label.toLowerCase()} from {beforeLabel}
+                  </span>
+                  <span className="text-[15px] text-muted tabular-nums">{formatKcal(totals(earlier).calories)} kcal</span>
+                </button>
+              )}
+              <div className="flex items-center">
+                <Link to={`/calories/add?date=${date}&meal=${id}`} className="flex min-h-11 flex-1 items-center gap-2 px-4 text-coral-ink active:bg-fill">
+                  <Icon name="plus" className="size-5" />
+                  Add Food
+                </Link>
+                {entries.length > 0 && (
+                  <button onClick={() => setToSave(entries)} className="min-h-11 px-4 text-[15px] text-coral-ink active:bg-fill">
+                    Save as Meal
+                  </button>
+                )}
+              </div>
             </Group>
           )
         })}
@@ -105,6 +171,16 @@ export default function CaloriesPage() {
             log.reload()
           }}
           onClose={() => setEditing(undefined)}
+        />
+      )}
+      {toSave && (
+        <SaveMealSheet
+          foods={toSave}
+          onSaved={(name) => {
+            setToSave(undefined)
+            setMessage(`Saved ${name}. Log it again from Add Food → Meals.`)
+          }}
+          onClose={() => setToSave(undefined)}
         />
       )}
     </Page>
@@ -141,3 +217,45 @@ const Part = ({ label, value }: { label: string; value: number }) => (
     <p className="text-[13px] text-muted">{label}</p>
   </div>
 )
+
+/** Saves a meal's foods under a name, to log them all again in one tap from Add Food → Meals. */
+function SaveMealSheet({ foods, onSaved, onClose }: { foods: FoodEntry[]; onSaved: (name: string) => void; onClose: () => void }) {
+  const [name, setName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string>()
+
+  const save = async () => {
+    if (!name.trim()) return setError('Give it a name, like Usual breakfast.')
+    setSaving(true)
+    setError(undefined)
+    try {
+      const items = foods.map((f) => ({ name: f.name, serving: f.serving, servings: f.servings, calories: f.calories, protein: f.protein, carbs: f.carbs, fat: f.fat }))
+      await saveSavedMeal(randomId(), { name: name.trim(), items })
+      onSaved(name.trim())
+    } catch (e) {
+      setError((e as Error).message)
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Sheet title="Save as Meal" onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          void save()
+        }}
+        className="space-y-3"
+      >
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, like Usual breakfast" aria-label="Meal name" maxLength={50} className={field} />
+        <p className="text-[15px] text-muted">
+          {foods.map((f) => f.name).join(', ')} · {formatKcal(totals(foods).calories)} kcal
+        </p>
+        {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
+        <button disabled={saving} className={primaryButton}>
+          {saving ? 'Saving…' : 'Save Meal'}
+        </button>
+      </form>
+    </Sheet>
+  )
+}

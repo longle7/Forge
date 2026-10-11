@@ -31,6 +31,9 @@ namespace Forge.Api.Domain
         public int CarbsGoal { get; set; }
         public int FatGoal { get; set; }
 
+        // Calories to take off the goal on rest days in your weekly plan (0 or less), from carbs: e.g. -200.
+        public int RestDayCalorieAdjust { get; set; }
+
         // Time Out: what has to be done today before the chosen apps unlock.
         public bool UnlockAfterWorkout { get; set; } // today's planned workout (rest days count as done)
         public int UnlockAfterMeals { get; set; } // this many meals logged today (0 = no rule)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Workout, WorkoutSet } from './api'
-import { calculateGoals, exerciseCalories, remaining, restingCalories, totals, weightOn, type GoalInputs } from './nutrition'
+import type { Profile, Workout, WorkoutSet } from './api'
+import { calculateGoals, dayGoals, exerciseCalories, remaining, restingCalories, totals, weightOn, type GoalInputs } from './nutrition'
 
 const him: GoalInputs = { sex: 'male', birthYear: 1994, heightIn: 70, weight: 185.4, activity: 'light', goal: 'lose', pace: 1 }
 
@@ -70,6 +70,18 @@ describe('exerciseCalories', () => {
     // 30 miles in 10 minutes counts as 12 mph: MET 1 + 8.8 × 2 = 18.6 for 10 minutes.
     expect(exerciseCalories(workout(1, [cardio(RUNNING, 30, 600)]), 180, names)).toBe(253)
   })
+})
+
+it('dayGoals takes rest-day calories off carbs, on rest days only', () => {
+  const profile: Profile = {
+    sex: 'male', birthYear: 1994, heightIn: 70, startWeight: 185, activity: 'light', goal: 'lose', pace: 1,
+    calorieGoal: 2000, proteinGoal: 165, carbsGoal: 200, fatGoal: 65,
+    unlockAfterWorkout: false, unlockAfterMeals: 0, unlockAfterWeighIn: false, restDayCalorieAdjust: -200,
+  }
+  expect(dayGoals(profile, true)).toEqual({ calories: 1800, protein: 165, carbs: 150, fat: 65 })
+  expect(dayGoals(profile, false)).toEqual({ calories: 2000, protein: 165, carbs: 200, fat: 65 })
+  expect(dayGoals({ ...profile, restDayCalorieAdjust: undefined }, true).calories).toBe(2000) // saved before the setting
+  expect(dayGoals({ ...profile, carbsGoal: 20 }, true).carbs).toBe(0) // never below zero
 })
 
 it('weightOn uses the latest weigh-in on or before the day, else the starting weight', () => {

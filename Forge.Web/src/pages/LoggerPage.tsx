@@ -452,12 +452,13 @@ function PlateSheet({ initial, onClose }: { initial: string; onClose: () => void
         <p className="text-[13px] font-semibold text-muted uppercase">Each side of a {BAR} lb bar</p>
         {plates.length > 0 ? (
           <>
+            {/* One end of the bar: its middle on the left, plates loaded heaviest first from the inside out. */}
             <div className="mt-3 flex h-24 items-center" aria-hidden>
-              <span className="h-2.5 w-6 rounded-l-full bg-line" />
+              <span className="h-2.5 flex-1 rounded-l-full bg-line" />
               {plates.map((plate, i) => (
-                <span key={i} className="mr-0.5 w-3.5 rounded-[4px] bg-linear-to-b from-coral to-pink" style={{ height: `${PLATE_HEIGHT[plate]}%` }} />
+                <span key={i} className="ml-0.5 w-3.5 rounded-[4px] bg-linear-to-b from-coral to-pink" style={{ height: `${PLATE_HEIGHT[plate]}%` }} />
               ))}
-              <span className="h-2.5 flex-1 rounded-r-full bg-line" />
+              <span className="h-2.5 w-6 rounded-r-full bg-line" />
             </div>
             <p className="mt-2 text-[22px] font-bold">{plates.map(formatWeight).join(' + ')}</p>
           </>

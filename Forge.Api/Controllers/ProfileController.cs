@@ -64,6 +64,7 @@ namespace Forge.Api.Controllers
             profile.ProteinGoal = request.ProteinGoal;
             profile.CarbsGoal = request.CarbsGoal;
             profile.FatGoal = request.FatGoal;
+            profile.RestDayCalorieAdjust = request.RestDayCalorieAdjust;
             profile.UnlockAfterWorkout = request.UnlockAfterWorkout;
             profile.UnlockAfterMeals = request.UnlockAfterMeals;
             profile.UnlockAfterWeighIn = request.UnlockAfterWeighIn;
@@ -90,11 +91,12 @@ namespace Forge.Api.Controllers
         bool UnlockAfterWorkout = false,
         [Range(0, 4)] int UnlockAfterMeals = 0,
         bool UnlockAfterWeighIn = false,
-        bool UnlockAfterHabits = false)
+        bool UnlockAfterHabits = false,
+        [Range(-1000, 0)] int RestDayCalorieAdjust = 0)
     {
         public static ProfileDto From(UserProfile p) => new(
             p.Sex, p.BirthYear, p.HeightIn, p.StartWeight, p.Activity, p.Goal, p.Pace,
             p.CalorieGoal, p.ProteinGoal, p.CarbsGoal, p.FatGoal,
-            p.UnlockAfterWorkout, p.UnlockAfterMeals, p.UnlockAfterWeighIn, p.UnlockAfterHabits);
+            p.UnlockAfterWorkout, p.UnlockAfterMeals, p.UnlockAfterWeighIn, p.UnlockAfterHabits, p.RestDayCalorieAdjust);
     }
 }

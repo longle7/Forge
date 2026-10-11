@@ -7,7 +7,7 @@ import { RING } from '../colors'
 import { Icon } from '../icons'
 import { today as habitsToday } from '../habits'
 import { HabitsCard } from '../HabitsCard'
-import { exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
+import { dayGoals, exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
 import { planFor, workedOut } from '../plan'
 import { isUnlocked, unlockGoals } from '../timeout'
 import { useNow, usePolling } from '../usePolling'
@@ -36,7 +36,9 @@ export default function HomePage() {
   const eaten = totals(food.data ?? []).calories
   const weight = weightOn(weighIns.data, today, goals?.startWeight ?? 0)
   const exercise = (workouts.data ?? []).filter((w) => workoutDay(w) === today).reduce((sum, w) => sum + exerciseCalories(w, weight, names), 0)
-  const budget = goals ? goals.calorieGoal + exercise : 0
+  const dayGoal = goals && dayGoals(goals, restDay)
+  const budget = dayGoal ? dayGoal.calories + exercise : 0
+  const left = dayGoal && remaining(dayGoal.calories, eaten, exercise)
   const latestWeighIn = weighIns.data?.at(-1)
   const last = workouts.data?.[0]
   const prs = last ? (personalRecords(workouts.data!).get(last.id)?.size ?? 0) : 0
@@ -109,12 +111,10 @@ export default function HomePage() {
       <div className="grid grid-cols-2 gap-3">
         <Card to="/calories">
           <p className="text-[13px] font-semibold text-muted uppercase">Calories</p>
-          {goals ? (
+          {typeof left === 'number' ? (
             <>
-              <p className="mt-1 text-[28px] leading-tight font-bold">{formatKcal(Math.abs(remaining(goals.calorieGoal, eaten, exercise)))}</p>
-              <p className={`text-[15px] ${remaining(goals.calorieGoal, eaten, exercise) < 0 ? 'text-amber-ink' : 'text-muted'}`}>
-                {remaining(goals.calorieGoal, eaten, exercise) < 0 ? 'over today' : 'left today'}
-              </p>
+              <p className="mt-1 text-[28px] leading-tight font-bold">{formatKcal(Math.abs(left))}</p>
+              <p className={`text-[15px] ${left < 0 ? 'text-amber-ink' : 'text-muted'}`}>{left < 0 ? 'over today' : 'left today'}</p>
             </>
           ) : (
             <>

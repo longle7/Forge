@@ -445,6 +445,31 @@ namespace Forge.Api.Migrations
                     b.ToTable("PlanExercises");
                 });
 
+            modelBuilder.Entity("Forge.Api.Domain.SavedMeal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("SavedMeals");
+                });
+
             modelBuilder.Entity("Forge.Api.Domain.ScanUsage", b =>
                 {
                     b.Property<string>("UserId")
@@ -499,6 +524,9 @@ namespace Forge.Api.Migrations
                         .HasColumnType("decimal(3,2)");
 
                     b.Property<int>("ProteinGoal")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RestDayCalorieAdjust")
                         .HasColumnType("int");
 
                     b.Property<string>("Sex")
@@ -640,6 +668,51 @@ namespace Forge.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Exercise");
+                });
+
+            modelBuilder.Entity("Forge.Api.Domain.SavedMeal", b =>
+                {
+                    b.OwnsMany("Forge.Api.Domain.SavedMealItem", "Items", b1 =>
+                        {
+                            b1.Property<Guid>("SavedMealId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAddOrUpdate();
+
+                            b1.Property<decimal>("Calories")
+                                .HasPrecision(7, 1);
+
+                            b1.Property<decimal>("Carbs")
+                                .HasPrecision(6, 1);
+
+                            b1.Property<decimal>("Fat")
+                                .HasPrecision(6, 1);
+
+                            b1.Property<string>("Name")
+                                .IsRequired();
+
+                            b1.Property<decimal>("Protein")
+                                .HasPrecision(6, 1);
+
+                            b1.Property<string>("Serving")
+                                .IsRequired();
+
+                            b1.Property<decimal>("Servings")
+                                .HasPrecision(6, 2);
+
+                            b1.HasKey("SavedMealId", "__synthesizedOrdinal");
+
+                            b1.ToTable("SavedMeals");
+
+                            b1
+                                .ToJson("Items")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SavedMealId");
+                        });
+
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Forge.Api.Domain.WorkoutSet", b =>

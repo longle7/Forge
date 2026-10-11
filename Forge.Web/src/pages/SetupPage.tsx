@@ -35,6 +35,7 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
   const [activity, setActivity] = useState<Activity>(existing?.activity ?? 'light')
   const [goal, setGoal] = useState<Goal>(existing?.goal ?? 'lose')
   const [pace, setPace] = useState(existing?.pace || 1)
+  const [restDayAdjust, setRestDayAdjust] = useState(existing?.restDayCalorieAdjust ?? 0)
   // Numbers you adjusted by hand; null means "use the calculated ones". Kept if you'd adjusted them before.
   const [custom, setCustom] = useState<Nutrition | null>(() => (existing && adjusted(existing, year) ? goalsOf(existing) : null))
   const [saving, setSaving] = useState(false)
@@ -61,9 +62,11 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
         proteinGoal: Math.round(goals.protein),
         carbsGoal: Math.round(goals.carbs),
         fatGoal: Math.round(goals.fat),
+        restDayCalorieAdjust: restDayAdjust,
         unlockAfterWorkout: existing?.unlockAfterWorkout ?? false,
         unlockAfterMeals: existing?.unlockAfterMeals ?? 0,
         unlockAfterWeighIn: existing?.unlockAfterWeighIn ?? false,
+        unlockAfterHabits: existing?.unlockAfterHabits ?? false,
       })
       // The first setup's weight starts your weight chart.
       if (!existing) await saveWeighIn(localDate(now), inputs.weight).catch(() => {})
@@ -144,6 +147,22 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
         </div>
       </Group>
 
+      <Group title="Rest days" footer="On rest days in your weekly plan, eat a little less, from carbs. Workout days already add back what you burn.">
+        <div className="p-4">
+          <Segmented
+            label="Calories on rest days"
+            options={[
+              { value: 0, label: 'Same' },
+              { value: -100, label: '−100' },
+              { value: -200, label: '−200' },
+              { value: -300, label: '−300' },
+            ]}
+            value={restDayAdjust}
+            onChange={setRestDayAdjust}
+          />
+        </div>
+      </Group>
+
       {goals ? (
         <Card>
           <p className="text-[13px] font-semibold tracking-wide text-muted uppercase">Your daily goal</p>
@@ -159,6 +178,7 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
               </p>
             </>
           )}
+          {restDayAdjust < 0 && <p className="mt-1 text-[15px] text-muted">Rest days: {formatKcal(goals.calories + restDayAdjust)} kcal</p>}
           {calculated && (
             <p className="mt-2 text-[13px] text-muted">
               Maintenance is about {formatKcal(calculated.maintenance)} kcal a day.

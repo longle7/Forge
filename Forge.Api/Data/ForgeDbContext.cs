@@ -27,6 +27,7 @@ namespace Forge.Api.Data
         public DbSet<ScanUsage> ScanUsage { get; set; } = null!;
         public DbSet<Habit> Habits { get; set; } = null!;
         public DbSet<HabitCheck> HabitChecks { get; set; } = null!;
+        public DbSet<SavedMeal> SavedMeals { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -129,6 +130,24 @@ namespace Forge.Api.Data
             });
 
             modelBuilder.Entity<HabitCheck>(entity => entity.HasKey(c => new { c.HabitId, c.Date })); // one count per day
+
+            modelBuilder.Entity<SavedMeal>(entity =>
+            {
+                entity.Property(m => m.Id).ValueGeneratedNever(); // the app makes it up (see SavedMeal.Id)
+                entity.HasIndex(m => m.UserId);
+                entity.Property(m => m.UserId).IsRequired().HasMaxLength(100);
+                entity.Property(m => m.Name).IsRequired().HasMaxLength(50);
+                entity.OwnsMany(m => m.Items, items =>
+                {
+                    items.ToJson(); // its foods, as one JSON column
+                    // The same sizes as FoodEntry's.
+                    items.Property(i => i.Servings).HasPrecision(6, 2);
+                    items.Property(i => i.Calories).HasPrecision(7, 1);
+                    items.Property(i => i.Protein).HasPrecision(6, 1);
+                    items.Property(i => i.Carbs).HasPrecision(6, 1);
+                    items.Property(i => i.Fat).HasPrecision(6, 1);
+                });
+            });
 
             modelBuilder.Entity<ScanUsage>(entity =>
             {

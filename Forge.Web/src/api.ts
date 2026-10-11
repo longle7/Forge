@@ -52,6 +52,7 @@ export interface Profile {
   unlockAfterMeals: number // 0 = no rule
   unlockAfterWeighIn: boolean
   unlockAfterHabits?: boolean // every habit scheduled today done
+  restDayCalorieAdjust?: number // 0 or less: calories off the goal on rest days in the weekly plan, from carbs
 }
 
 /** A daily habit and its check-offs (the last 400 days). */
@@ -209,6 +210,20 @@ export const getRecentFoods = () => api<FoodEntry[]>('/food-log/recent')
 /** Logs an entry, or replaces it: like saveWorkout, a retry never logs it twice. */
 export const saveFoodEntry = (id: string, entry: FoodEntryInput) => api<FoodEntry>(`/food-log/${id}`, put(entry))
 export const deleteFoodEntry = (id: string) => api<void>(`/food-log/${id}`, { method: 'DELETE' })
+
+/** A meal you eat often, saved to log again in one tap. */
+export interface SavedMeal {
+  id: string // made up by the app
+  name: string // "Usual breakfast"
+  items: MealItem[]
+}
+
+/** A food in a saved meal: a food log entry without its day and meal. */
+export type MealItem = Pick<FoodEntry, 'name' | 'serving' | 'servings' | 'calories' | 'protein' | 'carbs' | 'fat'>
+
+export const getSavedMeals = () => api<SavedMeal[]>('/saved-meals')
+export const saveSavedMeal = (id: string, meal: Omit<SavedMeal, 'id'>) => api<SavedMeal>(`/saved-meals/${id}`, put(meal))
+export const deleteSavedMeal = (id: string) => api<void>(`/saved-meals/${id}`, { method: 'DELETE' })
 
 export const searchFoods = (query: string, signal?: AbortSignal) => api<FoodResult[]>(`/foods?q=${encodeURIComponent(query)}`, { signal })
 
