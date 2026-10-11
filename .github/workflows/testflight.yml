@@ -1,0 +1,121 @@
+name: TestFlight
+
+# Builds the iPhone app on a GitHub Mac, uploads it to TestFlight, and sends it to every tester group with What to
+# Test notes, submitting it for Apple's beta review when external testers are included. Run it by hand: Actions ->
+# TestFlight -> Run workflow, or
+#   gh workflow run testflight.yml -f notes="What's new in this build"
+# Options: -f testers=internal (internal testers only; no review needed), -f build=6 (send an existing build to
+# testers instead of building a new one). Free for public repositories, so no Mac of your own is needed.
+#
+# Needs three repository secrets from an App Store Connect API key (Users and Access -> Integrations), set from
+# your own terminal; never commit the .p8:
+#   ASC_KEY_ID        the key's ID
+#   ASC_ISSUER_ID     the Issuer ID shown above the keys list
+#   ASC_PRIVATE_KEY   the contents of AuthKey_<ID>.p8
+# Signing is automatic: Xcode uses the key to fetch certificates and profiles from Apple, so none are stored here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: What to Test (testers see this in the TestFlight app)
+        default: Bug fixes and improvements.
+      testers:
+        description: Who gets the build
+        type: choice
+        options: [all, internal]
+        default: all
+      build:
+        description: Send this existing build number to testers instead of building a new one (optional)
+        default: ''
+
+env:
+  TEAM_ID: 3CXXU244US # Apple Developer team (public, not a secret)
+  BUNDLE_ID: com.longledev.forge
+
+jobs:
+  upload:
+    runs-on: macos-26 # Xcode 26 / iOS 26 SDK: what App Store Connect requires for uploads
+    timeout-minutes: 90 # about 15 to build and upload, then up to 45 waiting for Apple's processing
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Forge.Web/package-lock.json
+
+      # The web app, pointed at the production API. Forge has no analytics anywhere.
+      - name: Build the web app into the iOS project
+        if: inputs.build == ''
+        working-directory: Forge.Web
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
+        run: |
+          npm ci
+          npm run ios
+
+      - name: Write the App Store Connect key
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          test -n "$ASC_PRIVATE_KEY" || { echo "::error::Add the ASC_KEY_ID, ASC_ISSUER_ID, and ASC_PRIVATE_KEY secrets first (see the top of this file)."; exit 1; }
+          printf '%s' "$ASC_PRIVATE_KEY" > "$RUNNER_TEMP/AuthKey.p8"
+
+      # The build number must go up with every upload; the run number always does.
+      - name: Archive
+        if: inputs.build == ''
+        working-directory: Forge.Web/ios/App
+        run: |
+          xcodebuild -version
+          xcodebuild archive \
+            -project App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Forge.xcarchive" \
+            DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
+            -authenticationKeyID "${{ secrets.ASC_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}"
+
+      # destination=upload sends the signed build straight to App Store Connect, where it appears in TestFlight
+      # after Apple's processing (usually 5-30 minutes).
+      - name: Sign and upload to TestFlight
+        if: inputs.build == ''
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Forge.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
+            -authenticationKeyID "${{ secrets.ASC_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}"
+          echo "Uploaded build ${{ github.run_number }}." >> "$GITHUB_STEP_SUMMARY"
+
+      # Waits for Apple's processing, sets What to Test, adds the build to every tester group, and submits it for
+      # beta review if external testers are included (see the script). The inputs reach it as environment
+      # variables, never pasted into the shell, so no text in them can run as a command.
+      - name: Send to testers
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
+          BUILD_NUMBER: ${{ inputs.build || github.run_number }}
+          NOTES: ${{ inputs.notes }}
+          TESTERS: ${{ inputs.testers }}
+        run: node .github/scripts/testflight-testers.mjs
+
+      - name: Remove the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
