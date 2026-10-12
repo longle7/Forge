@@ -7,7 +7,7 @@ import { ExercisePicker } from '../ExercisePicker'
 import { notifyRestEnd } from '../notify'
 import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
-import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, livePr, parseDuration, platesPerSide, previousSets, progressionStep, recentExercises } from '../workouts'
+import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, livePr, parseDuration, platesPerSide, plural, previousSets, progressionStep, recentExercises } from '../workouts'
 
 /** Rest after a checked-off set: 90 seconds, unless you choose another length for the exercise (kept on this device). */
 const REST_SECONDS = 90
@@ -194,6 +194,9 @@ function Logger({ draft, update, workouts, exercises }: {
     close(draft.editing ? `/workouts/history/${draft.id}` : '/workouts')
   }
 
+  const totalSets = draft.exercises.reduce((n, ex) => n + ex.sets.length, 0)
+  const doneSets = draft.exercises.reduce((n, ex) => n + ex.sets.filter((s) => s.done).length, 0)
+
   const restLeft = draft.restEndsAt ? Math.ceil((draft.restEndsAt - now.getTime()) / 1000) : 0
   // When the rest is up: a chime, and a buzz on phones that allow it (iPhone Safari doesn't). Then the timer goes away.
   // Coming back long after (the page was closed or in the background) only clears it.
@@ -238,6 +241,7 @@ function Logger({ draft, update, workouts, exercises }: {
         />
         <p className="text-muted tabular-nums">
           {draft.editing ? `Editing · ${formatDay(draft.startedAt)}` : formatClock(now.getTime() - Date.parse(draft.startedAt))}
+          {totalSets > 0 && ` · ${doneSets} of ${plural(totalSets, 'set')}`}
         </p>
       </div>
 
