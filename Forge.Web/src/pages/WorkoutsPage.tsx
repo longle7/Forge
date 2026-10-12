@@ -6,7 +6,7 @@ import { emptyDraft, loadDraft, planDraft, repeatDraft, saveDraft, type Draft } 
 import { Icon } from '../icons'
 import { planFor, workedOut } from '../plan'
 import { failure, useNow, usePolling } from '../usePolling'
-import { formatDay, formatDuration, formatTime, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
+import { formatDay, formatDuration, formatTime, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
 
 /** The Workouts tab: today's workout, this week's plan, recent history, and the exercise list. */
 export default function WorkoutsPage() {
@@ -48,7 +48,7 @@ export default function WorkoutsPage() {
             <Row key={w.id} to={`/workouts/history/${w.id}`} detail={(records.get(w.id)?.size ?? 0) > 0 ? <PrBadge /> : undefined}>
               <span className="block font-medium">{w.name}</span>
               <span className="block text-[15px] text-muted">
-                {[formatDay(w.startedAt), formatDuration(workoutLength(w)), plural(groupSets(w.sets).length, 'exercise'), workoutTotals(w)].filter(Boolean).join(' · ')}
+                {[formatDay(w.startedAt), formatDuration(workoutLength(w)), workoutTotals(w)].filter(Boolean).join(' · ')}
               </span>
             </Row>
           ))}

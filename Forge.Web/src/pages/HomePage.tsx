@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { foodLogPath, getExercises, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts } from '../api'
-import { Card, Page, PrBadge, primaryButton, Rings, SectionTitle } from '../components'
+import { Card, Page, PrBadge, primaryButton, Rings, SectionTitle, Status } from '../components'
 import { dayLabel, localDate, workoutDay } from '../dates'
 import { RING } from '../colors'
 import { Icon } from '../icons'
@@ -10,7 +10,7 @@ import { HabitsCard } from '../HabitsCard'
 import { dayGoals, exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
 import { planFor, workedOut } from '../plan'
 import { isUnlocked, unlockGoals } from '../timeout'
-import { useNow, usePolling } from '../usePolling'
+import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
 import { formatDay, formatDuration, formatWeight, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
 import { TodayWorkoutCard } from './WorkoutsPage'
@@ -77,6 +77,8 @@ export default function HomePage() {
         </Link>
       }
     >
+      {/* Can't reach Forge with nothing saved on the phone: say so, rather than look like a brand-new account. */}
+      <Status error={failure(profile) ?? failure(workouts)} />
       {goals === null && (
         <Card>
           <p className="text-[13px] font-semibold tracking-wide text-coral-ink uppercase">Welcome to Forge</p>

@@ -88,7 +88,7 @@ export default function SettingsPage() {
           <label htmlFor="restore" className="font-semibold">
             Use a restore code
           </label>
-          <input id="restore" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false} className={`${field} font-mono`} />
+          <input id="restore" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="Paste your code" className={`${field} font-mono`} />
           <button disabled={!typed.trim()} className={primaryButton}>
             Use This Code
           </button>

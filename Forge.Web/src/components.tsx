@@ -227,7 +227,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative h-8 w-13 shrink-0 rounded-full transition disabled:opacity-50 ${checked ? 'bg-green-strong' : 'bg-fill'}`}
+      className={`relative h-8 w-13 shrink-0 rounded-full transition disabled:opacity-50 ${checked ? 'bg-green-strong' : 'bg-muted/30'}`}
     >
       <span className={`absolute top-1 left-1 size-6 rounded-full bg-white shadow transition ${checked ? 'translate-x-5' : ''}`} />
     </button>
