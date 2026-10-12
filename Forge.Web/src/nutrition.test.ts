@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Profile, Workout, WorkoutSet } from './api'
-import { calculateGoals, dayGoals, exerciseCalories, remaining, restingCalories, totals, weightOn, type GoalInputs } from './nutrition'
+import { calculateGoals, dayGoals, exerciseCalories, remaining, restingCalories, totals, weekChange, weightOn, type GoalInputs } from './nutrition'
 
 const him: GoalInputs = { sex: 'male', birthYear: 1994, heightIn: 70, weight: 185.4, activity: 'light', goal: 'lose', pace: 1 }
 
@@ -92,6 +92,13 @@ it('weightOn uses the latest weigh-in on or before the day, else the starting we
   expect(weightOn(weighIns, '2026-10-10', 190)).toBe(184.5)
   expect(weightOn(weighIns, '2026-10-05', 190)).toBe(186)
   expect(weightOn(weighIns, '2026-09-30', 190)).toBe(190)
+})
+
+it('weekChange compares the latest weigh-in with the latest one a week or more before it', () => {
+  const day = (date: string, weight: number) => ({ date, weight })
+  expect(weekChange([day('2026-10-01', 186), day('2026-10-03', 185.8), day('2026-10-09', 184.6)])).toBe(-1.4) // vs Oct 1
+  expect(weekChange([day('2026-10-05', 186), day('2026-10-09', 184.6)])).toBeUndefined() // nothing a week back
+  expect(weekChange([])).toBeUndefined()
 })
 
 it('totals multiply by servings, and remaining is Goal − Food + Exercise', () => {

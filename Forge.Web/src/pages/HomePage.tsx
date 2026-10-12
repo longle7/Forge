@@ -7,7 +7,7 @@ import { RING } from '../colors'
 import { Icon } from '../icons'
 import { today as habitsToday } from '../habits'
 import { HabitsCard } from '../HabitsCard'
-import { dayGoals, exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
+import { dayGoals, exerciseCalories, formatKcal, remaining, totals, weekChange, weightOn } from '../nutrition'
 import { planFor, workedOut } from '../plan'
 import { isUnlocked, unlockGoals } from '../timeout'
 import { failure, useNow, usePolling } from '../usePolling'
@@ -40,6 +40,7 @@ export default function HomePage() {
   const budget = dayGoal ? dayGoal.calories + exercise : 0
   const left = dayGoal && remaining(dayGoal.calories, eaten, exercise)
   const latestWeighIn = weighIns.data?.at(-1)
+  const change = weekChange(weighIns.data)
   const last = workouts.data?.[0]
   const prs = last ? (personalRecords(workouts.data!).get(last.id)?.size ?? 0) : 0
 
@@ -138,6 +139,12 @@ export default function HomePage() {
           </div>
           <p className="text-[28px] leading-tight font-bold">{latestWeighIn ? formatWeight(latestWeighIn.weight) : '–'}</p>
           <p className="text-[15px] text-muted">{latestWeighIn ? `lb · ${dayLabel(latestWeighIn.date, today)}` : 'Tap + to log'}</p>
+          {change !== undefined && (
+            <p className="text-[13px] text-muted">
+              {change > 0 ? '+' : change < 0 ? '−' : '±'}
+              {formatWeight(Math.abs(change))} lb in a week
+            </p>
+          )}
         </Card>
       </div>
 

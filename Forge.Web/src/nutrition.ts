@@ -1,4 +1,5 @@
 import type { Activity, Goal, Nutrition, Profile, Sex, WeighIn, Workout } from './api'
+import { addDays } from './dates'
 import { isCardioSet } from './workouts'
 
 /**
@@ -92,6 +93,17 @@ export function weightOn(weighIns: WeighIn[] | undefined, day: string, fallback:
   let weight = fallback
   for (const w of weighIns ?? []) if (w.date <= day) weight = w.weight // oldest first, so the last match is the latest
   return weight
+}
+
+/**
+ * Change from a week before your latest weigh-in (to the latest one on or before that day), rounded to 0.1 lb; undefined
+ * without one that old.
+ */
+export function weekChange(weighIns: WeighIn[] | undefined): number | undefined {
+  const latest = weighIns?.at(-1)
+  if (!latest) return undefined
+  const before = weighIns!.findLast((w) => w.date <= addDays(latest.date, -7))
+  return before && Math.round((latest.weight - before.weight) * 10) / 10
 }
 
 /** Totals for food entries (each one's nutrition × its servings). */

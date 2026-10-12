@@ -234,7 +234,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
   )
 }
 
-/** iOS's segmented control: a few options, one chosen. */
+/** iOS's segmented control: a few options, one chosen. In dark mode the chosen one is lighter than its track, as on iOS. */
 export function Segmented<T extends string | number>({ options, value, onChange, label }: {
   options: { value: T; label: string }[]
   value: T
@@ -252,7 +252,7 @@ export function Segmented<T extends string | number>({ options, value, onChange,
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(option.value)}
-            className={`min-h-9 rounded-lg px-2 text-[15px] font-semibold transition ${selected ? 'bg-surface text-ink shadow-[0_1px_3px_rgb(42_31_26/0.12)]' : 'text-muted'}`}
+            className={`min-h-9 rounded-lg px-2 text-[15px] font-semibold transition ${selected ? 'bg-surface text-ink shadow-[0_1px_3px_rgb(42_31_26/0.12)] dark:bg-[#4a3830]' : 'text-muted'}`}
           >
             {option.label}
           </button>
