@@ -10,6 +10,7 @@ const PATHS = {
   chevronRight: 'm9 5 7 7-7 7',
   check: 'm5 12 5 5 9-10',
   plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
   play: 'M8 5v14l11-7z',
   repeat: 'M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',

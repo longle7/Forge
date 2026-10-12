@@ -290,13 +290,15 @@ function RecordsCard({ workouts, from, names, period }: { workouts: Workout[]; f
       <CardTitle icon="trophy" title="Personal records" />
       <Stat label={`PRs, ${period}`} value={String(prs.length)} />
       {prs.length === 0 && <p className="text-[15px] text-muted">Beat your best set on any lift and it shows up here.</p>}
-      <ul className="mt-2 space-y-1.5">
+      <ul className="mt-1">
         {prs.slice(0, 5).map(({ workout, set }, i) => (
-          <li key={i} className="flex items-baseline justify-between gap-3 text-[15px]">
-            <span className="min-w-0 truncate">
-              {names.get(set.exerciseId) ?? 'Exercise'} · <span className="font-semibold">{formatSet(set)}</span>
-            </span>
-            <span className="shrink-0 text-[13px] text-muted">{shortDate(workoutDay(workout))}</span>
+          <li key={i}>
+            <Link to={`/workouts/exercises/${set.exerciseId}`} className="flex min-h-11 items-center justify-between gap-3 text-[15px] active:opacity-60">
+              <span className="min-w-0 truncate">
+                {names.get(set.exerciseId) ?? 'Exercise'} · <span className="font-semibold">{formatSet(set)}</span>
+              </span>
+              <span className="shrink-0 text-[13px] text-muted">{shortDate(workoutDay(workout))}</span>
+            </Link>
           </li>
         ))}
       </ul>
