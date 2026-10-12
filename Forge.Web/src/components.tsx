@@ -276,7 +276,7 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
       ref={dialog}
       onClose={onClose}
       aria-label={title}
-      className="mx-auto mt-auto mb-0 max-h-[92dvh] w-full max-w-xl rounded-t-3xl bg-canvas p-0 text-ink backdrop:bg-black/40"
+      className="mx-auto mt-auto mb-0 max-h-[92dvh] w-full max-w-xl rounded-t-3xl border-t border-line bg-canvas p-0 text-ink backdrop:bg-black/40 dark:backdrop:bg-black/65"
     >
       <div className="space-y-4 px-4 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <div className="mx-auto h-1.5 w-10 rounded-full bg-line" aria-hidden />
