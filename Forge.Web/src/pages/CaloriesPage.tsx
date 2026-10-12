@@ -124,6 +124,7 @@ export default function CaloriesPage() {
                     <span className="block truncate">{entry.name}</span>
                     <span className="block truncate text-[15px] text-muted">
                       {entry.servings === 1 ? entry.serving : `${entry.servings} × ${entry.serving}`}
+                      {entry.protein > 0 && ` · ${Math.round(entry.protein * entry.servings)} g protein`}
                     </span>
                   </span>
                   <span className="shrink-0 text-muted tabular-nums">{formatKcal(entry.calories * entry.servings)}</span>

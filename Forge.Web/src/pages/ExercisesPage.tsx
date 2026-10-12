@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { addExercise, getExercises, MUSCLE_GROUPS } from '../api'
+import { addExercise, getExercises, getWorkouts, isCardio, MUSCLE_GROUPS } from '../api'
 import { Card, field, Group, Page, primaryButton, Row, SearchInput, Status } from '../components'
 import { failure, usePolling } from '../usePolling'
+import { bestSet, formatCardio, formatSet } from '../workouts'
 
-/** Every exercise by muscle group, and adding your own (Workouts → Exercises). */
+/** Every exercise by muscle group with your best set in each, and adding your own (Workouts → Exercises). */
 export default function ExercisesPage() {
   const exercises = usePolling(getExercises, '/exercises')
+  const workouts = usePolling(getWorkouts, '/workouts')
   const [query, setQuery] = useState('')
   const q = query.trim().toLowerCase()
   const matches = exercises.data?.filter((e) => e.name.toLowerCase().includes(q)) ?? []
@@ -21,11 +23,18 @@ export default function ExercisesPage() {
         if (list.length === 0) return null
         return (
           <Group key={group} title={group}>
-            {list.map((exercise) => (
-              <Row key={exercise.id} to={`/workouts/exercises/${exercise.id}`} detail={exercise.isCustom ? 'Yours' : undefined}>
-                {exercise.name}
-              </Row>
-            ))}
+            {list.map((exercise) => {
+              const best = bestSet(workouts.data ?? [], exercise.id)?.set
+              return (
+                <Row
+                  key={exercise.id}
+                  to={`/workouts/exercises/${exercise.id}`}
+                  detail={best ? <span className="text-[15px]">{isCardio(exercise) ? formatCardio(best) : formatSet(best)}</span> : exercise.isCustom ? 'Yours' : undefined}
+                >
+                  {exercise.name}
+                </Row>
+              )
+            })}
           </Group>
         )
       })}
