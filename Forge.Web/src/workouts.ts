@@ -91,6 +91,9 @@ export function previousSets(workouts: Workout[], exerciseId: number, excludeId?
   return []
 }
 
+/** The exercises in your latest workouts, most recent first, for the top of the exercise picker. */
+export const recentExercises = (workouts: Workout[], count = 6) => [...new Set(workouts.flatMap((w) => w.sets.map((s) => s.exerciseId)))].slice(0, count)
+
 /** Total pounds lifted: weight × reps over every set. */
 export const volume = (workout: Workout) => workout.sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
 

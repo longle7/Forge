@@ -7,7 +7,7 @@ import { ExercisePicker } from '../ExercisePicker'
 import { notifyRestEnd } from '../notify'
 import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
-import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, livePr, parseDuration, platesPerSide, previousSets, progressionStep } from '../workouts'
+import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, livePr, parseDuration, platesPerSide, previousSets, progressionStep, recentExercises } from '../workouts'
 
 /** Rest after a checked-off set: 90 seconds, unless you choose another length for the exercise (kept on this device). */
 const REST_SECONDS = 90
@@ -369,7 +369,7 @@ function Logger({ draft, update, workouts, exercises }: {
         </>
       )}
 
-      {picking && <ExercisePicker exercises={all} onPick={pick} onClose={() => setPicking(false)} />}
+      {picking && <ExercisePicker exercises={all} recent={recentExercises(workouts)} onPick={pick} onClose={() => setPicking(false)} />}
       {plateWeight !== undefined && <PlateSheet initial={plateWeight} onClose={() => setPlateWeight(undefined)} />}
     </>
   )

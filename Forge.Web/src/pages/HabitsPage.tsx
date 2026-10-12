@@ -118,7 +118,7 @@ function HabitSheet({ id, habit, isNew, onSaved, onClose }: { id: string; habit:
                 aria-checked={on}
                 aria-label={DAY_NAMES[i]}
                 onClick={() => set({ days: form.days ^ (1 << i) })}
-                className={`min-h-11 rounded-xl font-semibold ${on ? 'bg-linear-to-br from-coral-deep to-pink-deep text-white' : 'bg-surface text-muted'}`}
+                className={`min-h-11 rounded-xl font-semibold ${on ? 'bg-coral/15 text-coral-ink' : 'bg-surface text-muted'}`}
               >
                 {letter}
               </button>
