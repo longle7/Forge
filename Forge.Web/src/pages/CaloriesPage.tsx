@@ -75,7 +75,15 @@ export default function CaloriesPage() {
         <button onClick={() => setDate(addDays(date, -1))} aria-label="Previous day" className="grid size-11 place-items-center rounded-xl text-coral-ink active:bg-fill">
           <Icon name="chevronLeft" />
         </button>
-        <span className="font-semibold">{dayLabel(date, today)}</span>
+        {date === today ? (
+          <span className="font-semibold">{dayLabel(date, today)}</span>
+        ) : (
+          // Another day: the label also jumps back to today, with a hint under it.
+          <button onClick={() => setDate(today)} className="flex min-h-11 flex-col items-center justify-center rounded-xl px-3 active:bg-fill">
+            <span className="font-semibold">{dayLabel(date, today)}</span>
+            <span className="text-[13px] text-coral-ink">Back to Today</span>
+          </button>
+        )}
         <button onClick={() => setDate(addDays(date, 1))} disabled={date >= today} aria-label="Next day" className="grid size-11 place-items-center rounded-xl text-coral-ink active:bg-fill disabled:opacity-30">
           <Icon name="chevronRight" />
         </button>

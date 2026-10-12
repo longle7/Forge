@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router'
 import { ErrorBoundary, NotFound, Status } from './components'
+import { loadDraft } from './draft'
 import { Icon, type IconName } from './icons'
 import { useOnline } from './usePolling'
 import AddFoodPage from './pages/AddFoodPage'
@@ -108,6 +109,10 @@ function OfflineBanner() {
 }
 
 function TabBar() {
+  // Read again on every page change (the logger saves or clears the workout before it navigates): a workout left
+  // open gets a dot on the Workouts tab.
+  useLocation()
+  const inProgress = !!loadDraft()
   return (
     <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
       <div className="mx-auto grid max-w-xl grid-cols-5">
@@ -120,8 +125,12 @@ function TabBar() {
               `flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${isActive ? 'text-coral-ink' : 'text-muted'}`
             }
           >
-            <Icon name={tab.icon} />
+            <span className="relative">
+              <Icon name={tab.icon} />
+              {inProgress && tab.to === '/workouts' && <span className="absolute -top-0.5 -right-1.5 size-2.5 rounded-full border-2 border-surface bg-coral" />}
+            </span>
             {tab.label}
+            {inProgress && tab.to === '/workouts' && <span className="sr-only">, workout in progress</span>}
           </NavLink>
         ))}
       </div>
