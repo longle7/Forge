@@ -5,6 +5,7 @@ import { addDays, localDate } from '../dates'
 import { completion, daysLabel, EVERY_DAY, habitStreak, SUGGESTIONS } from '../habits'
 import { Icon } from '../icons'
 import { failure, useNow, usePolling } from '../usePolling'
+import { plural } from '../workouts'
 
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -32,7 +33,7 @@ export default function HabitsPage() {
         {!habit.archived && (
           <span className="shrink-0 text-right text-[13px] text-muted">
             <span className="block font-semibold text-ink">{streak ? `${streak}-day streak` : 'No streak yet'}</span>
-            {scheduled > 0 && `${done} of ${scheduled} days`}
+            {scheduled > 0 && `${done} of ${plural(scheduled, 'day')}`}
           </span>
         )}
         <Icon name="chevronRight" className="size-5 text-muted/60" />

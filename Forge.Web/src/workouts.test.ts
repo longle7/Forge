@@ -7,6 +7,7 @@ import {
   formatDuration,
   formatSet,
   groupSets,
+  livePr,
   oneRepMax,
   parseDuration,
   personalRecords,
@@ -44,6 +45,20 @@ it('groupSets keeps each exercise together, in the order it was first done', () 
 it('oneRepMax uses Epley, and a single rep is the weight itself', () => {
   expect(oneRepMax(135, 8)).toBeCloseTo(171)
   expect(oneRepMax(225, 1)).toBe(225)
+})
+
+describe('livePr', () => {
+  const saved = [workout('a', 1, [set(BENCH, 135, 8)])]
+
+  it('marks the best done set once it beats every saved workout', () => {
+    expect(livePr(saved, BENCH, [set(BENCH, 135, 8), undefined, set(BENCH, 145, 8), set(BENCH, 140, 8)])).toBe(2)
+    expect(livePr(saved, BENCH, [set(BENCH, 135, 8), undefined])).toBeUndefined() // a tie isn't a PR
+  })
+
+  it('never on the first try, and not against the workout being edited', () => {
+    expect(livePr(saved, SQUAT, [set(SQUAT, 225, 5)])).toBeUndefined()
+    expect(livePr(saved, BENCH, [set(BENCH, 135, 8)], 'a')).toBeUndefined()
+  })
 })
 
 describe('personalRecords', () => {

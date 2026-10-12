@@ -110,16 +110,16 @@ export function toWorkout(draft: Draft, finishedAt: string): WorkoutInput {
     name: draft.name.trim(),
     startedAt: draft.startedAt,
     finishedAt,
-    sets: draft.exercises.flatMap(({ exerciseId, sets }) =>
-      sets
-        .filter((s) => s.done)
-        .flatMap((s): WorkoutSet[] => {
-          const distance = Number(s.distance) || 0
-          const seconds = parseDuration(s.time ?? '')
-          if (distance > 0 || seconds > 0) return [{ exerciseId, weight: 0, reps: 0, distance: distance > 0 ? distance : null, durationSeconds: seconds > 0 ? seconds : null }]
-          const reps = Math.round(Number(s.reps))
-          return reps > 0 ? [{ exerciseId, weight: Number(s.weight) || 0, reps }] : []
-        }),
-    ),
+    sets: draft.exercises.flatMap(({ exerciseId, sets }) => sets.flatMap((s) => toSet(exerciseId, s) ?? [])),
   }
+}
+
+/** A checked-off set as it will be saved, or undefined when it isn't done or has nothing in it. */
+export function toSet(exerciseId: number, s: DraftSet): WorkoutSet | undefined {
+  if (!s.done) return undefined
+  const distance = Number(s.distance) || 0
+  const seconds = parseDuration(s.time ?? '')
+  if (distance > 0 || seconds > 0) return { exerciseId, weight: 0, reps: 0, distance: distance > 0 ? distance : null, durationSeconds: seconds > 0 ? seconds : null }
+  const reps = Math.round(Number(s.reps))
+  return reps > 0 ? { exerciseId, weight: Number(s.weight) || 0, reps } : undefined
 }

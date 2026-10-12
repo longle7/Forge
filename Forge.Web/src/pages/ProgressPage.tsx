@@ -11,7 +11,7 @@ import { formatKcal } from '../nutrition'
 import { adherence, calorieBars, plannedDays, shortDate, strengthSeries, streak, topLifts, weekStatuses, type Bucket, type DayStatus } from '../progress'
 import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
-import { formatSet, formatWeight, personalRecords } from '../workouts'
+import { formatSet, formatWeight, personalRecords, plural } from '../workouts'
 
 const RANGES = [
   { value: 28, label: '4 Weeks' },
@@ -216,7 +216,7 @@ function HabitsCard({ habits, from, today, period }: { habits: Habit[]; from: st
                 <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ background: 'color-mix(in oklab, var(--chart-unlock) 18%, transparent)' }}>
                   <div className="h-full rounded-full" style={{ width: `${share * 100}%`, background: 'var(--chart-unlock)' }} />
                 </div>
-                <span className="w-24 shrink-0 text-right text-[13px] text-muted tabular-nums">{scheduled ? `${done} of ${scheduled} days` : 'Starts today'}</span>
+                <span className="w-24 shrink-0 text-right text-[13px] text-muted tabular-nums">{scheduled ? `${done} of ${plural(scheduled, 'day')}` : 'Starts today'}</span>
               </div>
             </li>
           )

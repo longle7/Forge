@@ -65,6 +65,20 @@ export function bestSet(workouts: Workout[], exerciseId: number): { set: Workout
 }
 
 /**
+ * While logging: the index of the set that's a PR so far, the best of `sets` (undefined = not done) when it beats every
+ * saved workout but `excludeId`. Like personalRecords, the first time you do an exercise isn't a PR.
+ */
+export function livePr(workouts: Workout[], exerciseId: number, sets: (WorkoutSet | undefined)[], excludeId?: string): number | undefined {
+  const best = bestSet(workouts.filter((w) => w.id !== excludeId), exerciseId)
+  if (!best) return undefined
+  let top: number | undefined
+  sets.forEach((set, i) => {
+    if (set && score(set) > score(best.set) && (top === undefined || score(set) > score(sets[top]!))) top = i
+  })
+  return top
+}
+
+/**
  * The "Previous" column: this exercise's sets from the most recent workout that has it. `workouts` are newest first,
  * as the API returns them; `excludeId` skips the workout being edited.
  */

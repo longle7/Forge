@@ -1,13 +1,13 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { ApiError, getExercises, getWorkouts, isCardio, saveWorkout, type Exercise, type Workout } from '../api'
-import { Card, dangerButton, field, Notice, plainButton, primaryButton, Sheet, tintedButton } from '../components'
-import { loadDraft, saveDraft, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
+import { Card, dangerButton, field, Notice, plainButton, PrBadge, primaryButton, Sheet, tintedButton } from '../components'
+import { loadDraft, saveDraft, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
 import { notifyRestEnd } from '../notify'
 import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
-import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, parseDuration, platesPerSide, previousSets, progressionStep } from '../workouts'
+import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, livePr, parseDuration, platesPerSide, previousSets, progressionStep } from '../workouts'
 
 /** Rest after a checked-off set: 90 seconds, unless you choose another length for the exercise (kept on this device). */
 const REST_SECONDS = 90
@@ -248,6 +248,7 @@ function Logger({ draft, update, workouts, exercises }: {
         const isCardioExercise = cardio.has(ex.exerciseId)
         const step = stepFor(ex)
         const rest = restFor(ex.exerciseId)
+        const pr = livePr(workouts, ex.exerciseId, ex.sets.map((s) => toSet(ex.exerciseId, s)), draft.editing ? draft.id : undefined)
         return (
           <Card key={`${ex.exerciseId}-${e}`}>
             <div className="flex items-start justify-between gap-2">
@@ -310,6 +311,7 @@ function Logger({ draft, update, workouts, exercises }: {
                     key={s}
                     number={n}
                     done={set.done}
+                    pr={s === pr}
                     previous={hint && (isCardioExercise ? formatCardio(hint) : hint.weight > 0 ? `${formatWeight(hint.weight)} × ${hint.reps}` : `${hint.reps} reps`)}
                     fields={
                       isCardioExercise
@@ -381,9 +383,10 @@ interface SetField {
   onChange: (value: string) => void
 }
 
-function SetRow({ number, done, previous, fields, onToggle }: {
+function SetRow({ number, done, pr, previous, fields, onToggle }: {
   number: number
   done: boolean
+  pr: boolean // beats every earlier workout: the badge stands in for the set number
   previous: string | undefined
   fields: SetField[]
   onToggle: () => void
@@ -391,7 +394,14 @@ function SetRow({ number, done, previous, fields, onToggle }: {
   const input = `${field} px-1 text-center ${done ? 'bg-green/15' : ''}`
   return (
     <>
-      <span className="font-semibold">{number}</span>
+      {pr ? (
+        <span>
+          <span className="sr-only">{number} </span>
+          <PrBadge />
+        </span>
+      ) : (
+        <span className="font-semibold">{number}</span>
+      )}
       <span className="truncate text-muted">{previous ?? '–'}</span>
       {fields.map((f) => (
         <input key={f.label} value={f.value} onChange={(e) => f.onChange(e.target.value)} inputMode={f.mode} placeholder={f.placeholder} aria-label={f.label} className={input} />

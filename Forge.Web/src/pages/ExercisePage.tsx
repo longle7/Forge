@@ -1,13 +1,16 @@
 import { useParams } from 'react-router'
 import { getExercises, getWorkouts, isCardio } from '../api'
+import { ChartTable, LineChart } from '../charts'
+import { RING } from '../colors'
 import { Card, Group, NotFound, Page, Row, Status } from '../components'
+import { shortDate, strengthSeries } from '../progress'
 import { failure, usePolling, useSettled } from '../usePolling'
 import { bestSet, formatCardio, formatClock, formatDay, formatSet, formatWeight, oneRepMax, pace } from '../workouts'
 
 const MAX_HISTORY = 20
 const BACK = { to: '/workouts/exercises', label: 'Exercises' }
 
-/** One exercise: your best set, estimated one-rep max, and recent sets; for cardio, your longest and best pace. */
+/** One exercise: your best set, estimated one-rep max and its trend, and recent sets; for cardio, your longest and best pace. */
 export default function ExercisePage() {
   const id = Number(useParams().id)
   const exercises = usePolling(getExercises, '/exercises')
@@ -29,6 +32,7 @@ export default function ExercisePage() {
   const best = bestSet(workouts.data ?? [], id)
   const history = (workouts.data ?? []).filter((w) => w.sets.some((s) => s.exerciseId === id)).slice(0, MAX_HISTORY)
   const cardio = isCardio(exercise)
+  const trend = cardio ? [] : strengthSeries(workouts.data ?? [], id, '')
   const paces = (workouts.data ?? []).flatMap((w) => w.sets.filter((s) => s.exerciseId === id).map(pace)).filter((p) => p !== undefined)
 
   return (
@@ -62,6 +66,14 @@ export default function ExercisePage() {
             </Card>
           )}
         </div>
+      )}
+
+      {trend.length > 1 && (
+        <Card>
+          <p className="text-[13px] font-semibold text-muted uppercase">Est. 1-rep max over time</p>
+          <LineChart points={trend} label={`Estimated 1-rep max for ${exercise.name}, by workout`} color={RING.move} format={(v) => `${formatWeight(Math.round(v))} lb`} axis={(v) => formatWeight(v)} />
+          <ChartTable caption="Estimated 1-rep max" rows={[...trend].reverse().map((p) => [shortDate(p.day), `${formatWeight(Math.round(p.value))} lb`])} />
+        </Card>
       )}
 
       {history.length > 0 && (
