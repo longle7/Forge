@@ -176,9 +176,10 @@ export function parseDuration(text: string): number {
   return parts.length <= 3 && parts.every((p) => /^\d+$/.test(p)) ? parts.reduce((total, p) => total * 60 + Number(p), 0) : NaN
 }
 
-/** "48m", "1h 5m" */
+/** "48m", "1h 5m"; "<1m" for a few seconds. */
 export function formatDuration(ms: number): string {
-  const minutes = Math.max(0, Math.round(ms / 60_000))
+  if (ms < 30_000) return '<1m'
+  const minutes = Math.round(ms / 60_000)
   return minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`
 }
 

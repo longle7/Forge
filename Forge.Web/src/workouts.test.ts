@@ -107,6 +107,7 @@ it('volume, formatSet, and formatDuration', () => {
   expect(formatSet(set(PULL_UP, 0, 12))).toBe('12 reps')
   expect(formatDuration(48 * 60_000)).toBe('48m')
   expect(formatDuration(65 * 60_000)).toBe('1h 5m')
+  expect(formatDuration(5_000)).toBe('<1m')
 })
 
 it('formats cardio sets with their pace, and reads times as minutes or m:ss', () => {

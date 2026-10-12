@@ -78,7 +78,8 @@ export default function HomePage() {
       }
     >
       {/* Can't reach Forge with nothing saved on the phone: say so, rather than look like a brand-new account. */}
-      <Status error={failure(profile) ?? failure(workouts)} />
+      {/* First visit (nothing remembered yet): hold the Welcome card's place while the profile loads. */}
+      <Status error={failure(profile) ?? failure(workouts)} loading={profile.data === undefined} rows={1} />
       {goals === null && (
         <Card>
           <p className="text-[13px] font-semibold tracking-wide text-coral-ink uppercase">Welcome to Forge</p>

@@ -13,6 +13,7 @@ import {
   type Meal,
   type SavedMeal,
 } from '../api'
+import { remembered } from '../cache'
 import { Card, field, Group, Page, primaryButton, SearchInput, Segmented, Status } from '../components'
 import { localDate } from '../dates'
 import { FoodSheet, type FoodChoice } from '../FoodSheet'
@@ -22,6 +23,15 @@ import { failure, useNow, usePolling } from '../usePolling'
 import { formatKcal, totals } from '../nutrition'
 
 type Tab = 'search' | 'recent' | 'meals' | 'quick'
+const TABS: Tab[] = ['search', 'recent', 'meals', 'quick']
+const TAB_KEY = 'forge.foodTab'
+const lastTab = () => {
+  try {
+    return TABS.find((t) => t === localStorage.getItem(TAB_KEY))
+  } catch {
+    return undefined
+  }
+}
 type Choice = FoodChoice & { servings: number; source: FoodEntry['source'] }
 
 /** Add food to a day's meal (/calories/add?date=…&meal=…): search, a recent food, a saved meal, or your own numbers. */
@@ -32,7 +42,16 @@ export default function AddFoodPage() {
   const today = localDate(now)
   const date = params.get('date') ?? today
   const [meal, setMeal] = useState<Meal>(() => (MEALS.some((m) => m.id === params.get('meal')) ? (params.get('meal') as Meal) : mealAt(now)))
-  const [tab, setTab] = useState<Tab>('search')
+  // Opens on the tab you used last; else on Recent once you've logged food (most meals repeat), else Search.
+  const [tab, setTab] = useState<Tab>(() => lastTab() ?? (remembered<FoodEntry[]>('/food-log/recent')?.data.length ? 'recent' : 'search'))
+  const chooseTab = (next: Tab) => {
+    setTab(next)
+    try {
+      localStorage.setItem(TAB_KEY, next)
+    } catch {
+      // blocked storage: it opens on the default next time
+    }
+  }
   const [chosen, setChosen] = useState<Choice>()
   const back = date === today ? '/calories' : `/calories?date=${date}`
 
@@ -59,7 +78,7 @@ export default function AddFoodPage() {
           { value: 'quick', label: 'Quick' },
         ]}
         value={tab}
-        onChange={setTab}
+        onChange={chooseTab}
       />
 
       {tab === 'search' && <FoodSearch onChoose={(food) => setChosen({ ...food, servings: 1, source: 'search' })} />}
