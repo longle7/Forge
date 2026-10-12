@@ -41,10 +41,13 @@ builder.Services.AddControllers();
 
 // The website (Azure Static Web Apps) and, later, the iPhone app (capacitor://localhost) call this API cross-origin.
 // Allowed origins come from configuration (Cors:AllowedOrigins); in development Vite serves the app same-origin.
+// The X-User-Id header makes every call preflighted; browsers keep a preflight only 5 seconds unless told longer, which
+// doubled each request's round trips. Two hours is Chrome's cap (Safari keeps it less).
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
     .AllowAnyHeader()
-    .AllowAnyMethod()));
+    .AllowAnyMethod()
+    .SetPreflightMaxAge(TimeSpan.FromHours(2))));
 
 // GET /health for the host's health probe: 200 when the database is reachable, 503 when not.
 builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");

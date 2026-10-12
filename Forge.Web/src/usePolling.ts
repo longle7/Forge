@@ -1,6 +1,19 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { remember, remembered } from './cache'
 
+// Requests in flight by key: a page and its cards that ask for the same thing as they open share one request. Only
+// one started moments ago is joined, so a page opened right after a save never gets data from before it.
+const SHARE_MS = 250
+const inFlight = new Map<string, { request: Promise<unknown>; at: number }>()
+export const shared = <T,>(key: string, fetcher: () => Promise<T>): Promise<T> => {
+  const recent = inFlight.get(key)
+  if (recent && Date.now() - recent.at < SHARE_MS) return recent.request as Promise<T>
+  const entry = { request: fetcher(), at: Date.now() }
+  inFlight.set(key, entry)
+  entry.request.finally(() => inFlight.get(key) === entry && inFlight.delete(key)).catch(() => {})
+  return entry.request as Promise<T>
+}
+
 interface PollState<T> {
   data: T | undefined
   error: Error | undefined
@@ -29,8 +42,9 @@ export function usePolling<T>(
 
   useEffect(() => {
     let cancelled = false
-    const load = () =>
-      fetcher().then(
+    // `fresh`: a reload after a save skips joining a request that started before it.
+    const load = (fresh = false) =>
+      (fresh ? fetcher() : shared(key, fetcher)).then(
         (data) => {
           if (cancelled) return
           setState({ key, data, error: undefined, updatedAt: new Date() })
@@ -38,18 +52,19 @@ export function usePolling<T>(
         },
         (error: Error) => !cancelled && setState((s) => ({ ...s, key, error })),
       )
-    load()
+    load(reloads > 0)
     // Don't poll in the background; refresh as soon as the app is back on screen (iOS pauses timers anyway).
     const timer = intervalMs ? setInterval(() => !document.hidden && load(), intervalMs) : undefined
     const onVisible = () => !document.hidden && intervalMs && load()
     document.addEventListener('visibilitychange', onVisible)
     // Back online (e.g. out of the gym's basement): refetch everything, including one-off loads that failed while offline.
-    window.addEventListener('online', load)
+    const onOnline = () => load()
+    window.addEventListener('online', onOnline)
     return () => {
       cancelled = true
       clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('online', load)
+      window.removeEventListener('online', onOnline)
     }
     // fetcher is recreated every render, so `key` (not fetcher) identifies what is being fetched.
     // eslint-disable-next-line react-hooks/exhaustive-deps

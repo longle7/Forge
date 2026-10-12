@@ -61,5 +61,6 @@ public class HostingTests : IDisposable
         var response = await client.SendAsync(preflight);
 
         Assert.Equal(allowed, response.Headers.TryGetValues("Access-Control-Allow-Origin", out var values) && values.Single() == origin);
+        if (allowed) Assert.Equal("7200", response.Headers.GetValues("Access-Control-Max-Age").Single()); // the browser keeps it
     }
 }
