@@ -105,7 +105,7 @@ export default function HomePage() {
         </div>
       </Card>
 
-      <TodayWorkoutCard />
+      <TodayWorkoutCard quiet={goals === null} />
       <HabitsCard />
 
       <div className="grid grid-cols-2 gap-3">

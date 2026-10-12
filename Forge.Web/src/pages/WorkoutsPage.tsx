@@ -69,7 +69,7 @@ export default function WorkoutsPage() {
  * see that it's done, or that it's a rest day); or, with no plan yet, start one (empty, or a repeat of the last).
  * The workout itself opens at /workouts/active.
  */
-export function TodayWorkoutCard() {
+export function TodayWorkoutCard({ quiet = false }: { quiet?: boolean }) {
   const navigate = useNavigate()
   const today = localDate(useNow(60_000))
   const workouts = usePolling(getWorkouts, '/workouts')
@@ -159,7 +159,8 @@ export function TodayWorkoutCard() {
     <Card>
       {eyebrow('Today')}
       <p className="mt-0.5 text-[22px] font-bold">Ready when you are</p>
-      <button onClick={() => start(emptyDraft())} className={`mt-4 ${primaryButton}`}>
+      {/* quiet: another card on the page has the main action (Home's Get Started), so this one steps back. */}
+      <button onClick={() => start(emptyDraft())} className={`mt-4 ${quiet ? `w-full ${tintedButton}` : primaryButton}`}>
         <Icon name="play" className="size-5 fill-current" />
         Start Workout
       </button>

@@ -89,10 +89,11 @@ function Logger({ draft, update, workouts, exercises }: {
   useTitle(draft.name || 'Workout')
 
   // The workout is done with this page: leave it, and stop keeping it on the phone.
-  const close = (to: string) => {
+  // `finished`: a new workout just saved, for the detail page to say so.
+  const close = (to: string, finished = false) => {
     saveDraft(undefined)
     void notifyRestEnd(undefined)
-    navigate(to, { replace: true })
+    navigate(to, { replace: true, state: finished ? { finished } : undefined })
   }
 
   // A change to the sets means the workout isn't over yet: a new Finish sets the end time again.
@@ -168,7 +169,7 @@ function Logger({ draft, update, workouts, exercises }: {
     setMessage(undefined)
     try {
       await saveWorkout(pending.id, workout)
-      close(`/workouts/history/${pending.id}`)
+      close(`/workouts/history/${pending.id}`, !pending.editing)
     } catch (error) {
       setSaving(false)
       setMessage(

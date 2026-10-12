@@ -1,15 +1,15 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { deleteWorkout, getExercises, getWorkouts, type Workout } from '../api'
 import { Card, dangerButton, Notice, NotFound, Page, PrBadge, Status, tintedButton } from '../components'
 import { editDraft, loadDraft, repeatDraft, saveDraft, type Draft } from '../draft'
 import { Icon } from '../icons'
 import { failure, usePolling, useSettled } from '../usePolling'
-import { formatDay, formatDuration, formatSet, formatTime, groupSets, personalRecords, workoutLength, workoutTotals } from '../workouts'
+import { formatDay, formatDuration, formatSet, formatTime, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
 
 const BACK = { to: '/workouts/history', label: 'History' }
 
-/** One finished workout: its sets and PRs, and Repeat, Edit, and Delete. */
+/** One finished workout: its sets and PRs, and Repeat, Edit, and Delete. Straight from Finish, a word of congrats. */
 export default function WorkoutDetailPage() {
   const { id } = useParams()
   const workouts = usePolling(getWorkouts, '/workouts')
@@ -31,6 +31,7 @@ export default function WorkoutDetailPage() {
 
 function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] }) {
   const navigate = useNavigate()
+  const finished = (useLocation().state as { finished?: boolean } | null)?.finished
   const exercises = usePolling(getExercises, '/exercises')
   const [message, setMessage] = useState<string>()
   const [deleting, setDeleting] = useState(false)
@@ -62,6 +63,22 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
       <p className="-mt-3 text-muted">
         {[formatDay(workout.startedAt), formatTime(workout.startedAt), formatDuration(workoutLength(workout)), workoutTotals(workout)].filter(Boolean).join(' · ')}
       </p>
+
+      {finished && (
+        <Card>
+          <div className="flex items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-green/15 text-green-ink">
+              <Icon name="check" className="size-6 stroke-[3]" />
+            </span>
+            <span>
+              <span className="block font-semibold">Workout saved</span>
+              <span className="block text-[15px] text-muted">
+                {prs.size ? `${plural(prs.size, 'new PR')}. Nice work!` : `${plural(workout.sets.length, 'set')} done. Nice work!`}
+              </span>
+            </span>
+          </div>
+        </Card>
+      )}
 
       {groupSets(workout.sets).map((group) => (
         <Card key={group.exerciseId}>
