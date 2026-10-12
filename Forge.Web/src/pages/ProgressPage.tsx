@@ -267,7 +267,7 @@ function StrengthCard({ workouts, from, names, period }: { workouts: Workout[]; 
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{names.get(id) ?? 'Exercise'}</span>
                   <span className="block text-[13px] text-muted">
-                    {formatWeight(Math.round(latest))} lb{series.length > 1 && ` · ${change >= 0 ? '+' : '−'}${formatWeight(Math.abs(Math.round(change)))} in ${period}`}
+                    {formatWeight(Math.round(latest))} lb{series.length > 1 && ` · ${change >= 0 ? '+' : '−'}${formatWeight(Math.abs(Math.round(change)))} lb in ${period}`}
                   </span>
                 </span>
                 <Sparkline values={series.map((p) => p.value)} color={RING.move} />
