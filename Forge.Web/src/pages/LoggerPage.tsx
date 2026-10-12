@@ -253,7 +253,15 @@ function Logger({ draft, update, workouts, exercises }: {
         return (
           <Card key={`${ex.exerciseId}-${e}`}>
             <div className="flex items-start justify-between gap-2">
-              <h2 className="pt-2.5 font-semibold text-coral-ink">{name}</h2>
+              <h2 className="flex items-center gap-1.5 pt-2.5 font-semibold text-coral-ink">
+                {name}
+                {ex.sets.length > 0 && ex.sets.every((s) => s.done) && (
+                  <>
+                    <Icon name="check" className="size-5 shrink-0 stroke-[3] text-green-ink" />
+                    <span className="sr-only">, all sets done</span>
+                  </>
+                )}
+              </h2>
               <button onClick={() => removeExercise(e)} className={`-mr-1 text-[15px] ${plainButton}`}>
                 Remove
               </button>

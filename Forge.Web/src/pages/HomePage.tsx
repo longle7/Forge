@@ -57,12 +57,13 @@ export default function HomePage() {
     : []
   const met = unlock.filter((g) => g.met).length
   const rings = [
-    { label: 'Move', value: done || restDay ? 1 : 0, color: RING.move, detail: moveDetail },
-    { label: 'Eat', value: budget ? eaten / budget : 0, color: RING.eat, detail: goals ? `${formatKcal(eaten)} of ${formatKcal(budget)} kcal` : 'Set your goals' },
+    { label: 'Move', value: done || restDay ? 1 : 0, color: RING.move, detail: moveDetail, to: '/workouts' },
+    { label: 'Eat', value: budget ? eaten / budget : 0, color: RING.eat, detail: goals ? `${formatKcal(eaten)} of ${formatKcal(budget)} kcal` : 'Set your goals', to: '/calories' },
     {
       label: 'Unlock',
       value: unlock.length ? met / unlock.length : 0,
       color: RING.unlock,
+      to: '/timeout',
       detail: unlock.length === 0 ? 'Set goals in Time Out' : isUnlocked(unlock) ? 'Apps unlocked' : `Locked · ${met} of ${unlock.length} goals`,
     },
   ]
@@ -94,14 +95,16 @@ export default function HomePage() {
       <Card>
         <div className="flex items-center gap-5">
           <Rings rings={rings} size={112} />
-          <ul className="min-w-0 flex-1 space-y-2">
+          <ul className="min-w-0 flex-1 space-y-1">
             {rings.map((ring) => (
               <li key={ring.label}>
-                <span className="flex items-center gap-2 text-[15px] font-semibold">
-                  <span className="size-2.5 rounded-full" style={{ background: ring.color }} aria-hidden />
-                  {ring.label}
-                </span>
-                <span className="block truncate pl-[18px] text-[15px] text-muted">{ring.detail}</span>
+                <Link to={ring.to} className="-mx-2 block rounded-lg px-2 py-0.5 active:bg-fill">
+                  <span className="flex items-center gap-2 text-[15px] font-semibold">
+                    <span className="size-2.5 rounded-full" style={{ background: ring.color }} aria-hidden />
+                    {ring.label}
+                  </span>
+                  <span className="block truncate pl-[18px] text-[15px] text-muted">{ring.detail}</span>
+                </Link>
               </li>
             ))}
           </ul>
