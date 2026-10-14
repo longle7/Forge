@@ -28,6 +28,7 @@ namespace Forge.Api.Data
         public DbSet<Habit> Habits { get; set; } = null!;
         public DbSet<HabitCheck> HabitChecks { get; set; } = null!;
         public DbSet<SavedMeal> SavedMeals { get; set; } = null!;
+        public DbSet<AppleAccount> AppleAccounts { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -154,6 +155,14 @@ namespace Forge.Api.Data
                 entity.ToTable("ScanUsage");
                 entity.HasKey(u => new { u.UserId, u.Day }); // one count per user per day
                 entity.Property(u => u.UserId).HasMaxLength(100);
+            });
+
+            modelBuilder.Entity<AppleAccount>(entity =>
+            {
+                entity.HasKey(a => a.Sub);
+                entity.Property(a => a.Sub).HasMaxLength(100);
+                entity.HasIndex(a => a.UserId).IsUnique(); // a beta ID is claimed by one Apple account at most
+                entity.Property(a => a.UserId).IsRequired().HasMaxLength(100);
             });
         }
     }

@@ -8,9 +8,10 @@ NextTrain's setup (`../NextTrain`).
 
 ## How it works
 
-- **No accounts.** The app makes up a random ID on the device and sends it as `X-User-Id`; your workouts are saved under
-  it. Settings shows it as your **restore code**: if Safari clears the site's data, or you switch phones, entering the
-  code brings your history back.
+- **Sign in with Apple** (iPhone). `POST /auth/apple` checks Apple's identity token and returns Forge's own token, sent as
+  `Authorization: Bearer`; the API turns it into the account's `X-User-Id`, which every table is keyed by. So your data
+  comes back on a new phone or after reinstalling. The first sign-in keeps the anonymous ID a beta build had made up on
+  that phone, so beta data carries over. In a browser (development), the app still sends a made-up `X-User-Id`.
 - **A workout in progress lives on the phone** (`localStorage`) until you tap Finish, so a reload or no signal at the gym
   loses nothing. Finish saves it with `PUT /workouts/{id}`, where the app made up the ID: a retry after a lost response
   can never save it twice, and editing a past workout is the same call. If you're offline, it uploads when you're back.
@@ -29,7 +30,7 @@ NextTrain's setup (`../NextTrain`).
 | DELETE | `/workouts/{id}` | Delete a workout and its sets |
 | GET | `/health` | 200 when the database is reachable, 503 when not |
 
-Everything except `/health` needs the `X-User-Id` header. Weights are in pounds. Example `PUT` body:
+Everything except `/health` and `/auth/apple` needs a sign-in token (or, until `Auth__RequireSignIn` is on, the `X-User-Id` header). Weights are in pounds. Example `PUT` body:
 
 ```json
 { "name": "Push day", "startedAt": "2026-10-10T21:00:00Z", "finishedAt": "2026-10-10T21:55:00Z",
@@ -80,7 +81,10 @@ The API scales to zero when idle, so the first request after a quiet spell waits
 longer). If that gets annoying, add a `cron` scale rule like NextTrain's to keep one instance up during the day.
 
 Production settings live in Azure, never in the repo: the connection string is the Container App secret `db-conn`, and
-`Cors__AllowedOrigins__2` adds the website's address. GitHub signs in to Azure with OIDC (the `forge-github-deploy` app,
+`Cors__AllowedOrigins__2` adds the website's address. Sign-in needs the secret `Auth__SigningKey` (32+ random
+characters; changing it signs everyone out), and Delete Account's Apple revoke needs `Auth__AppleTeamId`,
+`Auth__AppleKeyId`, and `Auth__AppleP8` (a Sign in with Apple key from developer.apple.com → Keys). Once the beta
+testers have signed in, set `Auth__RequireSignIn=true` to stop accepting the anonymous `X-User-Id`. GitHub signs in to Azure with OIDC (the `forge-github-deploy` app,
 Contributor on `forge-rg` only) using the `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` repository
 variables; `API_URL` is the address the website calls, and the `SWA_DEPLOY_TOKEN` secret uploads it. **If the API
 address changes, update `connect-src` in `Forge.Web/public/staticwebapp.config.json`**, or the website can't reach it.

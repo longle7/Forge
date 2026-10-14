@@ -1,0 +1,11 @@
+{
+  "name": "forge-apple-sign-in",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sign in with Apple for Forge's iPhone app (the community plugin's Swift package is pinned to Capacitor 7).",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  }
+}

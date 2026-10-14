@@ -36,6 +36,10 @@ builder.Services.AddHttpClient<UsdaClient>(client => client.Timeout = TimeSpan.F
 // Photo scanning: Claude reads nutrition labels and plates (see ClaudeFoodVision; needs Anthropic:ApiKey).
 builder.Services.AddSingleton<IFoodVision, ClaudeFoodVision>();
 
+// Sign in with Apple, and Forge's own token after it (see AuthController and the sign-in middleware below).
+builder.Services.AddHttpClient<IAppleSignIn, AppleSignIn>(client => client.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddSingleton<SessionTokens>();
+
 // Controllers handle the HTTP endpoints.
 builder.Services.AddControllers();
 
@@ -130,6 +134,33 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors(); // before the limiter, so a 429 carries CORS headers and the app can show its message
 app.UseRateLimiter();
+
+// Who's asking. Every controller reads the X-User-Id header, so a signed-in request ("Authorization: Bearer", see
+// SessionTokens) gets that header set to its account's UserId, replacing whatever the client sent. Requests without a
+// token still use the anonymous X-User-Id beta builds send, until Auth:RequireSignIn is turned on (once the beta
+// testers have signed in and their data is linked to their Apple accounts); then they're turned away with a 401.
+var requireSignIn = app.Configuration.GetValue("Auth:RequireSignIn", false);
+app.Use(async (context, next) =>
+{
+    var authorization = context.Request.Headers.Authorization.ToString();
+    if (authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+    {
+        var userId = await context.RequestServices.GetRequiredService<SessionTokens>().UserIdOfAsync(authorization["Bearer ".Length..]);
+        if (userId is null)
+        {
+            await Results.Problem(title: "Please sign in again.", statusCode: StatusCodes.Status401Unauthorized).ExecuteAsync(context);
+            return;
+        }
+        context.Request.Headers["X-User-Id"] = userId;
+    }
+    else if (requireSignIn && context.Request.Headers.ContainsKey("X-User-Id"))
+    {
+        await Results.Problem(title: "Please sign in.", statusCode: StatusCodes.Status401Unauthorized).ExecuteAsync(context);
+        return;
+    }
+    await next();
+});
+
 app.MapHealthChecks("/health");
 app.MapControllers(); // every [ApiController] class in Controllers/ becomes a set of endpoints
 

@@ -22,6 +22,25 @@ namespace Forge.Api.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Forge.Api.Domain.AppleAccount", b =>
+                {
+                    b.Property<string>("Sub")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Sub");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("AppleAccounts");
+                });
+
             modelBuilder.Entity("Forge.Api.Domain.Exercise", b =>
                 {
                     b.Property<int>("Id")
