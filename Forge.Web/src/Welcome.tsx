@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, useLocation } from 'react-router'
-import { primaryButton } from './components'
-import { EFFECTIVE_DATE } from './legal'
+import { isCancel, isSignedIn, onSignInChange, signIn } from './api'
+import { Notice, primaryButton } from './components'
+import { EFFECTIVE_DATE, LEGAL_PAGES } from './legal'
 
 // Which version of the terms this device agreed to. A new EFFECTIVE_DATE (legal.ts) asks again.
 const ACCEPTED_KEY = 'forge.termsAccepted'
-const LEGAL_PAGES = ['/terms', '/privacy', '/support'] // readable before agreeing
 
 function accepted() {
   try {
@@ -20,14 +20,19 @@ function accepted() {
  * and an explicit "Agree and Continue" to the Terms of Use and Privacy Policy. An agreement people actively accept
  * holds up far better than terms that are only linked somewhere.
  *
+ * On the iPhone it's also where you Sign in with Apple (one tap agrees and signs in), and it comes back if you sign out.
+ *
  * A native modal <dialog>: it traps focus and hides the app behind it from screen readers. Escape doesn't dismiss it
  * (agreeing is the way in). It steps aside on the legal pages themselves, so people can read them first.
  */
 export default function Welcome() {
   const { pathname } = useLocation()
   const [agreed, setAgreed] = useState(accepted)
+  const signedIn = useSyncExternalStore(onSignInChange, isSignedIn)
+  const [signingIn, setSigningIn] = useState(false)
+  const [error, setError] = useState<string>()
   const dialog = useRef<HTMLDialogElement>(null)
-  const open = !agreed && !LEGAL_PAGES.includes(pathname)
+  const open = (!agreed || !signedIn) && !LEGAL_PAGES.includes(pathname)
 
   useEffect(() => {
     const d = dialog.current
@@ -47,7 +52,19 @@ export default function Welcome() {
     setAgreed(true)
   }
 
-  if (agreed) return null
+  const agreeAndSignIn = async () => {
+    setSigningIn(true)
+    setError(undefined)
+    try {
+      await signIn()
+      agree()
+    } catch (e) {
+      if (!isCancel(e)) setError((e as Error).message)
+    }
+    setSigningIn(false)
+  }
+
+  if (agreed && signedIn) return null
   return (
     <dialog
       ref={dialog}
@@ -62,7 +79,10 @@ export default function Welcome() {
             Welcome to Forge
           </h2>
         </div>
-        <p>Your workouts, food, and habits in one place, with goals that keep you going. No account, no ads.</p>
+        <p>
+          Your workouts, food, and habits in one place, with goals that keep you going. No ads.
+          {!signedIn && ' Sign in with Apple so your data comes with you to a new phone.'}
+        </p>
         <p className="rounded-2xl bg-amber/15 p-3 text-[15px]">
           Forge's calorie and nutrition numbers are estimates, not medical advice. Check with a doctor before big changes to
           how you eat or exercise.
@@ -78,9 +98,18 @@ export default function Welcome() {
           </Link>
           .
         </p>
-        <button onClick={agree} className={primaryButton}>
-          Agree and Continue
-        </button>
+        {signedIn ? (
+          <button onClick={agree} className={primaryButton}>
+            Agree and Continue
+          </button>
+        ) : (
+          // Apple's own button style: black (white in dark mode), with the Apple logo (a character only Apple's fonts have).
+          <button onClick={agreeAndSignIn} disabled={signingIn} className="flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl bg-black text-[17px] font-semibold text-white disabled:opacity-60 dark:bg-white dark:text-black">
+            <span aria-hidden className="text-[20px] leading-none">{String.fromCharCode(0xf8ff)}</span>
+            {signingIn ? 'Signing In…' : 'Sign in with Apple'}
+          </button>
+        )}
+        {error && <Notice>{error}</Notice>}
       </div>
     </dialog>
   )

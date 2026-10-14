@@ -1,3 +1,6 @@
+import { Capacitor, registerPlugin } from '@capacitor/core'
+import { forgetRemembered } from './cache'
+
 // Types mirror the Forge API responses (camelCase JSON).
 
 export interface Exercise {
@@ -160,11 +163,17 @@ async function request(url: string, init?: RequestInit): Promise<Response> {
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const signedIn = token()
   const response = await request(`${API_URL}${path}`, {
     ...init,
-    // JSON bodies say so; a FormData body (a photo) lets the browser set its own multipart type.
-    headers: { ...(typeof init?.body === 'string' ? { 'Content-Type': 'application/json' } : {}), 'X-User-Id': userId(), ...init?.headers },
+    headers: {
+      // JSON bodies say so; a FormData body (a photo) lets the browser set its own multipart type.
+      ...(typeof init?.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
+      ...(signedIn ? { Authorization: `Bearer ${signedIn}` } : isNative ? {} : { 'X-User-Id': userId() }),
+      ...init?.headers,
+    },
   })
+  if (response.status === 401 && signedIn) signOut() // the token stopped working: Welcome asks you to sign in again
   if (!response.ok) {
     // ASP.NET problem details: { title, errors: { Field: ["message"] } }
     const problem = await response.json().catch(() => undefined)
@@ -247,11 +256,74 @@ export const scanLabel = (photo: Blob) => api<ScannedFood>('/scan/label', photoF
 /** Each food on a plate, with an estimated portion, read from a photo. */
 export const scanMeal = (photo: Blob) => api<ScannedFood[]>('/scan/meal', photoForm(photo))
 
-// Anonymous per-device ID that owns your workouts. Settings shows it as your restore code.
-// ponytail: whoever knows the ID can read its workouts; replace with real sign-in (e.g. Sign in with Apple) before launch.
-const USER_ID_KEY = 'forge.userId'
+// Who you are. On the iPhone: Sign in with Apple, traded for Forge's token for your account (sent as "Authorization:
+// Bearer"), so your data follows you to a new phone, or back after deleting the app. In a browser (development only):
+// an anonymous ID made up on this device, sent as X-User-Id.
+export const isNative = Capacitor.isNativePlatform()
+const TOKEN_KEY = 'forge.token'
+const USER_ID_KEY = 'forge.userId' // also what beta builds kept on the iPhone, before sign-in existed
+let sessionToken: string | null = null
 let sessionUserId: string | undefined
-export function userId(): string {
+const signInListeners = new Set<() => void>()
+
+function token(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY)
+  } catch {
+    return sessionToken // storage blocked: signed in for this visit only
+  }
+}
+
+function setToken(value: string | null) {
+  sessionToken = value
+  try {
+    if (value) localStorage.setItem(TOKEN_KEY, value)
+    else localStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // storage blocked: sessionToken covers this visit
+  }
+  signInListeners.forEach((listener) => listener())
+}
+
+/** Whether Forge can load your data: always in a browser; on the iPhone, once you've signed in. */
+export const isSignedIn = () => !isNative || !!token()
+
+/** For useSyncExternalStore: calls back when you sign in or out. */
+export function onSignInChange(listener: () => void) {
+  signInListeners.add(listener)
+  return () => void signInListeners.delete(listener)
+}
+
+// The native side: plugins/apple-sign-in. Rejects with code 'CANCELED' when you close Apple's sheet.
+const AppleSignIn = registerPlugin<{ signIn(): Promise<{ identityToken: string; authorizationCode: string }> }>('AppleSignIn')
+export const appleSignIn = () => AppleSignIn.signIn()
+export const isCancel = (error: unknown) => (error as { code?: string }).code === 'CANCELED'
+
+/**
+ * Sign in with Apple. The first time, the anonymous ID a beta build gave this phone goes along, so everything logged
+ * on the beta stays yours.
+ */
+export async function signIn() {
+  const { identityToken } = await appleSignIn()
+  let legacyUserId: string | null = null
+  try {
+    legacyUserId = localStorage.getItem(USER_ID_KEY)
+  } catch {
+    // storage blocked: no beta ID to bring along
+  }
+  const session = await api<{ token: string }>('/auth/apple', { method: 'POST', body: JSON.stringify({ identityToken, legacyUserId }) })
+  forgetRemembered() // last-known data may be another account's
+  forgetUserId() // carried over now (or someone else's already)
+  setToken(session.token)
+}
+
+/** Settings → Sign Out, or a token that stopped working. Your data stays on the server for when you sign in again. */
+export function signOut() {
+  forgetRemembered()
+  setToken(null)
+}
+
+function userId(): string {
   try {
     let id = localStorage.getItem(USER_ID_KEY)
     if (!id) {
@@ -260,36 +332,23 @@ export function userId(): string {
     }
     return id
   } catch {
-    return (sessionUserId ??= randomId()) // storage blocked: workouts are reachable for this visit only
+    return (sessionUserId ??= randomId()) // storage blocked: data is reachable for this visit only
   }
 }
 
-/** A restore code as typed or pasted, cleaned up; undefined if it can't be one (randomId's two shapes). */
-export function parseRestoreCode(text: string): string | undefined {
-  const code = text.trim().toLowerCase()
-  return /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32})$/.test(code) ? code : undefined
-}
+/**
+ * Settings → Delete Account: everything saved for you, gone from the server. On the iPhone, `appleCode` (from a fresh
+ * Sign in with Apple) lets the server revoke Forge's access at Apple too.
+ */
+export const deleteMyData = (appleCode?: string) => api<void>('/me', { method: 'DELETE', headers: appleCode ? { 'X-Apple-Code': appleCode } : {} })
 
-/** Settings → Delete my data: everything saved under this device's ID, gone from the server. */
-export const deleteMyData = () => api<void>('/me', { method: 'DELETE' })
-
-/** After Delete my data: the next request starts a fresh anonymous ID. */
+/** After Delete my data in a browser: the next request starts a fresh anonymous ID. */
 export function forgetUserId() {
   sessionUserId = undefined
   try {
     localStorage.removeItem(USER_ID_KEY)
   } catch {
     // storage blocked: nothing stored to forget
-  }
-}
-
-/** Settings → Use a restore code: from now on this device shows the workouts saved under that code. */
-export function switchUserId(code: string) {
-  sessionUserId = code
-  try {
-    localStorage.setItem(USER_ID_KEY, code)
-  } catch {
-    // storage blocked: the code lasts for this visit (sessionUserId)
   }
 }
 

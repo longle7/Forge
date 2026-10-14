@@ -13,7 +13,9 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'http://localhost:5212',
+        // API_TARGET=https://... points dev at a deployed API instead (no local SQL Server needed).
+        target: process.env.API_TARGET ?? 'http://localhost:5212',
+        changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },

@@ -60,8 +60,8 @@ export function PrivacyPage() {
     <LegalPage title="Privacy Policy">
       <p>
         Forge tracks your workouts, food, weight, and habits. It's operated by {OPERATOR} ("we", "us") and built to know as
-        little about you as possible: there are no accounts, no ads, no analytics, and we never sell or share your
-        personal information.
+        little about you as possible: you sign in with Apple, there are no ads or analytics, and we never sell or share
+        your personal information.
       </p>
 
       <Section title="What we collect, and why">
@@ -70,8 +70,12 @@ export function PrivacyPage() {
             <strong>What you log.</strong> Your workouts and weekly plan, the food you log and the meals you save, your
             weigh-ins, your habits and check-offs, your Time Out goals, and your goals with what they're worked out from
             (sex, birth year, height, weight, activity level, and your goal). We store them on our server so Forge can show
-            them to you on any device with your restore code. They're stored under a random ID made up on your device, not
-            your name, email, phone number, or Apple ID. We use them only to run Forge for you, never for advertising.
+            them to you on any iPhone you sign in on. We use them only to run Forge for you, never for advertising.
+          </li>
+          <li>
+            <strong>Your Sign in with Apple ID.</strong> When you sign in, Apple tells us a random identifier for your Apple
+            account, which is the same each time you sign in to Forge. We store it to find your data. We don't ask Apple for
+            your name or email, so we never receive them.
           </li>
           <li>
             <strong>Photos you scan.</strong> When you scan a nutrition label or a meal, the photo goes to our server and on
@@ -113,6 +117,10 @@ export function PrivacyPage() {
             <External href="https://privacy.microsoft.com/en-us/privacystatement">Microsoft's privacy statement</External>
           </li>
           <li>
+            <strong>Apple</strong> handles Sign in with Apple.{' '}
+            <External href="https://www.apple.com/legal/privacy/">Apple's privacy policy</External>
+          </li>
+          <li>
             <strong>Anthropic</strong> reads the photos you scan, only when you scan one. Under its commercial terms,
             Anthropic doesn't train its models on them.{' '}
             <External href="https://www.anthropic.com/legal/privacy">Anthropic's privacy policy</External>
@@ -124,22 +132,22 @@ export function PrivacyPage() {
       </Section>
 
       <Section title="How long we keep it">
-        <p>What you log: until you delete it (see below). Scan counts: a day each. Messages: as long as needed to answer them.</p>
+        <p>What you log and your account: until you delete them (see below). Scan counts: a day each. Messages: as long as needed to answer them.</p>
       </Section>
 
       <Section title="Your choices and rights">
         <ul className="list-disc space-y-2 pl-5">
           <li>
-            <strong>Delete your data now:</strong> Settings → Delete my data removes everything you've logged from our server
-            right away, and clears what Forge stored on this device. Deleting the app or clearing your browser removes the
-            ID from your device, but not the data saved under it on our server, so use Delete my data first.
+            <strong>Delete your account now:</strong> Settings → Delete Account removes your account and everything you've
+            logged from our server right away, revokes Forge's Sign in with Apple access, and clears what Forge stored on
+            this device. Deleting the app doesn't delete your account: sign in again and your data is still there.
           </li>
           <li>
             <strong>Access, correction, and deletion:</strong> depending on where you live (for example California, other US
             states, the European Economic Area, or the UK), you may have the right to know what personal information we
             have about you, get a copy, correct it, delete it, or object to or restrict how we use it. Email <Email />.
-            We'll answer within 30 days (45 where the law allows more time). Because we don't know who you are, we may ask
-            for your restore code, or ask you to use Delete my data, which works instantly. We won't treat you differently
+            We'll answer within 30 days (45 where the law allows more time). Because we don't know your name or email, we
+            may ask you to use Delete Account, which works instantly. We won't treat you differently
             for using these rights.
           </li>
           <li>
@@ -153,7 +161,7 @@ export function PrivacyPage() {
       <Section title="Security">
         <p>
           All connections use encryption (HTTPS), and our keys and passwords are stored as encrypted secrets, never in our
-          code. Your restore code is the key to your data: anyone who has it can see what you've logged, so keep it private.
+          code. Only someone signed in to your Apple account can see what you've logged.
         </p>
       </Section>
 
@@ -215,7 +223,7 @@ export function TermsPage() {
           <li>copy, resell, or redistribute Forge as your own service.</li>
         </ul>
         <p>
-          What you log is yours. You're responsible for what you enter, for keeping your restore code private, and you can
+          What you log is yours. You're responsible for what you enter, for keeping your Apple account secure, and you can
           delete it all at any time in Settings.
         </p>
       </Section>
@@ -284,11 +292,11 @@ export function TermsPage() {
 }
 
 const QUESTIONS: [string, ReactNode][] = [
-  ['How do I get my data on a new phone?', 'Settings shows your restore code. Copy it somewhere safe, then enter it in Settings on the new phone (Use a restore code) and everything comes back.'],
+  ['How do I get my data on a new phone?', 'Sign in with the same Apple account and everything is there. The same goes if you delete Forge and install it again.'],
   ['How are my calorie goals worked out?', 'From your details in Settings → Goals, with the Mifflin-St Jeor formula most dietitians use, adjusted for your activity and goal. You can change any number by hand. On workout days, Forge adds an estimate of what you burned.'],
   ['A photo scan got it wrong.', 'Scans are read by AI and are estimates. Check the numbers before you log, and edit them if they look off. A clear, flat, well-lit photo of the label works best.'],
   ['Why does Time Out not lock my apps yet?', "Locking apps uses Apple's Screen Time, which only an iPhone app can use. It's coming to the Forge iPhone app; the goals and their status work today."],
-  ['How do I delete my data?', 'Settings → Delete my data removes everything from our server right away and clears what Forge stored on your device. Or email us.'],
+  ['How do I delete my data?', 'Settings → Delete Account removes your account and everything you logged from our server right away, and clears what Forge stored on your device. Or email us.'],
 ]
 
 export function SupportPage() {

@@ -20,7 +20,7 @@ export function remember(key: string, data: unknown) {
   }
 }
 
-/** After switching to another restore code: what's remembered belongs to the old one. */
+/** After signing in or out: what's remembered may belong to another account. */
 export function forgetRemembered() {
   try {
     for (const k of Object.keys(localStorage).filter((k) => k.startsWith(PREFIX))) localStorage.removeItem(k)

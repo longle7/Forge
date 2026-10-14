@@ -1,5 +1,6 @@
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef, useSyncExternalStore } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router'
+import { isSignedIn, onSignInChange } from './api'
 import { ErrorBoundary, NotFound, Status } from './components'
 import { loadDraft } from './draft'
 import { Icon, type IconName } from './icons'
@@ -20,6 +21,7 @@ import TimeOutPage from './pages/TimeOutPage'
 import WorkoutDetailPage from './pages/WorkoutDetailPage'
 import WorkoutsPage from './pages/WorkoutsPage'
 import { PrivacyPage, SupportPage, TermsPage } from './pages/LegalPages'
+import { LEGAL_PAGES } from './legal'
 import Welcome from './Welcome'
 
 const TABS: { to: string; label: string; icon: IconName }[] = [
@@ -48,6 +50,9 @@ export default function App() {
 
 function Pages() {
   const { pathname } = useLocation()
+  // On the iPhone, nothing loads until you've signed in (Welcome asks), so nothing is fetched or saved for nobody.
+  const signedIn = useSyncExternalStore(onSignInChange, isSignedIn)
+  if (!signedIn && !LEGAL_PAGES.includes(pathname)) return null
   return (
     // Keyed by page so moving to another page clears a crash.
     <ErrorBoundary key={pathname}>

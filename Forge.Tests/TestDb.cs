@@ -23,6 +23,7 @@ public static class TestDb
     {
         var db = Open();
         db.Database.Migrate();
+        db.AppleAccounts.ExecuteDelete();
         db.FoodEntries.ExecuteDelete();
         db.SavedMeals.ExecuteDelete();
         db.ScanUsage.ExecuteDelete();
