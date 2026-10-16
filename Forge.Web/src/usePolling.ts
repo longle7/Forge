@@ -75,6 +75,27 @@ export function useSettled<T>(poll: PollState<T>): boolean {
   return (poll.updatedAt?.getTime() ?? 0) >= openedAt || poll.error !== undefined
 }
 
+/**
+ * A button's save or delete: `run(action)` sets `busy` while it runs and `error` to its message if it fails.
+ * `setError` shows a message of your own, like a missing field.
+ */
+export function useAction() {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string>()
+  const run = async (action: () => Promise<unknown>) => {
+    setBusy(true)
+    setError(undefined)
+    try {
+      await action()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return { busy, error, setError, run }
+}
+
 /** Current time, updated every `intervalMs` (for countdowns). */
 export function useNow(intervalMs = 1000): Date {
   const [now, setNow] = useState(() => new Date())

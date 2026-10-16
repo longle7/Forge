@@ -4,7 +4,7 @@ import { dangerButton, field, Group, Notice, Page, primaryButton, Sheet, Status,
 import { addDays, DAY_NAMES, localDate } from '../dates'
 import { completion, daysLabel, EVERY_DAY, habitStreak, SUGGESTIONS } from '../habits'
 import { Icon } from '../icons'
-import { failure, useNow, usePolling } from '../usePolling'
+import { failure, useNow, usePolling, useAction } from '../usePolling'
 import { plural } from '../workouts'
 
 
@@ -65,21 +65,14 @@ export default function HabitsPage() {
 
 function HabitSheet({ id, habit, isNew, onSaved, onClose }: { id: string; habit: HabitInput; isNew: boolean; onSaved: () => void; onClose: () => void }) {
   const [form, setForm] = useState(habit)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string>()
+  const action = useAction()
+  const { busy, error, setError } = action
   const set = (change: Partial<HabitInput>) => setForm({ ...form, ...change })
-
-  const run = async (action: () => Promise<unknown>) => {
-    setBusy(true)
-    setError(undefined)
-    try {
-      await action()
+  const run = (save: () => Promise<unknown>) =>
+    action.run(async () => {
+      await save()
       onSaved()
-    } catch (e) {
-      setError((e as Error).message)
-      setBusy(false)
-    }
-  }
+    })
 
   return (
     <Sheet title={isNew ? 'New Habit' : 'Edit Habit'} onClose={onClose}>

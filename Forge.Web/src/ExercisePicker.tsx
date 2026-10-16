@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { addExercise, MUSCLE_GROUPS, type Exercise } from './api'
 import { Notice, SearchInput, Sheet, tintedButton } from './components'
+import { useAction } from './usePolling'
 
 /**
  * Choose an exercise, or add a new one by name: for the workout logger and the plan editor. Chips narrow it to a muscle
@@ -14,8 +15,7 @@ export function ExercisePicker({ exercises, recent = [], onPick, onClose }: {
 }) {
   const [query, setQuery] = useState('')
   const [group, setGroup] = useState<string>()
-  const [adding, setAdding] = useState(false)
-  const [error, setError] = useState<string>()
+  const { busy: adding, error, run } = useAction()
 
   const q = query.trim()
   const matches = exercises.filter((e) => e.name.toLowerCase().includes(q.toLowerCase()) && (!group || e.muscleGroup === group))
@@ -23,14 +23,9 @@ export function ExercisePicker({ exercises, recent = [], onPick, onClose }: {
   const exact = exercises.some((e) => e.name.toLowerCase() === q.toLowerCase())
 
   const add = async () => {
-    setAdding(true)
-    setError(undefined)
-    try {
+    await run(async () => {
       onPick(await addExercise(q, group ?? 'Other'))
-    } catch (e) {
-      setError((e as Error).message)
-      setAdding(false)
-    }
+    })
   }
 
   return (

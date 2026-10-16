@@ -4,6 +4,7 @@ import { field, Notice, plainButton, primaryButton, Sheet } from './components'
 import { Icon, type IconName } from './icons'
 import { formatKcal } from './nutrition'
 import { giveScanConsent, hasScanConsent, shrinkPhoto } from './photo'
+import { useAction } from './usePolling'
 
 type Kind = 'label' | 'meal'
 // A scanned food while you check it: every number is text, so a field can be cleared and retyped.
@@ -109,17 +110,14 @@ function ScanTile({ icon, title, detail, onChange }: { icon: IconName; title: st
 /** Check and fix what was read, then log it: each food becomes its own entry in the chosen meal. */
 function Review({ kind, initial, date, meal, onLogged, onClose }: { kind: Kind; initial: Item[]; date: string; meal: Meal; onLogged: () => void; onClose: () => void }) {
   const [items, setItems] = useState(initial)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string>()
+  const { busy: saving, error, setError, run } = useAction()
   const change = (i: number, update: Partial<Item>) => setItems(items.map((item, j) => (j === i ? { ...item, ...update } : item)))
   const number = (text: string) => Number(text) || 0
   const total = items.reduce((sum, item) => sum + number(item.calories) * number(item.servings), 0)
 
   const add = async () => {
     if (items.some((item) => !(number(item.servings) > 0))) return setError('Each food needs a number of servings.')
-    setSaving(true)
-    setError(undefined)
-    try {
+    await run(async () => {
       for (const item of items) {
         await saveFoodEntry(randomId(), {
           date,
@@ -135,10 +133,7 @@ function Review({ kind, initial, date, meal, onLogged, onClose }: { kind: Kind; 
         })
       }
       onLogged()
-    } catch (e) {
-      setError((e as Error).message)
-      setSaving(false)
-    }
+    })
   }
 
   const mealLabel = MEALS.find((m) => m.id === meal)!.label

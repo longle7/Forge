@@ -5,7 +5,7 @@ import { Card, dangerButton, field, Notice, NotFound, Page, primaryButton, Statu
 import { DAY_NAMES } from '../dates'
 import { ExercisePicker } from '../ExercisePicker'
 import { Icon } from '../icons'
-import { usePolling } from '../usePolling'
+import { usePolling, useAction } from '../usePolling'
 
 const BACK = { to: '/workouts', label: 'Workouts' }
 const NAME_IDEAS = ['Push Day', 'Pull Day', 'Leg Day', 'Upper Body', 'Lower Body', 'Full Body']
@@ -33,8 +33,7 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
   const [items, setItems] = useState<PlanExercise[]>(existing?.exercises ?? [])
   const [picking, setPicking] = useState(false)
   const [added, setAdded] = useState<Exercise[]>([]) // made in the picker, before the list reloads
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<string>()
+  const { busy: saving, error: message, setError: setMessage, run } = useAction()
   const names = new Map([...exercises, ...added].map((e) => [e.id, e.name]))
   const cardio = new Set([...exercises, ...added].filter(isCardio).map((e) => e.id))
 
@@ -53,15 +52,10 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
   const save = async () => {
     if (!name.trim()) return setMessage('Give this day a name, like Push Day.')
     if (items.length === 0) return setMessage('Add at least one exercise, or make it a rest day.')
-    setSaving(true)
-    setMessage(undefined)
-    try {
+    await run(async () => {
       await savePlanDay(day, { name: name.trim(), exercises: items })
       navigate('/workouts')
-    } catch (error) {
-      setMessage((error as Error).message)
-      setSaving(false)
-    }
+    })
   }
 
   const rest = async () => {

@@ -22,7 +22,7 @@ import { FAT, RING } from '../colors'
 import { Icon } from '../icons'
 import { dayGoals, exerciseCalories, formatKcal, remaining, servingLabel, totals, weightOn } from '../nutrition'
 import { isRestDay } from '../plan'
-import { failure, useNow, usePolling } from '../usePolling'
+import { failure, useNow, usePolling, useAction } from '../usePolling'
 
 /**
  * The Calories tab: a day's food by meal, and what's left of its calories (Goal − Food + Exercise) and macros. A meal
@@ -227,21 +227,15 @@ const Part = ({ label, value }: { label: string; value: number }) => (
 /** Saves a meal's foods under a name, to log them all again in one tap from Add Food → Meals. */
 function SaveMealSheet({ foods, onSaved, onClose }: { foods: FoodEntry[]; onSaved: (name: string) => void; onClose: () => void }) {
   const [name, setName] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string>()
+  const { busy: saving, error, setError, run } = useAction()
 
   const save = async () => {
     if (!name.trim()) return setError('Give it a name, like Usual breakfast.')
-    setSaving(true)
-    setError(undefined)
-    try {
+    await run(async () => {
       const items = foods.map((f) => ({ name: f.name, serving: f.serving, servings: f.servings, calories: f.calories, protein: f.protein, carbs: f.carbs, fat: f.fat }))
       await saveSavedMeal(randomId(), { name: name.trim(), items })
       onSaved(name.trim())
-    } catch (e) {
-      setError((e as Error).message)
-      setSaving(false)
-    }
+    })
   }
 
   return (

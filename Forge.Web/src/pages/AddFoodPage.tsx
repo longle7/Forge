@@ -19,7 +19,7 @@ import { localDate } from '../dates'
 import { FoodSheet, type FoodChoice } from '../FoodSheet'
 import { Icon } from '../icons'
 import { ScanFlow } from '../ScanFlow'
-import { failure, useNow, usePolling } from '../usePolling'
+import { failure, useNow, usePolling, useAction } from '../usePolling'
 import { servingLabel, totals } from '../nutrition'
 
 type Tab = 'search' | 'recent' | 'meals' | 'quick'
@@ -153,19 +153,7 @@ function RecentFoods({ onChoose }: { onChoose: (entry: FoodEntry) => void }) {
 
 function SavedMeals({ onLog }: { onLog: (meal: SavedMeal) => Promise<void> }) {
   const meals = usePolling(getSavedMeals, '/saved-meals')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string>()
-
-  const act = async (work: () => Promise<void>) => {
-    setBusy(true)
-    setError(undefined)
-    try {
-      await work()
-    } catch (e) {
-      setError((e as Error).message)
-    }
-    setBusy(false)
-  }
+  const { busy, error, run: act } = useAction()
   const remove = (meal: SavedMeal) => {
     if (!confirm(`Delete ${meal.name}? Foods you logged from it stay logged.`)) return
     void act(async () => {
@@ -199,21 +187,13 @@ function SavedMeals({ onLog }: { onLog: (meal: SavedMeal) => Promise<void> }) {
 
 function QuickAdd({ onAdd }: { onAdd: (food: FoodChoice) => Promise<void> }) {
   const [form, setForm] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string>()
+  const { busy: saving, error, setError, run } = useAction()
   const set = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value })
   const number = (text: string) => Number(text) || 0
 
   const add = async () => {
     if (!(number(form.calories) > 0)) return setError('Enter the calories.')
-    setSaving(true)
-    setError(undefined)
-    try {
-      await onAdd({ name: form.name.trim() || 'Quick add', serving: '1 serving', calories: number(form.calories), protein: number(form.protein), carbs: number(form.carbs), fat: number(form.fat) })
-    } catch (e) {
-      setError((e as Error).message)
-      setSaving(false)
-    }
+    await run(() => onAdd({ name: form.name.trim() || 'Quick add', serving: '1 serving', calories: number(form.calories), protein: number(form.protein), carbs: number(form.carbs), fat: number(form.fat) }))
   }
 
   return (
