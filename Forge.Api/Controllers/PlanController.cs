@@ -43,15 +43,6 @@ namespace Forge.Api.Controllers
             PlanDayRequest request,
             [FromHeader(Name = "X-User-Id"), Required, MaxLength(100)] string userId)
         {
-            if (request.Exercises.Count == 0)
-            {
-                ModelState.AddModelError(nameof(request.Exercises), "Add at least one exercise, or make it a rest day.");
-            }
-            else if (request.Exercises.Count > MaxExercises)
-            {
-                ModelState.AddModelError(nameof(request.Exercises), $"A day can have up to {MaxExercises} exercises.");
-            }
-
             var exerciseIds = request.Exercises.Select(e => e.ExerciseId).Distinct().ToList();
             var known = await _db.Exercises.CountAsync(e => exerciseIds.Contains(e.Id) && (e.UserId == null || e.UserId == userId));
             if (known != exerciseIds.Count)
@@ -96,7 +87,8 @@ namespace Forge.Api.Controllers
 
     public record PlanDayRequest(
         [Required, MaxLength(50)] string Name,
-        [Required] List<PlanExerciseDto> Exercises);
+        [Required, MinLength(1, ErrorMessage = "Add at least one exercise, or make it a rest day."),
+         MaxLength(PlanController.MaxExercises, ErrorMessage = "A day can have up to {1} exercises.")] List<PlanExerciseDto> Exercises);
 
     public record PlanExerciseDto(
         int ExerciseId,

@@ -14,8 +14,6 @@ namespace Forge.Api.Controllers
     [Route("food-log")]
     public class FoodLogController : ControllerBase
     {
-        public static readonly string[] Meals = { "breakfast", "lunch", "dinner", "snack" };
-        public static readonly string[] Sources = { "manual", "search", "label", "photo" };
         public const int MaxDaysPerRequest = 400;
         public const int RecentFoods = 30;
 
@@ -88,13 +86,6 @@ namespace Forge.Api.Controllers
                 return NotFound(); // someone else's: the same answer as a missing one
             }
 
-            if (!Meals.Contains(request.Meal)) ModelState.AddModelError(nameof(request.Meal), $"Meal must be one of {string.Join(", ", Meals)}.");
-            if (request.Source is not null && !Sources.Contains(request.Source)) ModelState.AddModelError(nameof(request.Source), $"Source must be one of {string.Join(", ", Sources)}.");
-            if (!ModelState.IsValid)
-            {
-                return ValidationProblem();
-            }
-
             var created = entry is null;
             if (entry is null)
             {
@@ -129,7 +120,7 @@ namespace Forge.Api.Controllers
 
     public record FoodEntryRequest(
         DateOnly Date,
-        [Required] string Meal,
+        [Required, AllowedValues("breakfast", "lunch", "dinner", "snack", ErrorMessage = "Meal must be breakfast, lunch, dinner, or snack.")] string Meal,
         [Required, MaxLength(200)] string Name,
         [MaxLength(100)] string? Serving,
         [Range(0.01, 100)] decimal Servings,
@@ -137,7 +128,7 @@ namespace Forge.Api.Controllers
         [Range(0, 1000)] decimal Protein,
         [Range(0, 1000)] decimal Carbs,
         [Range(0, 1000)] decimal Fat,
-        string? Source = null);
+        [AllowedValues("manual", "search", "label", "photo", null, ErrorMessage = "Source must be manual, search, label, or photo.")] string? Source = null);
 
     public record FoodEntryDto(
         Guid Id,

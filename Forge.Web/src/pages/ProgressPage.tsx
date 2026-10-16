@@ -285,7 +285,7 @@ function RecordsCard({ workouts, from, names, period }: { workouts: Workout[]; f
   const records = personalRecords(workouts)
   const prs = workouts
     .filter((w) => workoutDay(w) >= from)
-    .flatMap((w) => [...(records.get(w.id) ?? [])].map((i) => ({ workout: w, set: w.sets[i] })))
+    .flatMap((w) => [...(records.get(w.id) ?? [])].map((set) => ({ workout: w, set })))
   return (
     <Card>
       <CardTitle icon="trophy" title="Personal records" />

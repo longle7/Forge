@@ -72,12 +72,17 @@ public class PlanEndpointTests : IDisposable
             PushDay() with { Exercises = [new(999_999, 3, 10)] },
             PushDay() with { Exercises = [new(Bench, 0, 10)] },
             PushDay() with { Exercises = [new(Bench, 3, 101)] },
+            PushDay() with { Exercises = [.. Enumerable.Repeat(new PlanExerciseDto(Bench, 3, 10), PlanController.MaxExercises + 1)] },
         ];
 
         foreach (var plan in invalid)
         {
             Assert.Equal(HttpStatusCode.BadRequest, (await alice.PutAsJsonAsync($"/plan/{Monday}", plan)).StatusCode);
         }
+        var tooMany = await alice.PutAsJsonAsync($"/plan/{Monday}", invalid[^1]);
+        Assert.Contains($"up to {PlanController.MaxExercises} exercises", await tooMany.Content.ReadAsStringAsync());
+        var none = await alice.PutAsJsonAsync($"/plan/{Monday}", invalid[0]);
+        Assert.Contains("Add at least one exercise, or make it a rest day.", await none.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.NotFound, (await alice.PutAsJsonAsync("/plan/7", PushDay())).StatusCode);
         Assert.Empty(await PlanAsync(alice));
     }

@@ -13,10 +13,6 @@ namespace Forge.Api.Controllers
     [Route("profile")]
     public class ProfileController : ControllerBase
     {
-        public static readonly string[] Sexes = { "male", "female" };
-        public static readonly string[] Activities = { "sedentary", "light", "active", "very-active" };
-        public static readonly string[] Goals = { "lose", "maintain", "gain" };
-
         private readonly ForgeDbContext _db;
 
         public ProfileController(ForgeDbContext db)
@@ -36,9 +32,6 @@ namespace Forge.Api.Controllers
         [HttpPut]
         public async Task<ActionResult<ProfileDto>> Put(ProfileDto request, [FromHeader(Name = "X-User-Id"), Required, MaxLength(100)] string userId)
         {
-            if (!Sexes.Contains(request.Sex)) ModelState.AddModelError(nameof(request.Sex), "Sex must be male or female.");
-            if (!Activities.Contains(request.Activity)) ModelState.AddModelError(nameof(request.Activity), $"Activity must be one of {string.Join(", ", Activities)}.");
-            if (!Goals.Contains(request.Goal)) ModelState.AddModelError(nameof(request.Goal), $"Goal must be one of {string.Join(", ", Goals)}.");
             if (request.BirthYear > DateTime.UtcNow.Year - 13) ModelState.AddModelError(nameof(request.BirthYear), "Forge is for people 13 and older.");
             if (!ModelState.IsValid)
             {
@@ -76,12 +69,12 @@ namespace Forge.Api.Controllers
     }
 
     public record ProfileDto(
-        [Required] string Sex,
+        [Required, AllowedValues("male", "female", ErrorMessage = "Sex must be male or female.")] string Sex,
         [Range(1900, 2100)] int BirthYear,
         [Range(36, 96)] decimal HeightIn,
         [Range(50, 1000)] decimal StartWeight,
-        [Required] string Activity,
-        [Required] string Goal,
+        [Required, AllowedValues("sedentary", "light", "active", "very-active", ErrorMessage = "Activity must be sedentary, light, active, or very-active.")] string Activity,
+        [Required, AllowedValues("lose", "maintain", "gain", ErrorMessage = "Goal must be lose, maintain, or gain.")] string Goal,
         [Range(0, 2)] decimal Pace,
         [Range(800, 8000)] int CalorieGoal,
         [Range(0, 600)] int ProteinGoal,

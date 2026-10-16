@@ -71,18 +71,20 @@ describe('personalRecords', () => {
     const records = personalRecords([third, second, first])
 
     expect(records.get('a')).toEqual(new Set()) // first time: nothing to beat
-    expect(records.get('b')).toEqual(new Set([1])) // the 145 set, not 140 too; squat only tied
+    expect(records.get('b')).toEqual(new Set([second.sets[1]])) // the 145 set, not 140 too; squat only tied
     expect(records.get('c')).toEqual(new Set())
   })
 
   it('ranks bodyweight sets by reps', () => {
-    const records = personalRecords([workout('a', 1, [set(PULL_UP, 0, 8)]), workout('b', 2, [set(PULL_UP, 0, 10)])])
-    expect(records.get('b')).toEqual(new Set([0]))
+    const b = workout('b', 2, [set(PULL_UP, 0, 10)])
+    const records = personalRecords([workout('a', 1, [set(PULL_UP, 0, 8)]), b])
+    expect(records.get('b')).toEqual(new Set(b.sets))
   })
 
   it('ranks cardio by distance: a PR is your longest', () => {
-    const records = personalRecords([workout('a', 1, [run(3, 1700)]), workout('b', 2, [run(3.1, 1800)]), workout('c', 3, [run(2, 900)])])
-    expect(records.get('b')).toEqual(new Set([0]))
+    const b = workout('b', 2, [run(3.1, 1800)])
+    const records = personalRecords([workout('a', 1, [run(3, 1700)]), b, workout('c', 3, [run(2, 900)])])
+    expect(records.get('b')).toEqual(new Set(b.sets))
     expect(records.get('c')).toEqual(new Set())
   })
 })
