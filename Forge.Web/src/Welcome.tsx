@@ -1,19 +1,14 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, useLocation } from 'react-router'
 import { isCancel, isSignedIn, onSignInChange, signIn } from './api'
+import { read, write } from './cache'
 import { Notice, primaryButton } from './components'
 import { EFFECTIVE_DATE, LEGAL_PAGES } from './legal'
 
 // Which version of the terms this device agreed to. A new EFFECTIVE_DATE (legal.ts) asks again.
 const ACCEPTED_KEY = 'forge.termsAccepted'
 
-function accepted() {
-  try {
-    return localStorage.getItem(ACCEPTED_KEY) === EFFECTIVE_DATE
-  } catch {
-    return false // storage blocked: ask each visit, never assume agreement
-  }
-}
+const accepted = () => read(ACCEPTED_KEY) === EFFECTIVE_DATE // storage blocked: asked each visit, never assumed
 
 /**
  * First launch (and whenever the terms change): what Forge is, that its numbers are estimates and not medical advice,
@@ -44,11 +39,7 @@ export default function Welcome() {
   }, [open])
 
   const agree = () => {
-    try {
-      localStorage.setItem(ACCEPTED_KEY, EFFECTIVE_DATE)
-    } catch {
-      // Can't remember it; it still counts for this visit.
-    }
+    write(ACCEPTED_KEY, EFFECTIVE_DATE) // if it can't be stored, it still counts for this visit
     setAgreed(true)
   }
 

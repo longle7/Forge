@@ -1,5 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
-import { forgetRemembered } from './cache'
+import { forgetRemembered, read, write } from './cache'
 
 // Types mirror the Forge API responses (camelCase JSON).
 
@@ -127,9 +127,11 @@ export interface FoodResult extends Nutrition {
   serving: string
 }
 
-/** A day's food totals. */
-export interface DayTotals extends Nutrition {
+/** A day's calories and protein (what Progress charts). */
+export interface DayTotals {
   date: string
+  calories: number
+  protein: number
 }
 
 /**
@@ -266,22 +268,12 @@ let sessionToken: string | null = null
 let sessionUserId: string | undefined
 const signInListeners = new Set<() => void>()
 
-function token(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY)
-  } catch {
-    return sessionToken // storage blocked: signed in for this visit only
-  }
-}
+// sessionToken covers this visit when storage is blocked.
+const token = (): string | null => read(TOKEN_KEY) ?? sessionToken
 
 function setToken(value: string | null) {
   sessionToken = value
-  try {
-    if (value) localStorage.setItem(TOKEN_KEY, value)
-    else localStorage.removeItem(TOKEN_KEY)
-  } catch {
-    // storage blocked: sessionToken covers this visit
-  }
+  write(TOKEN_KEY, value)
   signInListeners.forEach((listener) => listener())
 }
 
@@ -305,12 +297,7 @@ export const isCancel = (error: unknown) => (error as { code?: string }).code ==
  */
 export async function signIn() {
   const { identityToken } = await appleSignIn()
-  let legacyUserId: string | null = null
-  try {
-    legacyUserId = localStorage.getItem(USER_ID_KEY)
-  } catch {
-    // storage blocked: no beta ID to bring along
-  }
+  const legacyUserId = read(USER_ID_KEY)
   const session = await api<{ token: string }>('/auth/apple', { method: 'POST', body: JSON.stringify({ identityToken, legacyUserId }) })
   forgetRemembered() // last-known data may be another account's
   forgetUserId() // carried over now (or someone else's already)
@@ -323,17 +310,13 @@ export function signOut() {
   setToken(null)
 }
 
+// Storage blocked: the made-up ID (and so the data) lasts for this visit only.
 function userId(): string {
-  try {
-    let id = localStorage.getItem(USER_ID_KEY)
-    if (!id) {
-      id = randomId()
-      localStorage.setItem(USER_ID_KEY, id)
-    }
-    return id
-  } catch {
-    return (sessionUserId ??= randomId()) // storage blocked: data is reachable for this visit only
+  if (!sessionUserId) {
+    sessionUserId = read(USER_ID_KEY) ?? randomId()
+    write(USER_ID_KEY, sessionUserId)
   }
+  return sessionUserId
 }
 
 /**
@@ -345,11 +328,7 @@ export const deleteMyData = (appleCode?: string) => api<void>('/me', { method: '
 /** After Delete my data in a browser: the next request starts a fresh anonymous ID. */
 export function forgetUserId() {
   sessionUserId = undefined
-  try {
-    localStorage.removeItem(USER_ID_KEY)
-  } catch {
-    // storage blocked: nothing stored to forget
-  }
+  write(USER_ID_KEY, null)
 }
 
 // randomUUID needs HTTPS; getRandomValues also works over plain HTTP (e.g. testing on a phone over Wi-Fi).

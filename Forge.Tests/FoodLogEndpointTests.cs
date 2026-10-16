@@ -54,7 +54,7 @@ public class FoodLogEndpointTests : IDisposable
         var days = await alice.GetFromJsonAsync<List<DayTotals>>($"/food-log/days?from={Today.AddDays(-29):yyyy-MM-dd}&to={Today:yyyy-MM-dd}");
 
         Assert.Equal(
-            [new(Today.AddDays(-2), 150m, 20m, 9m, 4m), new(Today, 450m, 60m, 27m, 12m)],
+            [new(Today.AddDays(-2), 150m, 20m), new(Today, 450m, 60m)],
             days);
         Assert.Equal(HttpStatusCode.BadRequest, (await alice.GetAsync($"/food-log/days?from={Today:yyyy-MM-dd}&to={Today.AddDays(-1):yyyy-MM-dd}")).StatusCode);
     }

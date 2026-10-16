@@ -15,14 +15,14 @@ import {
   saveSavedMeal,
   type FoodEntry,
 } from '../api'
-import { Card, field, Group, MacroBar, Notice, Page, primaryButton, Rings, Sheet, Status, tintedButton } from '../components'
+import { Card, field, FoodRow, Group, MacroBar, Notice, Page, primaryButton, Rings, Sheet, Status, tintedButton } from '../components'
 import { addDays, dayLabel, localDate, workoutDay } from '../dates'
 import { FoodSheet } from '../FoodSheet'
 import { FAT, RING } from '../colors'
 import { Icon } from '../icons'
-import { dayGoals, exerciseCalories, formatKcal, remaining, totals, weightOn } from '../nutrition'
-import { planFor } from '../plan'
-import { failure, useNow, usePolling } from '../usePolling'
+import { dayGoals, exerciseCalories, formatKcal, remaining, servingLabel, totals, weightOn } from '../nutrition'
+import { isRestDay } from '../plan'
+import { failure, useNow, usePolling, useAction } from '../usePolling'
 
 /**
  * The Calories tab: a day's food by meal, and what's left of its calories (Goal − Food + Exercise) and macros. A meal
@@ -48,7 +48,7 @@ export default function CaloriesPage() {
   const [message, setMessage] = useState<string>()
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
 
-  const restDay = !!plan.data?.length && !planFor(plan.data, date)
+  const restDay = isRestDay(plan.data, date)
   const goals = profile.data && dayGoals(profile.data, restDay)
   const food = totals(log.data ?? [])
   const weight = weightOn(weighIns.data, date, profile.data?.startWeight ?? 0)
@@ -127,16 +127,13 @@ export default function CaloriesPage() {
           return (
             <Group key={id} title={entries.length ? `${label} · ${formatKcal(mealTotal)} kcal` : label}>
               {entries.map((entry) => (
-                <button key={entry.id} onClick={() => setEditing(entry)} className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left active:bg-fill">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate">{entry.name}</span>
-                    <span className="block truncate text-[15px] text-muted">
-                      {entry.servings === 1 ? entry.serving : `${entry.servings} × ${entry.serving}`}
-                      {entry.protein > 0 && ` · ${Math.round(entry.protein * entry.servings)} g protein`}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-muted tabular-nums">{formatKcal(entry.calories * entry.servings)}</span>
-                </button>
+                <FoodRow
+                  key={entry.id}
+                  name={entry.name}
+                  detail={`${servingLabel(entry)}${entry.protein > 0 ? ` · ${Math.round(entry.protein * entry.servings)} g protein` : ''}`}
+                  calories={entry.calories * entry.servings}
+                  onClick={() => setEditing(entry)}
+                />
               ))}
               {entries.length === 0 && earlier.length > 0 && (
                 <button onClick={() => copy(earlier)} disabled={copying} className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-coral-ink active:bg-fill disabled:opacity-50">
@@ -230,21 +227,15 @@ const Part = ({ label, value }: { label: string; value: number }) => (
 /** Saves a meal's foods under a name, to log them all again in one tap from Add Food → Meals. */
 function SaveMealSheet({ foods, onSaved, onClose }: { foods: FoodEntry[]; onSaved: (name: string) => void; onClose: () => void }) {
   const [name, setName] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string>()
+  const { busy: saving, error, setError, run } = useAction()
 
   const save = async () => {
     if (!name.trim()) return setError('Give it a name, like Usual breakfast.')
-    setSaving(true)
-    setError(undefined)
-    try {
+    await run(async () => {
       const items = foods.map((f) => ({ name: f.name, serving: f.serving, servings: f.servings, calories: f.calories, protein: f.protein, carbs: f.carbs, fat: f.fat }))
       await saveSavedMeal(randomId(), { name: name.trim(), items })
       onSaved(name.trim())
-    } catch (e) {
-      setError((e as Error).message)
-      setSaving(false)
-    }
+    })
   }
 
   return (

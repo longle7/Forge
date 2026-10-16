@@ -1,3 +1,5 @@
+import { read, write } from './cache'
+
 // Photos for scanning, made small before they leave the phone: a 12-megapixel photo is several MB, but Claude reads a
 // label just as well at 1,024 px, and a ~200 KB upload is quick on gym or store signal.
 
@@ -26,18 +28,6 @@ export async function shrinkPhoto(file: Blob): Promise<Blob> {
 const CONSENT_KEY = 'forge.scanConsent'
 
 /** Whether you've agreed to photos going to Anthropic's Claude to be read (asked once, before the first scan). */
-export function hasScanConsent(): boolean {
-  try {
-    return localStorage.getItem(CONSENT_KEY) === '1'
-  } catch {
-    return false // storage blocked: ask each time
-  }
-}
+export const hasScanConsent = () => read(CONSENT_KEY) === '1' // storage blocked: asked each time
 
-export function giveScanConsent() {
-  try {
-    localStorage.setItem(CONSENT_KEY, '1')
-  } catch {
-    // storage blocked: it counts for this photo
-  }
-}
+export const giveScanConsent = () => write(CONSENT_KEY, '1')

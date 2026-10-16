@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { MEALS, type Meal, type Nutrition } from './api'
 import { dangerButton, field, primaryButton, Segmented, Sheet } from './components'
 import { formatKcal } from './nutrition'
+import { useAction } from './usePolling'
 
 export type FoodChoice = Nutrition & { name: string; brand?: string | null; serving: string }
 
@@ -23,21 +24,9 @@ export function FoodSheet({ title, food, initialServings = 1, initialMeal, submi
 }) {
   const [servings, setServings] = useState(String(initialServings))
   const [meal, setMeal] = useState(initialMeal)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string>()
+  const { busy, error, run } = useAction()
   const amount = Number(servings)
   const valid = amount > 0 && amount <= 100
-
-  const run = async (action: () => Promise<void>) => {
-    setBusy(true)
-    setError(undefined)
-    try {
-      await action()
-    } catch (e) {
-      setError((e as Error).message)
-      setBusy(false)
-    }
-  }
 
   return (
     <Sheet title={title} onClose={onClose}>

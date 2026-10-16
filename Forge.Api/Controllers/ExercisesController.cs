@@ -9,7 +9,6 @@ namespace Forge.Api.Controllers
     /// <summary>
     /// The exercises you can log: the built-in ones plus any you added. Yours are visible only to you (the X-User-Id
     /// header, see WorkoutsController).
-    /// ponytail: header is trusted as-is, replace with the authenticated user's ID when login exists.
     /// </summary>
     [ApiController]
     [Route("exercises")]

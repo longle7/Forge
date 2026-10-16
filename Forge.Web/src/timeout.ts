@@ -1,4 +1,6 @@
-import type { Profile } from './api'
+import type { FoodEntry, Habit, PlanDay, Profile, WeighIn, Workout } from './api'
+import { today as habitsToday } from './habits'
+import { isRestDay, planFor, workedOut } from './plan'
 import { plural } from './workouts'
 
 /** What today looks like, as far as Time Out's goals go. */
@@ -10,6 +12,23 @@ export interface TodaySoFar {
   weighedIn: boolean
   habitsDue?: number // habits scheduled today
   habitsDone?: number
+}
+
+/** TodaySoFar from what's loaded (anything still loading counts as nothing yet). */
+export function todaySoFar(
+  { plan, workouts, food, weighIns, habits }: { plan?: PlanDay[]; workouts?: Workout[]; food?: FoodEntry[]; weighIns?: WeighIn[]; habits?: Habit[] },
+  today: string,
+): TodaySoFar {
+  const { due, done } = habitsToday(habits, today)
+  return {
+    planName: planFor(plan, today)?.name,
+    restDay: isRestDay(plan, today),
+    workedOut: workedOut(workouts, today),
+    meals: new Set((food ?? []).map((e) => e.meal)).size,
+    weighedIn: (weighIns ?? []).some((w) => w.date === today),
+    habitsDue: due.length,
+    habitsDone: done,
+  }
 }
 
 export interface UnlockGoal {

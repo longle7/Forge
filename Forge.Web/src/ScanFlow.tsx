@@ -4,6 +4,7 @@ import { field, Notice, plainButton, primaryButton, Sheet } from './components'
 import { Icon, type IconName } from './icons'
 import { formatKcal } from './nutrition'
 import { giveScanConsent, hasScanConsent, shrinkPhoto } from './photo'
+import { useAction } from './usePolling'
 
 type Kind = 'label' | 'meal'
 // A scanned food while you check it: every number is text, so a field can be cleared and retyped.
@@ -51,8 +52,8 @@ export function ScanFlow({ date, meal, onLogged }: { date: string; meal: Meal; o
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
-        <ScanTile kind="label" icon="camera" title="Scan a Label" detail="Reads the Nutrition Facts" onChange={choose('label')} />
-        <ScanTile kind="meal" icon="sparkles" title="Snap a Meal" detail="Estimates each food" onChange={choose('meal')} />
+        <ScanTile icon="camera" title="Scan a Label" detail="Reads the Nutrition Facts" onChange={choose('label')} />
+        <ScanTile icon="sparkles" title="Snap a Meal" detail="Estimates each food" onChange={choose('meal')} />
       </div>
       {error && <Notice>{error}</Notice>}
 
@@ -92,7 +93,7 @@ export function ScanFlow({ date, meal, onLogged }: { date: string; meal: Meal; o
   )
 }
 
-function ScanTile({ kind, icon, title, detail, onChange }: { kind: Kind; icon: IconName; title: string; detail: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void }) {
+function ScanTile({ icon, title, detail, onChange }: { icon: IconName; title: string; detail: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void }) {
   return (
     <label className="block cursor-pointer rounded-2xl bg-surface p-4 shadow-[0_1px_2px_rgb(42_31_26/0.06)] focus-within:ring-2 focus-within:ring-coral active:scale-[0.99]">
       <span className="grid size-10 place-items-center rounded-xl bg-linear-to-br from-coral to-pink text-white">
@@ -101,7 +102,7 @@ function ScanTile({ kind, icon, title, detail, onChange }: { kind: Kind; icon: I
       <span className="mt-2 block font-semibold">{title}</span>
       <span className="block text-[13px] text-muted">{detail}</span>
       {/* No `capture`, so the iPhone offers Take Photo or the Photo Library. */}
-      <input type="file" accept="image/*" onChange={onChange} className="sr-only" aria-label={`${title}: take or choose a photo`} data-kind={kind} />
+      <input type="file" accept="image/*" onChange={onChange} className="sr-only" aria-label={`${title}: take or choose a photo`} />
     </label>
   )
 }
@@ -109,17 +110,14 @@ function ScanTile({ kind, icon, title, detail, onChange }: { kind: Kind; icon: I
 /** Check and fix what was read, then log it: each food becomes its own entry in the chosen meal. */
 function Review({ kind, initial, date, meal, onLogged, onClose }: { kind: Kind; initial: Item[]; date: string; meal: Meal; onLogged: () => void; onClose: () => void }) {
   const [items, setItems] = useState(initial)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string>()
+  const { busy: saving, error, setError, run } = useAction()
   const change = (i: number, update: Partial<Item>) => setItems(items.map((item, j) => (j === i ? { ...item, ...update } : item)))
   const number = (text: string) => Number(text) || 0
   const total = items.reduce((sum, item) => sum + number(item.calories) * number(item.servings), 0)
 
   const add = async () => {
     if (items.some((item) => !(number(item.servings) > 0))) return setError('Each food needs a number of servings.')
-    setSaving(true)
-    setError(undefined)
-    try {
+    await run(async () => {
       for (const item of items) {
         await saveFoodEntry(randomId(), {
           date,
@@ -135,10 +133,7 @@ function Review({ kind, initial, date, meal, onLogged, onClose }: { kind: Kind; 
         })
       }
       onLogged()
-    } catch (e) {
-      setError((e as Error).message)
-      setSaving(false)
-    }
+    })
   }
 
   const mealLabel = MEALS.find((m) => m.id === meal)!.label

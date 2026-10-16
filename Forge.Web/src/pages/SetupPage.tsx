@@ -5,7 +5,7 @@ import { Card, field, Group, Notice, Page, plainButton, primaryButton, Segmented
 import { localDate } from '../dates'
 import { Icon } from '../icons'
 import { ACTIVITY, calculateGoals, formatKcal, type GoalInputs } from '../nutrition'
-import { failure, useNow, usePolling } from '../usePolling'
+import { failure, useNow, usePolling, useAction } from '../usePolling'
 
 const BACK = { to: '/', label: 'Home' }
 
@@ -38,8 +38,7 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
   const [restDayAdjust, setRestDayAdjust] = useState(existing?.restDayCalorieAdjust ?? 0)
   // Numbers you adjusted by hand; null means "use the calculated ones". Kept if you'd adjusted them before.
   const [custom, setCustom] = useState<Nutrition | null>(() => (existing && adjusted(existing, year) ? goalsOf(existing) : null))
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<string>()
+  const { busy: saving, error: message, setError: setMessage, run } = useAction()
 
   const inputs = validInputs({ sex, birthYear, feet, inches, weight, activity, goal, pace }, year)
   const calculated = inputs && calculateGoals(inputs, year)
@@ -47,9 +46,7 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
 
   const save = async () => {
     if (!inputs || !goals) return setMessage('Fill in your details above to work out your goals.')
-    setSaving(true)
-    setMessage(undefined)
-    try {
+    await run(async () => {
       await saveProfile({
         sex,
         birthYear: inputs.birthYear,
@@ -71,10 +68,7 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
       // The first setup's weight starts your weight chart.
       if (!existing) await saveWeighIn(localDate(now), inputs.weight).catch(() => {})
       navigate('/', { replace: true })
-    } catch (error) {
-      setMessage((error as Error).message)
-      setSaving(false)
-    }
+    })
   }
 
   return (

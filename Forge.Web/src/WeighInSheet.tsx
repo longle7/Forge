@@ -1,26 +1,21 @@
 import { useState, type FormEvent } from 'react'
 import { saveWeighIn } from './api'
 import { field, primaryButton, Sheet } from './components'
+import { useAction } from './usePolling'
 
 /** Log today's weight (from Home or Progress). Calls `onSaved` once it's saved; the owner closes the sheet. */
 export function WeighInSheet({ day, current, onSaved, onClose }: { day: string; current?: number; onSaved: () => void; onClose: () => void }) {
   const [weight, setWeight] = useState(current ? String(current) : '')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string>()
+  const { busy: saving, error, setError, run } = useAction()
 
   const save = async (event: FormEvent) => {
     event.preventDefault()
     const pounds = Number(weight)
     if (!(pounds >= 50 && pounds <= 1000)) return setError('Enter your weight in pounds.')
-    setSaving(true)
-    setError(undefined)
-    try {
+    await run(async () => {
       await saveWeighIn(day, Math.round(pounds * 10) / 10)
       onSaved()
-    } catch (e) {
-      setError((e as Error).message)
-      setSaving(false)
-    }
+    })
   }
 
   return (

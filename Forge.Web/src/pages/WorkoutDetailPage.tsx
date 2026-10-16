@@ -36,8 +36,8 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
   const [message, setMessage] = useState<string>()
   const [deleting, setDeleting] = useState(false)
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
-  // PRs are indexes into workout.sets; groupSets keeps the same set objects, so look them up by object.
-  const prs = new Set([...(personalRecords(workouts).get(workout.id) ?? [])].map((i) => workout.sets[i]))
+  // groupSets keeps the same set objects, so PRs are looked up by object.
+  const prs = personalRecords(workouts).get(workout.id) ?? new Set()
 
   // Repeat and Edit both open a workout in the logger, which holds one workout at a time.
   const open = (draft: Draft) => {

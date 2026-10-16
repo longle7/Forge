@@ -5,11 +5,9 @@ import { Card, Page, PrBadge, primaryButton, Rings, SectionTitle, Status } from 
 import { dayLabel, localDate, workoutDay } from '../dates'
 import { RING } from '../colors'
 import { Icon } from '../icons'
-import { today as habitsToday } from '../habits'
 import { HabitsCard } from '../HabitsCard'
 import { dayGoals, exerciseCalories, formatKcal, remaining, totals, weekChange, weightOn } from '../nutrition'
-import { planFor, workedOut } from '../plan'
-import { isUnlocked, unlockGoals } from '../timeout'
+import { isUnlocked, todaySoFar, unlockGoals } from '../timeout'
 import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
 import { formatDay, formatDuration, formatWeight, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
@@ -30,9 +28,8 @@ export default function HomePage() {
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
 
   const goals = profile.data
-  const planned = planFor(plan.data, today)
-  const restDay = !planned && (plan.data?.length ?? 0) > 0
-  const done = workedOut(workouts.data, today)
+  const day = todaySoFar({ plan: plan.data, workouts: workouts.data, food: food.data, weighIns: weighIns.data, habits: habits.data }, today)
+  const { planName, restDay, workedOut: done } = day
   const eaten = totals(food.data ?? []).calories
   const weight = weightOn(weighIns.data, today, goals?.startWeight ?? 0)
   const exercise = (workouts.data ?? []).filter((w) => workoutDay(w) === today).reduce((sum, w) => sum + exerciseCalories(w, weight, names), 0)
@@ -44,18 +41,8 @@ export default function HomePage() {
   const last = workouts.data?.[0]
   const prs = last ? (personalRecords(workouts.data!).get(last.id)?.size ?? 0) : 0
 
-  const moveDetail = planned ? `${planned.name}${done ? ' done' : ' to do'}` : restDay ? 'Rest day' : done ? 'Workout done' : 'No workout yet'
-  const unlock = goals
-    ? unlockGoals(goals, {
-        planName: planned?.name,
-        restDay,
-        workedOut: done,
-        meals: new Set((food.data ?? []).map((e) => e.meal)).size,
-        weighedIn: latestWeighIn?.date === today,
-        habitsDue: habitsToday(habits.data, today).due.length,
-        habitsDone: habitsToday(habits.data, today).done,
-      })
-    : []
+  const moveDetail = planName ? `${planName}${done ? ' done' : ' to do'}` : restDay ? 'Rest day' : done ? 'Workout done' : 'No workout yet'
+  const unlock = goals ? unlockGoals(goals, day) : []
   const met = unlock.filter((g) => g.met).length
   const rings = [
     { label: 'Move', value: done || restDay ? 1 : 0, color: RING.move, detail: moveDetail, to: '/workouts' },

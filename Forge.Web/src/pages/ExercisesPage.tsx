@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { addExercise, getExercises, getWorkouts, isCardio, MUSCLE_GROUPS } from '../api'
 import { Card, field, Group, Page, primaryButton, Row, SearchInput, Status } from '../components'
-import { failure, usePolling } from '../usePolling'
+import { failure, usePolling, useAction } from '../usePolling'
 import { bestSet, formatCardio, formatSet } from '../workouts'
 
 /** Every exercise by muscle group with your best set in each, and adding your own (Workouts → Exercises). */
@@ -47,20 +47,14 @@ function AddExercise({ initialName }: { initialName: string }) {
   const navigate = useNavigate()
   const [name, setName] = useState<string>()
   const [muscleGroup, setMuscleGroup] = useState(MUSCLE_GROUPS[0])
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string>()
+  const { busy: saving, error, run } = useAction()
   const value = name ?? initialName // follows the search box until you type here
 
   const add = async () => {
-    setSaving(true)
-    setError(undefined)
-    try {
+    await run(async () => {
       const exercise = await addExercise(value.trim(), muscleGroup)
       navigate(`/workouts/exercises/${exercise.id}`)
-    } catch (e) {
-      setError((e as Error).message)
-      setSaving(false)
-    }
+    })
   }
 
   return (

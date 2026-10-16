@@ -29,23 +29,23 @@ const score = (set: WorkoutSet) =>
 const byStart = (a: Workout, b: Workout) => Date.parse(a.startedAt) - Date.parse(b.startedAt)
 
 /**
- * Each workout's PRs, as indexes into its sets: for every exercise, the workout's best set when it beats all earlier
- * workouts. The first time you do an exercise isn't a PR (there's nothing to beat).
+ * Each workout's PRs (the set objects themselves): for every exercise, the workout's best set when it beats all
+ * earlier workouts. The first time you do an exercise isn't a PR (there's nothing to beat).
  */
-export function personalRecords(workouts: Workout[]): Map<string, Set<number>> {
+export function personalRecords(workouts: Workout[]): Map<string, Set<WorkoutSet>> {
   const best = new Map<number, number>() // exerciseId → best score so far
-  const records = new Map<string, Set<number>>()
+  const records = new Map<string, Set<WorkoutSet>>()
   for (const workout of [...workouts].sort(byStart)) {
     const top = new Map<number, number>() // exerciseId → index of this workout's best set
     workout.sets.forEach((set, i) => {
       const t = top.get(set.exerciseId)
       if (t === undefined || score(set) > score(workout.sets[t])) top.set(set.exerciseId, i)
     })
-    const prs = new Set<number>()
+    const prs = new Set<WorkoutSet>()
     for (const [exerciseId, i] of top) {
       const previous = best.get(exerciseId)
       const value = score(workout.sets[i])
-      if (previous !== undefined && value > previous) prs.add(i)
+      if (previous !== undefined && value > previous) prs.add(workout.sets[i])
       if (previous === undefined || value > previous) best.set(exerciseId, value)
     }
     records.set(workout.id, prs)
