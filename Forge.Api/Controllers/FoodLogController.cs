@@ -9,7 +9,6 @@ namespace Forge.Api.Controllers
     /// <summary>
     /// What you ate, by day and meal. Like workouts, an entry's ID is made up by the app and saved with an idempotent
     /// PUT, so a retry on weak signal never logs it twice. Yours alone (the X-User-Id header, see WorkoutsController).
-    /// ponytail: header is trusted as-is, replace with the authenticated user's ID when login exists.
     /// </summary>
     [ApiController]
     [Route("food-log")]
@@ -55,12 +54,7 @@ namespace Forge.Api.Controllers
                 .Where(f => f.UserId == userId && f.Date >= from && f.Date <= to)
                 .GroupBy(f => f.Date)
                 .OrderBy(g => g.Key)
-                .Select(g => new DayTotals(
-                    g.Key,
-                    g.Sum(f => f.Calories * f.Servings),
-                    g.Sum(f => f.Protein * f.Servings),
-                    g.Sum(f => f.Carbs * f.Servings),
-                    g.Sum(f => f.Fat * f.Servings)))
+                .Select(g => new DayTotals(g.Key, g.Sum(f => f.Calories * f.Servings), g.Sum(f => f.Protein * f.Servings)))
                 .ToListAsync();
         }
 
@@ -162,5 +156,5 @@ namespace Forge.Api.Controllers
             new(f.Id, f.Date, f.Meal, f.Name, f.Serving, f.Servings, f.Calories, f.Protein, f.Carbs, f.Fat, f.Source);
     }
 
-    public record DayTotals(DateOnly Date, decimal Calories, decimal Protein, decimal Carbs, decimal Fat);
+    public record DayTotals(DateOnly Date, decimal Calories, decimal Protein);
 }

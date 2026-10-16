@@ -9,7 +9,6 @@ namespace Forge.Api.Controllers
     /// <summary>
     /// Your weekly plan: each weekday (0 = Sunday … 6 = Saturday) is a planned workout, like Monday = Push Day with
     /// Bench Press 4 × 8, or a rest day (no plan). It repeats every week. Yours alone (the X-User-Id header).
-    /// ponytail: header is trusted as-is, replace with the authenticated user's ID when login exists.
     /// </summary>
     [ApiController]
     [Route("plan")]

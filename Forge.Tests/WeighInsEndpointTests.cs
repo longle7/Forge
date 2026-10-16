@@ -21,7 +21,7 @@ public class WeighInsEndpointTests : IDisposable
     private static Task<List<WeighInResponse>> ListAsync(HttpClient client) => client.GetFromJsonAsync<List<WeighInResponse>>("/weigh-ins")!;
 
     [Fact]
-    public async Task OnePerDay_OldestFirst_AndDeletable()
+    public async Task OnePerDay_OldestFirst()
     {
         using var alice = _factory.ClientFor("alice");
         await alice.PutAsJsonAsync("/weigh-ins/2026-10-10", new WeighInRequest(184.6m));
@@ -31,10 +31,6 @@ public class WeighInsEndpointTests : IDisposable
         Assert.Equal(
             [new(new DateOnly(2026, 10, 8), 185.2m), new(new DateOnly(2026, 10, 10), 184.2m)],
             await ListAsync(alice));
-
-        Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync("/weigh-ins/2026-10-08")).StatusCode);
-        Assert.Single(await ListAsync(alice));
-        Assert.Equal(HttpStatusCode.NotFound, (await alice.DeleteAsync("/weigh-ins/2026-10-08")).StatusCode);
     }
 
     [Fact]
@@ -45,7 +41,6 @@ public class WeighInsEndpointTests : IDisposable
         await alice.PutAsJsonAsync("/weigh-ins/2026-10-10", new WeighInRequest(184.6m));
 
         Assert.Empty(await ListAsync(bob));
-        Assert.Equal(HttpStatusCode.NotFound, (await bob.DeleteAsync("/weigh-ins/2026-10-10")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await alice.PutAsJsonAsync("/weigh-ins/2026-10-10", new WeighInRequest(12))).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await alice.PutAsJsonAsync("/weigh-ins/2026-13-40", new WeighInRequest(184))).StatusCode);
     }

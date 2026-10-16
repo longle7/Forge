@@ -16,18 +16,10 @@ public class ExercisesEndpointTests : IDisposable
     public ExercisesEndpointTests()
     {
         TestDb.CreateClean().Dispose();
-        _factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(b => b.UseSetting("ConnectionStrings:DefaultConnection", TestDb.ConnectionString));
+        _factory = TestDb.Factory();
     }
 
     public void Dispose() => _factory.Dispose();
-
-    private HttpClient ClientFor(string userId)
-    {
-        var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add("X-User-Id", userId);
-        return client;
-    }
 
     private static Task<List<ExerciseResponse>> ListAsync(HttpClient client) =>
         client.GetFromJsonAsync<List<ExerciseResponse>>("/exercises")!;
@@ -35,7 +27,7 @@ public class ExercisesEndpointTests : IDisposable
     [Fact]
     public async Task BuiltIns_AreListedForEveryone_ByName()
     {
-        using var alice = ClientFor("alice");
+        using var alice = _factory.ClientFor("alice");
 
         var exercises = await ListAsync(alice);
 
@@ -48,8 +40,8 @@ public class ExercisesEndpointTests : IDisposable
     [Fact]
     public async Task CustomExercises_AreVisibleOnlyToTheirOwner()
     {
-        using var alice = ClientFor("alice");
-        using var bob = ClientFor("bob");
+        using var alice = _factory.ClientFor("alice");
+        using var bob = _factory.ClientFor("bob");
 
         var created = await alice.PostAsJsonAsync("/exercises", new ExerciseRequest(" Zercher Squat ", "Legs"));
 
@@ -68,7 +60,7 @@ public class ExercisesEndpointTests : IDisposable
     [InlineData("Zercher Squat", "Glutes")] // not a muscle group we group by
     public async Task Create_InvalidRequest_Returns400(string name, string muscleGroup)
     {
-        using var alice = ClientFor("alice");
+        using var alice = _factory.ClientFor("alice");
 
         var response = await alice.PostAsJsonAsync("/exercises", new ExerciseRequest(name, muscleGroup));
 
@@ -78,8 +70,8 @@ public class ExercisesEndpointTests : IDisposable
     [Fact]
     public async Task Create_TheSameNameTwice_Returns400_ButAnotherUserCanUseIt()
     {
-        using var alice = ClientFor("alice");
-        using var bob = ClientFor("bob");
+        using var alice = _factory.ClientFor("alice");
+        using var bob = _factory.ClientFor("bob");
         await alice.PostAsJsonAsync("/exercises", new ExerciseRequest("Zercher Squat", "Legs"));
 
         var again = await alice.PostAsJsonAsync("/exercises", new ExerciseRequest("Zercher Squat", "Legs"));

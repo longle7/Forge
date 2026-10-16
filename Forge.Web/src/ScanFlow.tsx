@@ -51,8 +51,8 @@ export function ScanFlow({ date, meal, onLogged }: { date: string; meal: Meal; o
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
-        <ScanTile kind="label" icon="camera" title="Scan a Label" detail="Reads the Nutrition Facts" onChange={choose('label')} />
-        <ScanTile kind="meal" icon="sparkles" title="Snap a Meal" detail="Estimates each food" onChange={choose('meal')} />
+        <ScanTile icon="camera" title="Scan a Label" detail="Reads the Nutrition Facts" onChange={choose('label')} />
+        <ScanTile icon="sparkles" title="Snap a Meal" detail="Estimates each food" onChange={choose('meal')} />
       </div>
       {error && <Notice>{error}</Notice>}
 
@@ -92,7 +92,7 @@ export function ScanFlow({ date, meal, onLogged }: { date: string; meal: Meal; o
   )
 }
 
-function ScanTile({ kind, icon, title, detail, onChange }: { kind: Kind; icon: IconName; title: string; detail: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void }) {
+function ScanTile({ icon, title, detail, onChange }: { icon: IconName; title: string; detail: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void }) {
   return (
     <label className="block cursor-pointer rounded-2xl bg-surface p-4 shadow-[0_1px_2px_rgb(42_31_26/0.06)] focus-within:ring-2 focus-within:ring-coral active:scale-[0.99]">
       <span className="grid size-10 place-items-center rounded-xl bg-linear-to-br from-coral to-pink text-white">
@@ -101,7 +101,7 @@ function ScanTile({ kind, icon, title, detail, onChange }: { kind: Kind; icon: I
       <span className="mt-2 block font-semibold">{title}</span>
       <span className="block text-[13px] text-muted">{detail}</span>
       {/* No `capture`, so the iPhone offers Take Photo or the Photo Library. */}
-      <input type="file" accept="image/*" onChange={onChange} className="sr-only" aria-label={`${title}: take or choose a photo`} data-kind={kind} />
+      <input type="file" accept="image/*" onChange={onChange} className="sr-only" aria-label={`${title}: take or choose a photo`} />
     </label>
   )
 }

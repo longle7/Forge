@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, type Habit, type PlanDay, type Workout } from '../api'
+import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, type DayTotals, type Habit, type PlanDay, type Workout } from '../api'
 import { completion, habitStreak } from '../habits'
 import { BarChart, ChartTable, LineChart, Sparkline } from '../charts'
 import { RING } from '../colors'
@@ -13,10 +13,11 @@ import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
 import { formatSet, formatWeight, personalRecords, plural } from '../workouts'
 
-const RANGES = [
-  { value: 28, label: '4 Weeks' },
-  { value: 91, label: '3 Months' },
-  { value: 365, label: 'Year' },
+// `bucket`: what one calorie bar covers.
+const RANGES: { value: number; label: string; bucket: Bucket }[] = [
+  { value: 28, label: '4 Weeks', bucket: 'day' },
+  { value: 91, label: '3 Months', bucket: 'week' },
+  { value: 365, label: 'Year', bucket: 'month' },
 ]
 
 /** The Progress tab: weight, sticking to the plan, calories, strength, and records over 4 weeks, 3 months, or a year. */
@@ -24,7 +25,8 @@ export default function ProgressPage() {
   const today = localDate(useNow(60_000))
   const [days, setDays] = useState(28)
   const from = addDays(today, -(days - 1))
-  const period = RANGES.find((r) => r.value === days)!.label.toLowerCase()
+  const range = RANGES.find((r) => r.value === days)!
+  const period = range.label.toLowerCase()
 
   const profile = usePolling(getProfile, '/profile')
   const workouts = usePolling(getWorkouts, '/workouts')
@@ -44,7 +46,7 @@ export default function ProgressPage() {
       <WeightCard weighIns={(weighIns.data ?? []).filter((w) => w.date >= from)} today={today} period={period} onSaved={weighIns.reload} />
       <PlanCard plan={plan.data ?? []} workouts={workouts.data ?? []} from={from} today={today} period={period} />
       <HabitsCard habits={(habits.data ?? []).filter((h) => !h.archived)} from={from} today={today} period={period} />
-      <CaloriesCard days={food.data ?? []} goal={profile.data?.calorieGoal} from={from} today={today} period={period} />
+      <CaloriesCard days={food.data ?? []} goal={profile.data?.calorieGoal} from={from} today={today} period={period} bucket={range.bucket} />
       <StrengthCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
       <RecordsCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
 
@@ -226,11 +228,10 @@ function HabitsCard({ habits, from, today, period }: { habits: Habit[]; from: st
   )
 }
 
-function CaloriesCard({ days, goal, from, today, period }: { days: { date: string; calories: number; protein: number }[]; goal?: number; from: string; today: string; period: string }) {
-  const bucket: Bucket = period.includes('week') ? 'day' : period.includes('month') ? 'week' : 'month'
+function CaloriesCard({ days, goal, from, today, period, bucket }: { days: DayTotals[]; goal?: number; from: string; today: string; period: string; bucket: Bucket }) {
   const logged = days.filter((d) => d.calories > 0)
   const average = (key: 'calories' | 'protein') => logged.reduce((sum, d) => sum + d[key], 0) / (logged.length || 1)
-  const bars = calorieBars(days.map((d) => ({ ...d, carbs: 0, fat: 0 })), from, today, bucket)
+  const bars = calorieBars(days, from, today, bucket)
   return (
     <Card>
       <CardTitle icon="food" title="Calories" detail={bucket === 'day' ? 'per day' : `average per day, by ${bucket}`} />

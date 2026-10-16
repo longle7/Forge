@@ -8,7 +8,6 @@ namespace Forge.Api.Controllers
     /// <summary>
     /// Your goals and what they were worked out from (the app's setup), plus the Time Out unlock rules: one per user,
     /// identified by the X-User-Id header (see WorkoutsController).
-    /// ponytail: header is trusted as-is, replace with the authenticated user's ID when login exists.
     /// </summary>
     [ApiController]
     [Route("profile")]

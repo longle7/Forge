@@ -127,9 +127,11 @@ export interface FoodResult extends Nutrition {
   serving: string
 }
 
-/** A day's food totals. */
-export interface DayTotals extends Nutrition {
+/** A day's calories and protein (what Progress charts). */
+export interface DayTotals {
   date: string
+  calories: number
+  protein: number
 }
 
 /**

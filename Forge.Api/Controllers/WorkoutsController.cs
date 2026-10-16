@@ -9,13 +9,12 @@ namespace Forge.Api.Controllers
     /// <summary>
     /// Your finished workouts (read, save, delete).
     ///
-    /// Who are you? The app makes up a random ID once per device and sends it as the X-User-Id header on every
-    /// request (Settings shows it as your restore code). Each endpoint only touches rows with that ID. Someone else's
-    /// workout answers 404 (not 403), so nobody can tell whether it exists.
+    /// Who are you? The X-User-Id header: set from your sign-in token by the middleware in Program.cs, or sent as-is
+    /// by not-yet-signed-in beta builds until Auth:RequireSignIn is on. Each endpoint only touches rows with that ID.
+    /// Someone else's workout answers 404 (not 403), so nobody can tell whether it exists.
     /// Saving is one idempotent PUT: the app makes up the workout's ID when it starts, so tapping Finish again after a
     /// lost response (weak signal at the gym) saves the same workout instead of a copy, and editing a past workout is
     /// the same call.
-    /// ponytail: header is trusted as-is, replace with the authenticated user's ID when login exists.
     /// </summary>
     [ApiController]
     [Route("workouts")]
@@ -44,14 +43,6 @@ namespace Forge.Api.Controllers
                 .ToListAsync();
 
             return workouts.Select(WorkoutResponse.From);
-        }
-
-        // GET /workouts/{id}
-        [HttpGet("{id:guid}")]
-        public async Task<ActionResult<WorkoutResponse>> GetById(Guid id, [FromHeader(Name = "X-User-Id"), Required, MaxLength(100)] string userId)
-        {
-            var workout = await _db.Workouts.Include(w => w.Sets).FirstOrDefaultAsync(w => w.Id == id && w.UserId == userId);
-            return workout is null ? NotFound() : WorkoutResponse.From(workout);
         }
 
         // PUT /workouts/{id}: creates the workout (201) or replaces it and all its sets (200).
@@ -103,7 +94,7 @@ namespace Forge.Api.Controllers
             await _db.SaveChangesAsync();
 
             var response = WorkoutResponse.From(workout);
-            return created ? CreatedAtAction(nameof(GetById), new { id }, response) : response;
+            return created ? Created($"/workouts/{id}", response) : response;
         }
 
         // DELETE /workouts/{id}: its sets go with it (cascade delete).

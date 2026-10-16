@@ -127,19 +127,6 @@ export function Row({ children, detail, to, icon }: { children: ReactNode; detai
   )
 }
 
-/** A calm "nothing here yet": an icon, a title, and a line or two on what will appear. */
-export function EmptyState({ icon, title, children }: { icon: IconName; title: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
-      <span className="grid size-14 place-items-center rounded-full bg-coral/12 text-coral-ink">
-        <Icon name={icon} className="size-7" />
-      </span>
-      <p className="text-[20px] font-semibold">{title}</p>
-      <div className="text-muted">{children}</div>
-    </div>
-  )
-}
-
 /** Apple-style activity rings, outermost first. Each value runs 0 to 1; more than 1 stays a full ring. */
 export function Rings({ rings, size = 128 }: { rings: { label: string; value: number; color: string }[]; size?: number }) {
   const stroke = 12

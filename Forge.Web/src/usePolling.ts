@@ -21,19 +21,14 @@ interface PollState<T> {
 }
 
 /**
- * Calls `fetcher` now and every `intervalMs` (if given) while mounted and visible, or until `key` changes.
+ * Calls `fetcher` when mounted, when `key` changes, and when the device comes back online.
  * `key` names what's fetched and is where it's remembered, so it must be unique per request: use its API path.
- * Keeps the last good data when a refresh fails. With `remember` (the default), the last good data is also kept on
- * the device and shown at once on the next visit, even offline; `updatedAt` says how old it is. `reload()` fetches
- * again now, e.g. right after a change was saved.
+ * Keeps the last good data when a refresh fails. The last good data is also kept on the device and shown at once on
+ * the next visit, even offline; `updatedAt` says how old it is. `reload()` fetches again now, e.g. right after a
+ * change was saved.
  */
-export function usePolling<T>(
-  fetcher: () => Promise<T>,
-  key: string,
-  intervalMs?: number,
-  { remember: keep = true }: { remember?: boolean } = {},
-): PollState<T> & { reload: () => void } {
-  const start = (k: string) => ({ key: k, error: undefined, ...((keep && remembered<T>(k)) || { data: undefined, updatedAt: undefined }) })
+export function usePolling<T>(fetcher: () => Promise<T>, key: string): PollState<T> & { reload: () => void } {
+  const start = (k: string) => ({ key: k, error: undefined, ...(remembered<T>(k) || { data: undefined, updatedAt: undefined }) })
   const [state, setState] = useState<PollState<T> & { key: string }>(() => start(key))
   const [reloads, setReloads] = useState(0)
   const reload = () => setReloads((n) => n + 1)
@@ -48,27 +43,21 @@ export function usePolling<T>(
         (data) => {
           if (cancelled) return
           setState({ key, data, error: undefined, updatedAt: new Date() })
-          if (keep) remember(key, data)
+          remember(key, data)
         },
         (error: Error) => !cancelled && setState((s) => ({ ...s, key, error })),
       )
     load(reloads > 0)
-    // Don't poll in the background; refresh as soon as the app is back on screen (iOS pauses timers anyway).
-    const timer = intervalMs ? setInterval(() => !document.hidden && load(), intervalMs) : undefined
-    const onVisible = () => !document.hidden && intervalMs && load()
-    document.addEventListener('visibilitychange', onVisible)
     // Back online (e.g. out of the gym's basement): refetch everything, including one-off loads that failed while offline.
     const onOnline = () => load()
     window.addEventListener('online', onOnline)
     return () => {
       cancelled = true
-      clearInterval(timer)
-      document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('online', onOnline)
     }
     // fetcher is recreated every render, so `key` (not fetcher) identifies what is being fetched.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, intervalMs, reloads])
+  }, [key, reloads])
 
   // Don't show the previous key's data while the new key loads.
   return state.key === key ? { ...state, reload } : { data: undefined, error: undefined, updatedAt: undefined, reload }
