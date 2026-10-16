@@ -2,6 +2,7 @@ import { Component, useEffect, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { ApiError } from './api'
 import { Icon, type IconName } from './icons'
+import { formatKcal } from './nutrition'
 import { useOnline, useTitle } from './usePolling'
 
 // Buttons: one look per job, every one at least 44 px tall (Apple's minimum tap size).
@@ -251,9 +252,9 @@ export function Segmented<T extends string | number>({ options, value, onChange,
 
 /**
  * A bottom sheet: a native modal <dialog> sliding up from the bottom, with Cancel at its top left. It traps focus,
- * and Escape or Cancel calls `onClose`; the owner removes it from the page when it's done.
+ * and Escape or Cancel calls `onClose`; the owner removes it from the page when it's done. `full` fills the screen.
  */
-export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Sheet({ title, full, onClose, children }: { title: string; full?: boolean; onClose: () => void; children: ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     if (!dialog.current?.open) dialog.current?.showModal() // StrictMode runs this twice in development
@@ -263,10 +264,10 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
       ref={dialog}
       onClose={onClose}
       aria-label={title}
-      className="mx-auto mt-auto mb-0 max-h-[92dvh] w-full max-w-xl rounded-t-3xl border-t border-line bg-canvas p-0 text-ink backdrop:bg-black/40 dark:backdrop:bg-black/65"
+      className={`${full ? 'm-0 h-full max-h-none max-w-none' : 'mx-auto mt-auto mb-0 max-h-[92dvh] max-w-xl rounded-t-3xl border-t border-line'} w-full bg-canvas p-0 text-ink backdrop:bg-black/40 dark:backdrop:bg-black/65`}
     >
-      <div className="space-y-4 px-4 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-        <div className="mx-auto h-1.5 w-10 rounded-full bg-line" aria-hidden />
+      <div className={`mx-auto max-w-xl space-y-4 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${full ? 'pt-[calc(0.5rem+env(safe-area-inset-top))]' : 'pt-2'}`}>
+        {!full && <div className="mx-auto h-1.5 w-10 rounded-full bg-line" aria-hidden />}
         <div className="flex items-center justify-between">
           <button type="button" onClick={() => dialog.current?.close()} className={plainButton}>
             Cancel
@@ -401,5 +402,18 @@ export function NotFound({
         {back?.label ?? 'Go Home'}
       </Link>
     </div>
+  )
+}
+
+/** A food in a list: its name, a detail line (brand, serving), and its calories. */
+export function FoodRow({ name, detail, calories, onClick }: { name: string; detail: ReactNode; calories: number; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left active:bg-fill">
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{name}</span>
+        <span className="block truncate text-[15px] text-muted">{detail}</span>
+      </span>
+      <span className="shrink-0 text-muted tabular-nums">{formatKcal(calories)} kcal</span>
+    </button>
   )
 }

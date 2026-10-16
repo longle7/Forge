@@ -46,24 +46,10 @@ export default function ExercisePage() {
       {workouts.data && !best && <p className="text-muted">You haven't logged this exercise yet.</p>}
       {best && (
         <div className="grid grid-cols-2 gap-3">
-          <Card>
-            <p className="text-[13px] font-semibold text-muted uppercase">{cardio ? 'Longest' : 'Best set'}</p>
-            <p className="mt-1 text-[22px] font-bold">{cardio ? formatCardio(best.set) : formatSet(best.set)}</p>
-            <p className="text-[15px] text-muted">{formatDay(best.workout.startedAt)}</p>
-          </Card>
-          {cardio && paces.length > 0 && (
-            <Card>
-              <p className="text-[13px] font-semibold text-muted uppercase">Best pace</p>
-              <p className="mt-1 text-[22px] font-bold">{formatClock(Math.min(...paces) * 1000)} /mi</p>
-              <p className="text-[15px] text-muted">minutes per mile</p>
-            </Card>
-          )}
+          <StatCard label={cardio ? 'Longest' : 'Best set'} value={cardio ? formatCardio(best.set) : formatSet(best.set)} detail={formatDay(best.workout.startedAt)} />
+          {cardio && paces.length > 0 && <StatCard label="Best pace" value={`${formatClock(Math.min(...paces) * 1000)} /mi`} detail="minutes per mile" />}
           {!cardio && best.set.weight > 0 && (
-            <Card>
-              <p className="text-[13px] font-semibold text-muted uppercase">Est. 1-rep max</p>
-              <p className="mt-1 text-[22px] font-bold">{formatWeight(Math.round(oneRepMax(best.set.weight, best.set.reps)))} lb</p>
-              <p className="text-[15px] text-muted">from your best set</p>
-            </Card>
+            <StatCard label="Est. 1-rep max" value={`${formatWeight(Math.round(oneRepMax(best.set.weight, best.set.reps)))} lb`} detail="from your best set" />
           )}
         </div>
       )}
@@ -92,5 +78,15 @@ export default function ExercisePage() {
         </Group>
       )}
     </Page>
+  )
+}
+
+function StatCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <Card>
+      <p className="text-[13px] font-semibold text-muted uppercase">{label}</p>
+      <p className="mt-1 text-[22px] font-bold">{value}</p>
+      <p className="text-[15px] text-muted">{detail}</p>
+    </Card>
   )
 }

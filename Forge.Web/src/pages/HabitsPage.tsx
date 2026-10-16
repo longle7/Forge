@@ -1,14 +1,12 @@
 import { useState } from 'react'
 import { deleteHabit, getHabits, randomId, saveHabit, type Habit, type HabitInput } from '../api'
-import { dangerButton, field, Group, Page, primaryButton, Sheet, Status, Stepper, tintedButton } from '../components'
-import { addDays, localDate } from '../dates'
+import { dangerButton, field, Group, Notice, Page, primaryButton, Sheet, Status, Stepper, tintedButton } from '../components'
+import { addDays, DAY_NAMES, localDate } from '../dates'
 import { completion, daysLabel, EVERY_DAY, habitStreak, SUGGESTIONS } from '../habits'
 import { Icon } from '../icons'
 import { failure, useNow, usePolling } from '../usePolling'
 import { plural } from '../workouts'
 
-const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 /** Your habits (/habits): add, edit, archive, or delete them, with each one's streak and last 4 weeks. */
 export default function HabitsPage() {
@@ -108,7 +106,7 @@ function HabitSheet({ id, habit, isNew, onSaved, onClose }: { id: string; habit:
       <div>
         <p className="mb-1 text-[15px] text-muted">Days · {daysLabel(form.days) || 'none'}</p>
         <div className="grid grid-cols-7 gap-1.5">
-          {DAY_LETTERS.map((letter, i) => {
+          {DAY_NAMES.map((name, i) => {
             const on = (form.days & (1 << i)) !== 0
             return (
               <button
@@ -116,17 +114,17 @@ function HabitSheet({ id, habit, isNew, onSaved, onClose }: { id: string; habit:
                 type="button"
                 role="checkbox"
                 aria-checked={on}
-                aria-label={DAY_NAMES[i]}
+                aria-label={name}
                 onClick={() => set({ days: form.days ^ (1 << i) })}
                 className={`min-h-11 rounded-xl font-semibold ${on ? 'bg-coral/15 text-coral-ink' : 'bg-surface text-muted'}`}
               >
-                {letter}
+                {name[0]}
               </button>
             )
           })}
         </div>
       </div>
-      {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
+      {error && <Notice>{error}</Notice>}
       <button onClick={() => (form.days ? run(() => saveHabit(id, { ...form, name: form.name.trim() })) : setError('Pick at least one day.'))} disabled={busy || !form.name.trim()} className={primaryButton}>
         {isNew ? 'Add Habit' : 'Save'}
       </button>

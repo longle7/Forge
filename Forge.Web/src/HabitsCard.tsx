@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { checkHabit, getHabits, randomId, saveHabit, type Habit } from './api'
-import { Card, SectionTitle } from './components'
+import { Card, Notice, SectionTitle } from './components'
 import { localDate } from './dates'
 import { countOn, EVERY_DAY, habitStreak, SUGGESTIONS, today as todayOf } from './habits'
 import { Icon } from './icons'
@@ -92,11 +92,7 @@ export function HabitsCard() {
           })}
         </div>
       )}
-      {error && (
-        <p className="px-1 text-[15px] text-red-600 dark:text-red-400" role="status">
-          {error}
-        </p>
-      )}
+      {error && <Notice>{error}</Notice>}
     </>
   )
 }

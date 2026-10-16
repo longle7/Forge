@@ -1,5 +1,5 @@
 import type { Habit } from './api'
-import { addDays, localDate, weekday } from './dates'
+import { addDays, DAY_NAMES, localDate, weekday } from './dates'
 
 export const EVERY_DAY = 127
 
@@ -51,7 +51,7 @@ export function daysLabel(days: number): string {
   if ((days & EVERY_DAY) === EVERY_DAY) return 'Every day'
   if (days === 0b0111110) return 'Weekdays'
   if (days === 0b1000001) return 'Weekends'
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].filter((_, i) => days & (1 << i)).join(', ')
+  return DAY_NAMES.filter((_, i) => days & (1 << i)).map((name) => name.slice(0, 3)).join(', ')
 }
 
 /** Ideas for a first habit. */
