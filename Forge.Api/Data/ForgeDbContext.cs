@@ -30,6 +30,7 @@ namespace Forge.Api.Data
         public DbSet<SavedMeal> SavedMeals { get; set; } = null!;
         public DbSet<AppleAccount> AppleAccounts { get; set; } = null!;
         public DbSet<TestedMax> TestedMaxes { get; set; } = null!;
+        public DbSet<ActiveEnergy> ActiveEnergy { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -187,6 +188,12 @@ namespace Forge.Api.Data
                       .WithMany()
                       .HasForeignKey(m => m.ExerciseId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<ActiveEnergy>(entity =>
+            {
+                entity.HasKey(a => new { a.UserId, a.Date }); // one per day, like WeighIn
+                entity.Property(a => a.UserId).HasMaxLength(100);
             });
         }
     }

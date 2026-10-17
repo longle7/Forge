@@ -22,6 +22,23 @@ namespace Forge.Api.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Forge.Api.Domain.ActiveEnergy", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Kcal")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "Date");
+
+                    b.ToTable("ActiveEnergy");
+                });
+
             modelBuilder.Entity("Forge.Api.Domain.AppleAccount", b =>
                 {
                     b.Property<string>("Sub")

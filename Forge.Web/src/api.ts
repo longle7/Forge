@@ -111,6 +111,12 @@ export interface WeighIn {
   weight: number // pounds
 }
 
+/** A day's active calories from Apple Health (the Move ring: workouts and all other moving), synced by health.ts. */
+export interface ActiveEnergy {
+  date: string // YYYY-MM-DD, your time zone
+  kcal: number
+}
+
 /** A max you tested outside a logged workout: a weight for 1 to 10 reps on a day. */
 export interface TestedMax {
   id: string // made up by the app
@@ -253,6 +259,11 @@ export const checkHabit = (id: string, date: string, count: number) => api<void>
 
 export const getWeighIns = () => api<WeighIn[]>('/weigh-ins')
 export const saveWeighIn = (date: string, weight: number) => api<WeighIn>(`/weigh-ins/${date}`, put({ weight }))
+
+/** The days from `from` to `to` with Apple Watch data, oldest first. */
+export const activityPath = (from: string, to: string) => `/activity?from=${from}&to=${to}`
+export const getActivity = (from: string, to: string) => api<ActiveEnergy[]>(activityPath(from, to))
+export const saveActivity = (date: string, kcal: number) => api<ActiveEnergy>(`/activity/${date}`, put({ kcal }))
 
 export const getMaxes = () => api<TestedMax[]>('/maxes')
 export const saveMax = (id: string, max: TestedMaxInput) => api<TestedMax>(`/maxes/${id}`, put(max))

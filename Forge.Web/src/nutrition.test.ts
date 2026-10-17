@@ -5,6 +5,7 @@ import {
   adaptiveCalories,
   calculateGoals,
   calorieAdherence,
+  dayBudget,
   dayGoals,
   exerciseCalories,
   goalEta,
@@ -135,6 +136,27 @@ const profile: Profile = {
   calorieGoal: 2000, proteinGoal: 165, carbsGoal: 200, fatGoal: 65,
   unlockAfterWorkout: false, unlockAfterMeals: 0, unlockAfterWeighIn: false, restDayCalorieAdjust: -200,
 }
+
+describe('dayBudget', () => {
+  const day = { profile, restDay: false, weightLb: 185, year: 2026, workoutEstimate: 286 }
+
+  it('adds the workouts estimate to the goal without Watch data', () => {
+    expect(dayBudget({ ...day, activeKcal: undefined })).toEqual({ goal: 2000, exercise: 286, label: 'Exercise' })
+    expect(dayBudget({ ...day, restDay: true, activeKcal: undefined }).goal).toBe(1800)
+  })
+
+  it("adds the Watch's active calories instead, and leaves daily activity out of the goal", () => {
+    // Resting ≈ 1,795; lightly active (× 1.375) less × 1.1 for digesting food: 1,795 × 0.275 ≈ 494 off 2,000.
+    expect(dayBudget({ ...day, activeKcal: 640 })).toEqual({ goal: 1510, exercise: 640, label: 'Active' })
+    // Mostly sitting leaves only 10% of resting out: 1,795 × 0.1 ≈ 180.
+    expect(dayBudget({ ...day, profile: { ...profile, activity: 'sedentary' }, activeKcal: 640 }).goal).toBe(1820)
+  })
+
+  it('never goes below the safe floor, or below a goal you set lower', () => {
+    expect(dayBudget({ ...day, restDay: true, activeKcal: 640 }).goal).toBe(1500) // 1,800 − 494 would be 1,306
+    expect(dayBudget({ ...day, profile: { ...profile, calorieGoal: 1400 }, activeKcal: 640 }).goal).toBe(1400)
+  })
+})
 
 describe('weightTrend', () => {
   it('is the slope through the weigh-ins, in pounds a week', () => {
