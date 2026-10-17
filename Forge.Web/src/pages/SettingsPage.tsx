@@ -4,6 +4,8 @@ import { DISMISSED_KEY } from '../AdaptiveGoalCard'
 import { forgetRemembered, write } from '../cache'
 import { dangerButton, Group, Notice, Page, Row, tintedButton } from '../components'
 import { saveDraft } from '../draft'
+import { forgetHealth, healthSupported } from '../health'
+import { HealthSettings } from '../HealthSettings'
 import { formatKcal } from '../nutrition'
 import { usePolling } from '../usePolling'
 
@@ -25,6 +27,7 @@ export default function SettingsPage() {
       forgetRemembered()
       saveDraft(undefined)
       for (const key of ['forge.rest', 'forge.scanConsent', DISMISSED_KEY]) write(key, null)
+      forgetHealth()
       if (isNative) return signOut() // Welcome takes over; signing in again starts a new, empty account
       forgetUserId()
       setMessage('Your data was deleted. Forge starts fresh on this device.')
@@ -41,6 +44,8 @@ export default function SettingsPage() {
           Goals
         </Row>
       </Group>
+
+      {healthSupported() && <HealthSettings />}
 
       {isNative && (
         <Group title="Account" footer="Signed in with Apple. Your data is saved to your account, so it's here on a new phone, or if you delete and reinstall Forge.">
