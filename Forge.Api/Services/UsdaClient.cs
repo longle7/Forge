@@ -48,7 +48,8 @@ namespace Forge.Api.Services
         }
 
         // USDA nutrient numbers: 208 energy (kcal), 957/958 energy by Atwater factors (kcal, Foundation foods often only
-        // have these), 203 protein, 205 carbohydrate, 204 fat. Values are per 100 g (or 100 ml).
+        // have these), 203 protein, 205 carbohydrate, 204 fat, 291 fiber, 269 total sugars, 307 sodium (mg). Values are
+        // per 100 g (or 100 ml). A nutrient the food doesn't list stays null: unknown, not zero.
         private static FoodResult? ToResult(UsdaFood food)
         {
             decimal? Nutrient(params string[] numbers) =>
@@ -82,7 +83,10 @@ namespace Forge.Api.Services
                 Math.Round(calories.Value * perServing),
                 Math.Round((Nutrient("203") ?? 0) * perServing, 1),
                 Math.Round((Nutrient("205") ?? 0) * perServing, 1),
-                Math.Round((Nutrient("204") ?? 0) * perServing, 1));
+                Math.Round((Nutrient("204") ?? 0) * perServing, 1),
+                Nutrient("291") is { } fiber ? Math.Round(fiber * perServing, 1) : null,
+                Nutrient("269") is { } sugar ? Math.Round(sugar * perServing, 1) : null,
+                Nutrient("307") is { } sodium ? Math.Round(sodium * perServing) : null);
         }
 
         // Branded names come in capitals ("GREEK YOGURT"); show them like the rest ("Greek Yogurt").
@@ -105,6 +109,7 @@ namespace Forge.Api.Services
         private record UsdaNutrient(string? NutrientNumber, string? UnitName, decimal? Value);
     }
 
-    /// <summary>A food from search, per one serving: kcal, then grams of protein, carbs, and fat.</summary>
-    public record FoodResult(string Name, string? Brand, string Serving, decimal Calories, decimal Protein, decimal Carbs, decimal Fat);
+    /// <summary>A food from search, per one serving: kcal, grams of protein, carbs, fat, fiber, and sugar, and mg of sodium.</summary>
+    public record FoodResult(string Name, string? Brand, string Serving, decimal Calories, decimal Protein, decimal Carbs, decimal Fat,
+        decimal? Fiber = null, decimal? Sugar = null, decimal? Sodium = null);
 }

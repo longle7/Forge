@@ -37,12 +37,12 @@ public class ClaudeFoodVisionTests
     [Fact]
     public async Task ReadLabel_SendsThePhotoWithTheSchemaAndFallback_AndReadsTheAnswer()
     {
-        var api = new FakeAnthropic(Answer("""{"found":true,"name":"Rolled Oats","serving":"1/2 cup (40 g)","calories":150,"protein":5,"carbs":27,"fat":3}"""));
+        var api = new FakeAnthropic(Answer("""{"found":true,"name":"Rolled Oats","serving":"1/2 cup (40 g)","calories":150,"protein":5,"carbs":27,"fat":3,"fiber":4,"sugar":1,"sodium":0}"""));
         var vision = new ClaudeFoodVision(Config(), new HttpClient(api));
 
         var label = await vision.ReadLabelAsync(Photo, CancellationToken.None);
 
-        Assert.Equal(new LabelReading(true, "Rolled Oats", "1/2 cup (40 g)", 150, 5, 27, 3), label);
+        Assert.Equal(new LabelReading(true, "Rolled Oats", "1/2 cup (40 g)", 150, 5, 27, 3, 4, 1, 0), label);
 
         var request = JsonDocument.Parse(api.Body!).RootElement;
         Assert.Equal("claude-opus-5-5", request.GetProperty("model").GetString());
@@ -52,6 +52,7 @@ public class ClaudeFoodVisionTests
         Assert.Equal("low", output.GetProperty("effort").GetString());
         Assert.Equal("json_schema", output.GetProperty("format").GetProperty("type").GetString());
         Assert.False(output.GetProperty("format").GetProperty("schema").GetProperty("additionalProperties").GetBoolean());
+        Assert.Contains("sodium", output.GetProperty("format").GetProperty("schema").GetProperty("required").EnumerateArray().Select(r => r.GetString()));
         var image = request.GetProperty("messages")[0].GetProperty("content")[0];
         Assert.Equal("image", image.GetProperty("type").GetString());
         Assert.Equal("image/jpeg", image.GetProperty("source").GetProperty("media_type").GetString());

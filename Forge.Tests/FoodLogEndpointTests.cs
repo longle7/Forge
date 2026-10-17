@@ -43,6 +43,20 @@ public class FoodLogEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task FiberSugarAndSodium_AreKept_OrUnknown()
+    {
+        using var alice = _factory.ClientFor("alice");
+        await alice.PutAsJsonAsync($"/food-log/{Guid.NewGuid()}", Yogurt() with { Fiber = 0, Sugar = 7, Sodium = 85 });
+        await alice.PutAsJsonAsync($"/food-log/{Guid.NewGuid()}", Yogurt(meal: "lunch")); // logged without them
+
+        var entries = await DayAsync(alice, Today);
+
+        Assert.Contains(entries, e => (e.Fiber, e.Sugar, e.Sodium) == (0m, 7m, 85m));
+        Assert.Contains(entries, e => (e.Fiber, e.Sugar, e.Sodium) == (null, null, null));
+        Assert.Equal(HttpStatusCode.BadRequest, (await alice.PutAsJsonAsync($"/food-log/{Guid.NewGuid()}", Yogurt() with { Sodium = 60_000 })).StatusCode);
+    }
+
+    [Fact]
     public async Task Days_TotalsEachDay_ServingsIncluded()
     {
         using var alice = _factory.ClientFor("alice");

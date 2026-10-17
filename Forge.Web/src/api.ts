@@ -52,6 +52,9 @@ export interface Profile {
   proteinGoal: number // grams
   carbsGoal: number
   fatGoal: number
+  fiberGoal?: number | null // at least this many grams a day; null = not tracked
+  sugarLimit?: number | null // at most this many grams
+  sodiumLimit?: number | null // at most this many mg
   unlockAfterWorkout: boolean
   unlockAfterMeals: number // 0 = no rule
   unlockAfterWeighIn: boolean
@@ -119,8 +122,15 @@ export interface Nutrition {
   fat: number
 }
 
+/** Fiber and sugar (grams) and sodium (mg) per serving: null or missing when unknown, which isn't the same as 0. */
+export interface Micros {
+  fiber?: number | null
+  sugar?: number | null
+  sodium?: number | null
+}
+
 /** Something you ate: a food, its serving, how many servings, and its nutrition per serving. */
-export interface FoodEntry extends Nutrition {
+export interface FoodEntry extends Nutrition, Micros {
   id: string // made up by the app, like a workout's
   date: string // YYYY-MM-DD it counts toward
   meal: Meal
@@ -133,7 +143,7 @@ export interface FoodEntry extends Nutrition {
 export type FoodEntryInput = Omit<FoodEntry, 'id'>
 
 /** A food from search, per one serving. */
-export interface FoodResult extends Nutrition {
+export interface FoodResult extends Nutrition, Micros {
   name: string
   brand: string | null
   serving: string
@@ -246,7 +256,7 @@ export interface SavedMeal {
 }
 
 /** A food in a saved meal: a food log entry without its day and meal. */
-export type MealItem = Pick<FoodEntry, 'name' | 'serving' | 'servings' | 'calories' | 'protein' | 'carbs' | 'fat'>
+export type MealItem = Pick<FoodEntry, 'name' | 'serving' | 'servings' | 'calories' | 'protein' | 'carbs' | 'fat' | 'fiber' | 'sugar' | 'sodium'>
 
 export const getSavedMeals = () => api<SavedMeal[]>('/saved-meals')
 export const saveSavedMeal = (id: string, meal: Omit<SavedMeal, 'id'>) => api<SavedMeal>(`/saved-meals/${id}`, put(meal))
@@ -255,7 +265,7 @@ export const deleteSavedMeal = (id: string) => api<void>(`/saved-meals/${id}`, {
 export const searchFoods = (query: string, signal?: AbortSignal) => api<FoodResult[]>(`/foods?q=${encodeURIComponent(query)}`, { signal })
 
 /** A food read from a photo, per one serving, for you to check before logging. */
-export interface ScannedFood extends Nutrition {
+export interface ScannedFood extends Nutrition, Micros {
   name: string // "" when the label doesn't show the product's name
   serving: string // "1/2 cup (40 g)", or "150 g" for a food on a plate
 }

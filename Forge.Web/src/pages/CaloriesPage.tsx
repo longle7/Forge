@@ -21,9 +21,10 @@ import { AdaptiveGoalCard } from '../AdaptiveGoalCard'
 import { FoodSheet } from '../FoodSheet'
 import { FAT, RING } from '../colors'
 import { Icon } from '../icons'
-import { dayGoals, exerciseCalories, formatKcal, remaining, servingLabel, totals, weightOn } from '../nutrition'
+import { dayGoals, exerciseCalories, formatKcal, MICROS, microTotals, remaining, servingLabel, totals, weightOn } from '../nutrition'
 import { isRestDay } from '../plan'
 import { failure, useNow, usePolling, useAction } from '../usePolling'
+import { plural } from '../workouts'
 
 /**
  * The Calories tab: a day's food by meal, and what's left of its calories (Goal − Food + Exercise) and macros. A meal
@@ -52,6 +53,8 @@ export default function CaloriesPage() {
   const restDay = isRestDay(plan.data, date)
   const goals = profile.data && dayGoals(profile.data, restDay)
   const food = totals(log.data ?? [])
+  const micros = microTotals(log.data ?? [])
+  const tracked = MICROS.filter((m) => profile.data?.[m.setting])
   const weight = weightOn(weighIns.data, date, profile.data?.startWeight ?? 0)
   const exercise = (workouts.data ?? []).filter((w) => workoutDay(w) === date).reduce((sum, w) => sum + exerciseCalories(w, weight, names), 0)
   const beforeLabel = date === today ? 'yesterday' : dayLabel(dayBefore, today)
@@ -96,7 +99,13 @@ export default function CaloriesPage() {
             <MacroBar label="Protein" value={food.protein} goal={goals.protein} color={RING.move} />
             <MacroBar label="Carbs" value={food.carbs} goal={goals.carbs} color={RING.eat} />
             <MacroBar label="Fat" value={food.fat} goal={goals.fat} color={FAT} />
+            {tracked.map((m) => (
+              <MacroBar key={m.key} label={m.limit ? `${m.label} (limit)` : m.label} value={micros[m.key]} goal={profile.data![m.setting]!} color={RING.unlock} unit={m.unit} limit={m.limit} />
+            ))}
           </div>
+          {tracked.length > 0 && micros.unknown > 0 && (
+            <p className="mt-2 text-[13px] text-muted">{plural(micros.unknown, 'food')} without fiber, sugar, or sodium info.</p>
+          )}
           {restDayCut > 0 && <p className="mt-3 text-[13px] text-muted">Rest day: {formatKcal(restDayCut)} kcal less, from carbs.</p>}
         </Summary>
       ) : (
@@ -234,7 +243,7 @@ function SaveMealSheet({ foods, onSaved, onClose }: { foods: FoodEntry[]; onSave
   const save = async () => {
     if (!name.trim()) return setError('Give it a name, like Usual breakfast.')
     await run(async () => {
-      const items = foods.map((f) => ({ name: f.name, serving: f.serving, servings: f.servings, calories: f.calories, protein: f.protein, carbs: f.carbs, fat: f.fat }))
+      const items = foods.map((f) => ({ name: f.name, serving: f.serving, servings: f.servings, calories: f.calories, protein: f.protein, carbs: f.carbs, fat: f.fat, fiber: f.fiber, sugar: f.sugar, sodium: f.sodium }))
       await saveSavedMeal(randomId(), { name: name.trim(), items })
       onSaved(name.trim())
     })
