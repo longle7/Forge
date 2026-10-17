@@ -29,6 +29,7 @@ public static class TestDb
         db.ScanUsage.ExecuteDelete();
         db.Habits.ExecuteDelete(); // their check-offs go with them
         db.WeighIns.ExecuteDelete();
+        db.ActiveEnergy.ExecuteDelete();
         db.UserProfiles.ExecuteDelete();
         // Workout sets, plan exercises, and tested maxes point at exercises, so delete them (with their parents) before custom exercises.
         db.PlanDays.ExecuteDelete();

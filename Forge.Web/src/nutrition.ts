@@ -92,6 +92,29 @@ export function dayGoals(profile: Profile, restDay: boolean): Nutrition {
   return { calories: profile.calorieGoal + adjust, protein: profile.proteinGoal, carbs: Math.max(0, profile.carbsGoal + Math.round(adjust / 4)), fat: profile.fatGoal }
 }
 
+/**
+ * A day's calorie goal and what moving adds back to it (Goal − Food + Exercise).
+ * - No Apple Watch data that day: the day's goal, plus its workouts' estimates (`workoutEstimate`, see exerciseCalories).
+ * - With it: the Watch's active calories, which already count every workout and all your other moving. So the goal
+ *   leaves out the daily activity it was set with (maintenance less resting × 1.1, the 10% being digesting food),
+ *   rounded to 10, so it isn't counted twice. It never goes below the safe floor (or below your own goal, if lower).
+ * ponytail: Watch calories can run high; the adaptive calorie check (adaptiveCalories) corrects the goal over weeks.
+ */
+export function dayBudget({ profile, restDay, weightLb, year, activeKcal, workoutEstimate }: {
+  profile: Profile
+  restDay: boolean
+  weightLb: number
+  year: number
+  activeKcal: number | undefined
+  workoutEstimate: number
+}): { goal: number; exercise: number; label: 'Active' | 'Exercise' } {
+  const goal = dayGoals(profile, restDay).calories
+  if (activeKcal === undefined) return { goal, exercise: workoutEstimate, label: 'Exercise' }
+  const resting = restingCalories(profile.sex, weightLb, profile.heightIn, year - profile.birthYear)
+  const allowance = resting * (ACTIVITY[profile.activity].factor - 1.1)
+  return { goal: Math.max(Math.min(goal, calorieFloor(profile.sex)), Math.round((goal - allowance) / 10) * 10), exercise: activeKcal, label: 'Active' }
+}
+
 /** Your weight on a day: the latest weigh-in on or before it, else `fallback` (the weight you set your goals with). */
 export function weightOn(weighIns: WeighIn[] | undefined, day: string, fallback: number): number {
   let weight = fallback

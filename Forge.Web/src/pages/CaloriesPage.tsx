@@ -1,8 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import {
+  activityPath,
   deleteFoodEntry,
   foodLogPath,
+  getActivity,
   getExercises,
   getFoodLog,
   getPlan,
@@ -21,7 +23,7 @@ import { AdaptiveGoalCard } from '../AdaptiveGoalCard'
 import { FoodSheet } from '../FoodSheet'
 import { FAT, RING } from '../colors'
 import { Icon } from '../icons'
-import { dayGoals, exerciseCalories, formatKcal, MICROS, microTotals, remaining, servingLabel, totals, weightOn } from '../nutrition'
+import { dayBudget, dayGoals, exerciseCalories, formatKcal, MICROS, microTotals, remaining, servingLabel, totals, weightOn } from '../nutrition'
 import { isRestDay } from '../plan'
 import { failure, useNow, usePolling, useAction } from '../usePolling'
 import { plural } from '../workouts'
@@ -44,6 +46,7 @@ export default function CaloriesPage() {
   const weighIns = usePolling(getWeighIns, '/weigh-ins')
   const exercises = usePolling(getExercises, '/exercises')
   const plan = usePolling(getPlan, '/plan')
+  const activity = usePolling(() => getActivity(date, date), activityPath(date, date))
   const [editing, setEditing] = useState<FoodEntry>()
   const [toSave, setToSave] = useState<FoodEntry[]>() // a meal's foods, being saved as a meal
   const [copying, setCopying] = useState(false)
@@ -57,6 +60,7 @@ export default function CaloriesPage() {
   const tracked = MICROS.filter((m) => profile.data?.[m.setting])
   const weight = weightOn(weighIns.data, date, profile.data?.startWeight ?? 0)
   const exercise = (workouts.data ?? []).filter((w) => workoutDay(w) === date).reduce((sum, w) => sum + exerciseCalories(w, weight, names), 0)
+  const budget = profile.data && dayBudget({ profile: profile.data, restDay, weightLb: weight, year: Number(date.slice(0, 4)), activeKcal: activity.data?.[0]?.kcal, workoutEstimate: exercise })
   const beforeLabel = date === today ? 'yesterday' : dayLabel(dayBefore, today)
   const restDayCut = restDay ? -(profile.data?.restDayCalorieAdjust ?? 0) : 0
 
@@ -93,8 +97,8 @@ export default function CaloriesPage() {
         </button>
       </div>
 
-      {goals ? (
-        <Summary goal={goals.calories} food={food.calories} exercise={exercise}>
+      {goals && budget ? (
+        <Summary {...budget} food={food.calories}>
           <div className="mt-4 space-y-3">
             <MacroBar label="Protein" value={food.protein} goal={goals.protein} color={RING.move} />
             <MacroBar label="Carbs" value={food.carbs} goal={goals.carbs} color={RING.eat} />
@@ -204,8 +208,8 @@ export default function CaloriesPage() {
   )
 }
 
-/** Calories left (Goal − Food + Exercise) beside the Eat ring, with the sum spelled out. */
-function Summary({ goal, food, exercise, children }: { goal: number; food: number; exercise: number; children: ReactNode }) {
+/** Calories left (Goal − Food + Exercise, or Active with Apple Watch data) beside the Eat ring, with the sum spelled out. */
+function Summary({ goal, food, exercise, label, children }: { goal: number; food: number; exercise: number; label: 'Active' | 'Exercise'; children: ReactNode }) {
   const left = remaining(goal, food, exercise)
   return (
     <Card>
@@ -221,8 +225,9 @@ function Summary({ goal, food, exercise, children }: { goal: number; food: numbe
         <span className="text-muted">−</span>
         <Part label="Food" value={food} />
         <span className="text-muted">+</span>
-        <Part label="Exercise" value={exercise} />
+        <Part label={label} value={exercise} />
       </div>
+      {label === 'Active' && <p className="mt-3 text-[13px] text-muted">Active calories from Apple Watch; your goal leaves out daily activity so it isn't counted twice.</p>}
       {children}
     </Card>
   )

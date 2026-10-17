@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodLogPath, getExercises, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts } from '../api'
+import { activityPath, foodLogPath, getActivity, getExercises, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts } from '../api'
 import { Card, Page, PrBadge, primaryButton, Rings, SectionTitle, Status } from '../components'
 import { dayLabel, localDate, workoutDay } from '../dates'
 import { RING } from '../colors'
 import { Icon } from '../icons'
 import { HabitsCard } from '../HabitsCard'
-import { dayGoals, exerciseCalories, formatKcal, remaining, totals, weekChange, weightOn } from '../nutrition'
+import { dayBudget, exerciseCalories, formatKcal, remaining, totals, weekChange, weightOn } from '../nutrition'
 import { isUnlocked, todaySoFar, unlockGoals } from '../timeout'
 import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
@@ -24,6 +24,7 @@ export default function HomePage() {
   const weighIns = usePolling(getWeighIns, '/weigh-ins')
   const habits = usePolling(getHabits, '/habits')
   const exercises = usePolling(getExercises, '/exercises')
+  const activity = usePolling(() => getActivity(today, today), activityPath(today, today))
   const [weighing, setWeighing] = useState(false)
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
 
@@ -33,9 +34,9 @@ export default function HomePage() {
   const eaten = totals(food.data ?? []).calories
   const weight = weightOn(weighIns.data, today, goals?.startWeight ?? 0)
   const exercise = (workouts.data ?? []).filter((w) => workoutDay(w) === today).reduce((sum, w) => sum + exerciseCalories(w, weight, names), 0)
-  const dayGoal = goals && dayGoals(goals, restDay)
-  const budget = dayGoal ? dayGoal.calories + exercise : 0
-  const left = dayGoal && remaining(dayGoal.calories, eaten, exercise)
+  const dayGoal = goals && dayBudget({ profile: goals, restDay, weightLb: weight, year: now.getFullYear(), activeKcal: activity.data?.[0]?.kcal, workoutEstimate: exercise })
+  const budget = dayGoal ? dayGoal.goal + dayGoal.exercise : 0
+  const left = dayGoal && remaining(dayGoal.goal, eaten, dayGoal.exercise)
   const latestWeighIn = weighIns.data?.at(-1)
   const change = weekChange(weighIns.data)
   const last = workouts.data?.[0]
