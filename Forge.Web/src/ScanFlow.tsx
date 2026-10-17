@@ -2,13 +2,13 @@ import { useState, type ChangeEvent } from 'react'
 import { MEALS, randomId, saveFoodEntry, scanLabel, scanMeal, type Meal, type ScannedFood } from './api'
 import { field, Notice, plainButton, primaryButton, Sheet } from './components'
 import { Icon, type IconName } from './icons'
-import { formatKcal } from './nutrition'
+import { formatKcal, MICROS, optionalNumber } from './nutrition'
 import { giveScanConsent, hasScanConsent, shrinkPhoto } from './photo'
 import { useAction } from './usePolling'
 
 type Kind = 'label' | 'meal'
 // A scanned food while you check it: every number is text, so a field can be cleared and retyped.
-type Item = { name: string; serving: string; servings: string; calories: string; protein: string; carbs: string; fat: string }
+type Item = { name: string; serving: string; servings: string; calories: string; protein: string; carbs: string; fat: string; fiber: string; sugar: string; sodium: string }
 
 const toItem = (food: ScannedFood): Item => ({
   name: food.name,
@@ -18,6 +18,9 @@ const toItem = (food: ScannedFood): Item => ({
   protein: String(food.protein),
   carbs: String(food.carbs),
   fat: String(food.fat),
+  fiber: food.fiber == null ? '' : String(food.fiber),
+  sugar: food.sugar == null ? '' : String(food.sugar),
+  sodium: food.sodium == null ? '' : String(food.sodium),
 })
 
 /**
@@ -129,6 +132,9 @@ function Review({ kind, initial, date, meal, onLogged, onClose }: { kind: Kind; 
           protein: number(item.protein),
           carbs: number(item.carbs),
           fat: number(item.fat),
+          fiber: optionalNumber(item.fiber),
+          sugar: optionalNumber(item.sugar),
+          sodium: optionalNumber(item.sodium),
           source: kind === 'label' ? 'label' : 'photo',
         })
       }
@@ -175,6 +181,16 @@ function Review({ kind, initial, date, meal, onLogged, onClose }: { kind: Kind; 
                 <label key={key} className="block">
                   <span className="text-[13px] text-muted">{label}</span>
                   <input value={item[key]} onChange={(e) => change(i, { [key]: e.target.value })} inputMode="decimal" aria-label={`${label} per serving`} className={`${field} px-1 text-center`} />
+                </label>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {MICROS.map((m) => (
+                <label key={m.key} className="block">
+                  <span className="text-[13px] text-muted">
+                    {m.label} ({m.unit})
+                  </span>
+                  <input value={item[m.key]} onChange={(e) => change(i, { [m.key]: e.target.value })} inputMode="decimal" aria-label={`${m.label} per serving, ${m.unit}`} className={`${field} px-1 text-center`} />
                 </label>
               ))}
             </div>

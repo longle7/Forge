@@ -305,6 +305,10 @@ namespace Forge.Api.Migrations
                         .HasPrecision(6, 1)
                         .HasColumnType("decimal(6,1)");
 
+                    b.Property<decimal?>("Fiber")
+                        .HasPrecision(6, 1)
+                        .HasColumnType("decimal(6,1)");
+
                     b.Property<string>("Meal")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -328,10 +332,18 @@ namespace Forge.Api.Migrations
                         .HasPrecision(6, 2)
                         .HasColumnType("decimal(6,2)");
 
+                    b.Property<decimal?>("Sodium")
+                        .HasPrecision(7, 1)
+                        .HasColumnType("decimal(7,1)");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("Sugar")
+                        .HasPrecision(6, 1)
+                        .HasColumnType("decimal(6,1)");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -564,6 +576,9 @@ namespace Forge.Api.Migrations
                     b.Property<int>("FatGoal")
                         .HasColumnType("int");
 
+                    b.Property<int?>("FiberGoal")
+                        .HasColumnType("int");
+
                     b.Property<string>("Goal")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -592,9 +607,15 @@ namespace Forge.Api.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
+                    b.Property<int?>("SodiumLimit")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("StartWeight")
                         .HasPrecision(5, 1)
                         .HasColumnType("decimal(5,1)");
+
+                    b.Property<int?>("SugarLimit")
+                        .HasColumnType("int");
 
                     b.Property<bool>("UnlockAfterHabits")
                         .HasColumnType("bit");
@@ -746,6 +767,9 @@ namespace Forge.Api.Migrations
                             b1.Property<decimal>("Fat")
                                 .HasPrecision(6, 1);
 
+                            b1.Property<decimal?>("Fiber")
+                                .HasPrecision(6, 1);
+
                             b1.Property<string>("Name")
                                 .IsRequired();
 
@@ -757,6 +781,12 @@ namespace Forge.Api.Migrations
 
                             b1.Property<decimal>("Servings")
                                 .HasPrecision(6, 2);
+
+                            b1.Property<decimal?>("Sodium")
+                                .HasPrecision(7, 1);
+
+                            b1.Property<decimal?>("Sugar")
+                                .HasPrecision(6, 1);
 
                             b1.HasKey("SavedMealId", "__synthesizedOrdinal");
 

@@ -34,6 +34,11 @@ namespace Forge.Api.Domain
         public int CarbsGoal { get; set; }
         public int FatGoal { get; set; }
 
+        // Optional: at least this many grams of fiber, at most this many grams of sugar and milligrams of sodium a day.
+        public int? FiberGoal { get; set; }
+        public int? SugarLimit { get; set; }
+        public int? SodiumLimit { get; set; }
+
         // Calories to take off the goal on rest days in your weekly plan (0 or less), from carbs: e.g. -200.
         public int RestDayCalorieAdjust { get; set; }
 

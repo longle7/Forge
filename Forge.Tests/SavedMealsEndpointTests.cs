@@ -18,7 +18,7 @@ public class SavedMealsEndpointTests : IDisposable
 
     public void Dispose() => _factory.Dispose();
 
-    private static readonly SavedMealItemDto Oats = new("Rolled Oats", "1/2 cup (40 g)", 2, 150, 5, 27, 3);
+    private static readonly SavedMealItemDto Oats = new("Rolled Oats", "1/2 cup (40 g)", 2, 150, 5, 27, 3, Fiber: 4, Sugar: 1, Sodium: 0);
     private static readonly SavedMealItemDto Banana = new("Banana", null, 1, 105, 1.3m, 27, 0.4m);
 
     private static Task<List<SavedMealResponse>> ListAsync(HttpClient client) =>

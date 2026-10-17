@@ -4,7 +4,7 @@ import { getProfile, saveProfile, saveWeighIn, type Activity, type Goal, type Nu
 import { Card, field, Group, Notice, Page, plainButton, primaryButton, Segmented, Status } from '../components'
 import { localDate } from '../dates'
 import { Icon } from '../icons'
-import { ACTIVITY, calculateGoals, formatKcal, type GoalInputs } from '../nutrition'
+import { ACTIVITY, calculateGoals, formatKcal, suggestedMicros, type GoalInputs } from '../nutrition'
 import { failure, useNow, usePolling, useAction } from '../usePolling'
 
 const BACK = { to: '/', label: 'Home' }
@@ -36,6 +36,12 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
   const [goal, setGoal] = useState<Goal>(existing?.goal ?? 'lose')
   const [pace, setPace] = useState(existing?.pace || 1)
   const [goalWeight, setGoalWeight] = useState(existing?.goalWeight ? String(existing.goalWeight) : '')
+  // Fiber, sugar, and sodium: empty = not tracked.
+  const [micros, setMicros] = useState<Record<MicroSetting, string>>(() => ({
+    fiberGoal: existing?.fiberGoal ? String(existing.fiberGoal) : '',
+    sugarLimit: existing?.sugarLimit ? String(existing.sugarLimit) : '',
+    sodiumLimit: existing?.sodiumLimit ? String(existing.sodiumLimit) : '',
+  }))
   const [restDayAdjust, setRestDayAdjust] = useState(existing?.restDayCalorieAdjust ?? 0)
   // Numbers you adjusted by hand; null means "use the calculated ones". Kept if you'd adjusted them before.
   const [custom, setCustom] = useState<Nutrition | null>(() => (existing && adjusted(existing, year) ? goalsOf(existing) : null))
@@ -49,6 +55,9 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
     if (!inputs || !goals) return setMessage('Fill in your details above to work out your goals.')
     const target = goalWeight.trim() ? Number(goalWeight) : null
     if (target !== null && !(target >= 50 && target <= 1000)) return setMessage('Enter your goal weight in pounds, or leave it empty.')
+    const micro = (key: MicroSetting) => (micros[key].trim() ? Math.round(Number(micros[key])) : null)
+    const outOfRange = MICRO_RANGES.find((r) => micro(r.key) !== null && !(micro(r.key)! >= r.min && micro(r.key)! <= r.max))
+    if (outOfRange) return setMessage(`${outOfRange.label} goes from ${outOfRange.min} to ${formatKcal(outOfRange.max)}, or leave it empty.`)
     await run(async () => {
       await saveProfile({
         sex,
@@ -56,6 +65,9 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
         heightIn: inputs.heightIn,
         startWeight: inputs.weight,
         goalWeight: target === null ? null : Math.round(target * 10) / 10,
+        fiberGoal: micro('fiberGoal'),
+        sugarLimit: micro('sugarLimit'),
+        sodiumLimit: micro('sodiumLimit'),
         activity,
         goal,
         pace: goal === 'maintain' ? 0 : pace,
@@ -195,6 +207,28 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
         <p className="px-1 text-muted">Fill in your details to see your daily goal.</p>
       )}
 
+      <Group title="Fiber, sugar, and sodium" footer="Optional. Leave one empty to not track it. Foods from search, scans, and Quick Add can carry them.">
+        <div className="space-y-2 p-4">
+          <div className="grid grid-cols-3 gap-2">
+            {MICRO_RANGES.map((r) => (
+              <label key={r.key} className="block">
+                <span className="text-[15px] text-muted">{r.label}</span>
+                <input value={micros[r.key]} onChange={(e) => setMicros({ ...micros, [r.key]: e.target.value })} inputMode="numeric" placeholder="–" maxLength={5} className={field} />
+              </label>
+            ))}
+          </div>
+          {goals && (
+            <button
+              type="button"
+              onClick={() => setMicros(Object.fromEntries(Object.entries(suggestedMicros(goals.calories)).map(([k, v]) => [k, String(v)])) as Record<MicroSetting, string>)}
+              className={`-ml-1 ${plainButton}`}
+            >
+              Use suggested: fiber {suggestedMicros(goals.calories).fiberGoal} g, sugar {suggestedMicros(goals.calories).sugarLimit} g, sodium 2,300 mg
+            </button>
+          )}
+        </div>
+      </Group>
+
       {message && <Notice>{message}</Notice>}
       <button onClick={save} disabled={saving} className={primaryButton}>
         {saving ? 'Saving…' : 'Save Goals'}
@@ -246,3 +280,11 @@ function adjusted(p: Profile, year: number): boolean {
   const saved = goalsOf(p)
   return (Object.keys(saved) as (keyof Nutrition)[]).some((k) => Math.round(calculated[k]) !== saved[k])
 }
+
+type MicroSetting = 'fiberGoal' | 'sugarLimit' | 'sodiumLimit'
+// The API's ProfileDto ranges.
+const MICRO_RANGES: { key: MicroSetting; label: string; min: number; max: number }[] = [
+  { key: 'fiberGoal', label: 'Fiber, at least (g)', min: 1, max: 150 },
+  { key: 'sugarLimit', label: 'Sugar, at most (g)', min: 1, max: 500 },
+  { key: 'sodiumLimit', label: 'Sodium, at most (mg)', min: 100, max: 10000 },
+]

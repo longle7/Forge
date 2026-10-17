@@ -65,6 +65,9 @@ namespace Forge.Api.Controllers
                 Protein = i.Protein,
                 Carbs = i.Carbs,
                 Fat = i.Fat,
+                Fiber = i.Fiber,
+                Sugar = i.Sugar,
+                Sodium = i.Sodium,
             })];
             await _db.SaveChangesAsync();
 
@@ -93,13 +96,16 @@ namespace Forge.Api.Controllers
         [Range(0, 5000)] decimal Calories,
         [Range(0, 1000)] decimal Protein,
         [Range(0, 1000)] decimal Carbs,
-        [Range(0, 1000)] decimal Fat);
+        [Range(0, 1000)] decimal Fat,
+        [Range(0, 1000)] decimal? Fiber = null,
+        [Range(0, 1000)] decimal? Sugar = null,
+        [Range(0, 50_000)] decimal? Sodium = null);
 
     public record SavedMealResponse(Guid Id, string Name, IEnumerable<SavedMealItemDto> Items)
     {
         public static SavedMealResponse From(SavedMeal m) => new(
             m.Id,
             m.Name,
-            m.Items.Select(i => new SavedMealItemDto(i.Name, i.Serving, i.Servings, i.Calories, i.Protein, i.Carbs, i.Fat)));
+            m.Items.Select(i => new SavedMealItemDto(i.Name, i.Serving, i.Servings, i.Calories, i.Protein, i.Carbs, i.Fat, i.Fiber, i.Sugar, i.Sodium)));
     }
 }

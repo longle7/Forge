@@ -12,12 +12,14 @@ namespace Forge.Api.Services
     }
 
     /// <summary>What a nutrition label says, per serving as printed. Found is false when there's no readable label.</summary>
-    public record LabelReading(bool Found, string Name, string Serving, decimal Calories, decimal Protein, decimal Carbs, decimal Fat);
+    public record LabelReading(bool Found, string Name, string Serving, decimal Calories, decimal Protein, decimal Carbs, decimal Fat,
+        decimal? Fiber = null, decimal? Sugar = null, decimal? Sodium = null);
 
     /// <summary>The foods on a plate, each with an estimated portion and its nutrition. Empty when there's no food.</summary>
     public record MealReading(List<MealItem> Items);
 
-    public record MealItem(string Name, decimal Grams, decimal Calories, decimal Protein, decimal Carbs, decimal Fat);
+    public record MealItem(string Name, decimal Grams, decimal Calories, decimal Protein, decimal Carbs, decimal Fat,
+        decimal? Fiber = null, decimal? Sugar = null, decimal? Sodium = null);
 
     /// <summary>Scanning isn't set up: no Anthropic:ApiKey is configured.</summary>
     public class ScanNotConfiguredException() : Exception("Scanning isn't set up: set Anthropic:ApiKey.");
@@ -40,31 +42,33 @@ namespace Forge.Api.Services
 
         private const string LabelInstructions =
             "Read the Nutrition Facts label in this photo. Report the values for one serving exactly as printed: the "
-            + "serving size as written (for example \"2/3 cup (55 g)\"), calories, and grams of protein, total "
-            + "carbohydrate, and total fat. For name, use the product's name if it's visible on the package, otherwise an "
+            + "serving size as written (for example \"2/3 cup (55 g)\"), calories, grams of protein, total "
+            + "carbohydrate, total fat, dietary fiber, and total sugars, and milligrams of sodium. For name, use the product's name if it's visible on the package, otherwise an "
             + "empty string. If there's no readable nutrition label, set found to false, serving and name to empty "
             + "strings, and the numbers to 0.";
 
         private const string MealInstructions =
             "Identify each distinct food in this photo (for example: grilled chicken breast, white rice, broccoli) and "
-            + "estimate its portion in grams and its nutrition for that portion: calories, and grams of protein, "
-            + "carbohydrate, and fat. Use realistic portion sizes based on the plate and utensils, and include cooking "
+            + "estimate its portion in grams and its nutrition for that portion: calories, grams of protein, "
+            + "carbohydrate, fat, fiber, and sugar, and milligrams of sodium. Use realistic portion sizes based on the plate and utensils, and include cooking "
             + "fats and sauces you can see as their own items. If there's no food in the photo, return no items.";
 
         private static readonly Dictionary<string, JsonElement> LabelSchema = Schema("""
             {"type": "object", "additionalProperties": false,
-             "required": ["found", "name", "serving", "calories", "protein", "carbs", "fat"],
+             "required": ["found", "name", "serving", "calories", "protein", "carbs", "fat", "fiber", "sugar", "sodium"],
              "properties": {"found": {"type": "boolean"}, "name": {"type": "string"}, "serving": {"type": "string"},
-                            "calories": {"type": "number"}, "protein": {"type": "number"}, "carbs": {"type": "number"}, "fat": {"type": "number"}}}
+                            "calories": {"type": "number"}, "protein": {"type": "number"}, "carbs": {"type": "number"}, "fat": {"type": "number"},
+                            "fiber": {"type": "number"}, "sugar": {"type": "number"}, "sodium": {"type": "number"}}}
             """);
 
         private static readonly Dictionary<string, JsonElement> MealSchema = Schema("""
             {"type": "object", "additionalProperties": false, "required": ["items"],
              "properties": {"items": {"type": "array", "items": {
                "type": "object", "additionalProperties": false,
-               "required": ["name", "grams", "calories", "protein", "carbs", "fat"],
+               "required": ["name", "grams", "calories", "protein", "carbs", "fat", "fiber", "sugar", "sodium"],
                "properties": {"name": {"type": "string"}, "grams": {"type": "number"}, "calories": {"type": "number"},
-                              "protein": {"type": "number"}, "carbs": {"type": "number"}, "fat": {"type": "number"}}}}}}
+                              "protein": {"type": "number"}, "carbs": {"type": "number"}, "fat": {"type": "number"},
+                              "fiber": {"type": "number"}, "sugar": {"type": "number"}, "sodium": {"type": "number"}}}}}}
             """);
 
         private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);

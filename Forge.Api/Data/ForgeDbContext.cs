@@ -117,6 +117,9 @@ namespace Forge.Api.Data
                 entity.Property(f => f.Protein).HasPrecision(6, 1);
                 entity.Property(f => f.Carbs).HasPrecision(6, 1);
                 entity.Property(f => f.Fat).HasPrecision(6, 1);
+                entity.Property(f => f.Fiber).HasPrecision(6, 1);
+                entity.Property(f => f.Sugar).HasPrecision(6, 1);
+                entity.Property(f => f.Sodium).HasPrecision(7, 1); // milligrams
             });
 
             modelBuilder.Entity<Habit>(entity =>
@@ -149,6 +152,9 @@ namespace Forge.Api.Data
                     items.Property(i => i.Protein).HasPrecision(6, 1);
                     items.Property(i => i.Carbs).HasPrecision(6, 1);
                     items.Property(i => i.Fat).HasPrecision(6, 1);
+                    items.Property(i => i.Fiber).HasPrecision(6, 1);
+                    items.Property(i => i.Sugar).HasPrecision(6, 1);
+                    items.Property(i => i.Sodium).HasPrecision(7, 1);
                 });
             });
 

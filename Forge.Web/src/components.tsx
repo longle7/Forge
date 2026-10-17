@@ -170,18 +170,27 @@ export function Rings({ rings, size = 128 }: { rings: { label: string; value: nu
 }
 
 /** A macro's progress toward its goal: "Protein 96 / 167 g" over a bar. */
-export function MacroBar({ label, value, goal, color }: { label: string; value: number; goal: number; color: string }) {
+export function MacroBar({ label, value, goal, color, unit = 'g', limit = false }: {
+  label: string
+  value: number
+  goal: number
+  color: string
+  unit?: string
+  limit?: boolean // the goal is a most, not a target: over it shows amber
+}) {
   const progress = goal > 0 ? Math.min(1, value / goal) : 0
+  const over = limit && value > goal
   return (
     <div>
       <div className="flex justify-between text-[13px]">
         <span className="font-semibold">{label}</span>
         <span className="text-muted tabular-nums">
-          {Math.round(value)} / {goal} g
+          {Math.round(value)} / {goal} {unit}
+          {over && ' · over'}
         </span>
       </div>
       <div className="mt-1 h-2 overflow-hidden rounded-full bg-fill">
-        <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${progress * 100}%`, background: color }} />
+        <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${progress * 100}%`, background: over ? 'var(--color-amber)' : color }} />
       </div>
     </div>
   )

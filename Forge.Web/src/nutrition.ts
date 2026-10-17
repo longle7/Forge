@@ -1,4 +1,4 @@
-import type { Activity, DayTotals, Goal, Nutrition, PlanDay, Profile, Sex, WeighIn, Workout } from './api'
+import type { Activity, DayTotals, Goal, Micros, Nutrition, PlanDay, Profile, Sex, WeighIn, Workout } from './api'
 import { addDays, parseDate } from './dates'
 import { isRestDay } from './plan'
 import { isCardioSet } from './workouts'
@@ -199,3 +199,25 @@ export function adaptiveCalories(days: DayTotals[], weighIns: WeighIn[] | undefi
   const suggested = Math.max(calorieFloor(profile.sex), Math.round((maintenance + plannedTrend(profile) * 500) / 10) * 10)
   return Math.abs(suggested - profile.calorieGoal) < 75 ? undefined : { average: Math.round(average), trend, maintenance, suggested }
 }
+
+/** Fiber, sugar, and sodium: their units, and the profile setting that's a goal (fiber, at least) or a limit (at most). */
+export const MICROS = [
+  { key: 'fiber', label: 'Fiber', unit: 'g', setting: 'fiberGoal', limit: false },
+  { key: 'sugar', label: 'Sugar', unit: 'g', setting: 'sugarLimit', limit: true },
+  { key: 'sodium', label: 'Sodium', unit: 'mg', setting: 'sodiumLimit', limit: true },
+] as const
+
+/** Fiber, sugar, and sodium totals (each × servings), and how many entries didn't say (counted as 0 in the totals). */
+export function microTotals(entries: (Micros & { servings: number })[]): { fiber: number; sugar: number; sodium: number; unknown: number } {
+  const sum = (key: keyof Micros) => entries.reduce((total, e) => total + (e[key] ?? 0) * e.servings, 0)
+  return { fiber: sum('fiber'), sugar: sum('sugar'), sodium: sum('sodium'), unknown: entries.filter((e) => e.fiber == null && e.sugar == null && e.sodium == null).length }
+}
+
+/**
+ * Starting points for a calorie goal: fiber 14 g per 1,000 kcal and sugar at most 10% of calories (US Dietary
+ * Guidelines), sodium at most 2,300 mg.
+ */
+export const suggestedMicros = (calories: number) => ({ fiberGoal: Math.round((calories / 1000) * 14), sugarLimit: Math.round((calories * 0.1) / 4), sodiumLimit: 2300 })
+
+/** "12", or null for an empty field: a nutrient typed in, or left unknown. */
+export const optionalNumber = (text: string) => (text.trim() === '' ? null : Math.max(0, Number(text) || 0))
