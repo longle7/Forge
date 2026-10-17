@@ -63,6 +63,7 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
       <p className="-mt-3 text-muted">
         {[formatDay(workout.startedAt), formatTime(workout.startedAt), formatDuration(workoutLength(workout)), workoutTotals(workout)].filter(Boolean).join(' · ')}
       </p>
+      {workout.source === 'health' && <p className="-mt-3 text-[15px] text-muted">From Apple Health{workout.sets.length === 0 && ' · the Watch doesn’t record sets for strength training'}</p>}
 
       {finished && (
         <Card>
@@ -99,15 +100,17 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
 
       {message && <Notice>{message}</Notice>}
 
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => open(repeatDraft(workout))} className={tintedButton}>
-          <Icon name="repeat" className="size-5" />
-          Repeat
-        </button>
-        <button onClick={() => open(editDraft(workout))} className={tintedButton}>
-          Edit
-        </button>
-      </div>
+      {workout.sets.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => open(repeatDraft(workout))} className={tintedButton}>
+            <Icon name="repeat" className="size-5" />
+            Repeat
+          </button>
+          <button onClick={() => open(editDraft(workout))} className={tintedButton}>
+            Edit
+          </button>
+        </div>
+      )}
       <button onClick={remove} disabled={deleting} className={dangerButton}>
         {deleting ? 'Deleting…' : 'Delete Workout'}
       </button>

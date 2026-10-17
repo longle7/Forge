@@ -78,6 +78,15 @@ export function PrivacyPage() {
             your name or email, so we never receive them.
           </li>
           <li>
+            <strong>Apple Health, if you connect it.</strong> In the iPhone app you can let Forge read your workouts (from
+            your Apple Watch and other apps), heart rate, and active calories from Apple Health. Forge stores the workouts
+            it brings in, with their calories and heart rate, and your daily active calories on our server, to show them
+            with your training and count them in your calorie budget. Health data is never used for advertising or
+            marketing, never sold, and never shared with anyone else. Forge only reads from Health; it never writes to it.
+            You can stop it any time in the Health app (Sharing → Apps → Forge), and Delete Account removes everything it
+            brought in.
+          </li>
+          <li>
             <strong>Photos you scan.</strong> When you scan a nutrition label or a meal, the photo goes to our server and on
             to Anthropic, whose Claude AI reads it and sends back the nutrition it found. We don't store the photo; we only
             count how many scans you make each day, to keep costs in check. You're asked before your first scan.

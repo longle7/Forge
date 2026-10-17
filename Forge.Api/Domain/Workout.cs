@@ -19,5 +19,26 @@ namespace Forge.Api.Domain
         public DateTime FinishedAtUtc { get; set; }
 
         public List<WorkoutSet> Sets { get; set; } = [];
+
+        // "forge" (logged in Forge), or "health": an Apple Watch / Apple Health workout the iPhone app brought in. Those
+        // can have no sets (the Watch doesn't record sets for strength training).
+        public string Source { get; set; } = "forge";
+
+        // What Apple Health calls it ("running", "strength"); null for Forge's own.
+        public string? Activity { get; set; }
+
+        // From Apple Health, for a workout it recorded or one logged in Forge at the same time: active calories, and
+        // heart rate (average, max, and the curve in 30-second steps).
+        public decimal? ActiveCalories { get; set; }
+        public int? AvgHeartRate { get; set; }
+        public int? MaxHeartRate { get; set; }
+        public List<HeartRatePoint> HeartRate { get; set; } = [];
+    }
+
+    /// <summary>Heart rate `S` seconds into a workout, in beats a minute.</summary>
+    public class HeartRatePoint
+    {
+        public int S { get; set; }
+        public int Bpm { get; set; }
     }
 }

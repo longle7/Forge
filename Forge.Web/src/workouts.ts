@@ -97,10 +97,20 @@ export const recentExercises = (workouts: Workout[], count = 6) => [...new Set(w
 /** Total pounds lifted: weight × reps over every set. */
 export const volume = (workout: Workout) => workout.sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
 
-/** What a workout added up to: "12,345 lb", "3.1 mi", both, or "" (bodyweight and timed cardio only). */
+/**
+ * What a workout added up to: "12,345 lb", "3.1 mi", and from Apple Health "312 kcal" and "128 bpm avg", or ""
+ * (bodyweight and timed cardio only).
+ */
 export function workoutTotals(workout: Workout): string {
   const miles = workout.sets.reduce((sum, s) => sum + (s.distance ?? 0), 0)
-  return [volume(workout) > 0 && `${formatWeight(volume(workout))} lb`, miles > 0 && `${formatMiles(miles)} mi`].filter(Boolean).join(' · ')
+  return [
+    volume(workout) > 0 && `${formatWeight(volume(workout))} lb`,
+    miles > 0 && `${formatMiles(miles)} mi`,
+    workout.activeCalories && `${Math.round(workout.activeCalories).toLocaleString()} kcal`,
+    workout.avgHeartRate && `${workout.avgHeartRate} bpm avg`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 /** How long a workout took: start to finish, or its cardio time when that's longer (a run logged afterwards). */

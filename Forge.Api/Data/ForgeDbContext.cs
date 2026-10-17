@@ -48,6 +48,10 @@ namespace Forge.Api.Data
                 entity.HasIndex(w => w.UserId);
                 entity.Property(w => w.UserId).IsRequired().HasMaxLength(100);
                 entity.Property(w => w.Name).IsRequired().HasMaxLength(100);
+                entity.Property(w => w.Source).IsRequired().HasMaxLength(10).HasDefaultValue("forge");
+                entity.Property(w => w.Activity).HasMaxLength(30);
+                entity.Property(w => w.ActiveCalories).HasPrecision(6, 1);
+                entity.OwnsMany(w => w.HeartRate, points => points.ToJson()); // one JSON column, like SavedMeal.Items
                 entity.HasMany(w => w.Sets)
                       .WithOne()
                       .HasForeignKey(s => s.WorkoutId)
