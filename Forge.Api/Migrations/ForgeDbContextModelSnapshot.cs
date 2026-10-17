@@ -569,6 +569,10 @@ namespace Forge.Api.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
+                    b.Property<decimal?>("GoalWeight")
+                        .HasPrecision(5, 1)
+                        .HasColumnType("decimal(5,1)");
+
                     b.Property<decimal>("HeightIn")
                         .HasPrecision(4, 1)
                         .HasColumnType("decimal(4,1)");

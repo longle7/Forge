@@ -25,6 +25,9 @@ namespace Forge.Api.Domain
         public string Goal { get; set; } = "maintain";
         public decimal Pace { get; set; }
 
+        // The weight you're working toward, in pounds (null = none set).
+        public decimal? GoalWeight { get; set; }
+
         // Daily goals: kcal, then grams.
         public int CalorieGoal { get; set; }
         public int ProteinGoal { get; set; }

@@ -73,6 +73,7 @@ namespace Forge.Api.Data
                 entity.Property(p => p.Goal).IsRequired().HasMaxLength(10);
                 entity.Property(p => p.HeightIn).HasPrecision(4, 1);
                 entity.Property(p => p.StartWeight).HasPrecision(5, 1);
+                entity.Property(p => p.GoalWeight).HasPrecision(5, 1);
                 entity.Property(p => p.Pace).HasPrecision(3, 2);
             });
 

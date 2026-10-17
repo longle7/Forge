@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, type DayTotals, type Habit, type PlanDay, type Workout } from '../api'
+import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, type DayTotals, type Habit, type PlanDay, type Profile, type WeighIn, type Workout } from '../api'
 import { completion, habitStreak } from '../habits'
 import { BarChart, ChartTable, LineChart, Sparkline } from '../charts'
 import { RING } from '../colors'
 import { Card, Page, plainButton, Segmented, Status } from '../components'
-import { addDays, localDate, workoutDay } from '../dates'
+import { addDays, localDate, parseDate, workoutDay } from '../dates'
 import { Icon } from '../icons'
-import { formatKcal } from '../nutrition'
+import { calorieAdherence, formatKcal, goalEta, plannedTrend, weightTrend } from '../nutrition'
 import { adherence, calorieBars, plannedDays, shortDate, strengthSeries, streak, topLifts, weekStatuses, type Bucket, type DayStatus } from '../progress'
 import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
@@ -43,10 +43,10 @@ export default function ProgressPage() {
       <Segmented label="Time range" options={RANGES} value={days} onChange={setDays} />
       <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={3} />
 
-      <WeightCard weighIns={(weighIns.data ?? []).filter((w) => w.date >= from)} today={today} period={period} onSaved={weighIns.reload} />
+      <WeightCard weighIns={weighIns.data ?? []} from={from} profile={profile.data ?? undefined} today={today} period={period} onSaved={weighIns.reload} />
       <PlanCard plan={plan.data ?? []} workouts={workouts.data ?? []} from={from} today={today} period={period} />
       <HabitsCard habits={(habits.data ?? []).filter((h) => !h.archived)} from={from} today={today} period={period} />
-      <CaloriesCard days={food.data ?? []} goal={profile.data?.calorieGoal} from={from} today={today} period={period} bucket={range.bucket} />
+      <CaloriesCard days={food.data ?? []} profile={profile.data ?? undefined} plan={plan.data} from={from} today={today} period={period} bucket={range.bucket} />
       <StrengthCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
       <RecordsCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
 
@@ -79,8 +79,27 @@ function Stat({ label, value, detail }: { label: string; value: string; detail?:
   )
 }
 
-function WeightCard({ weighIns, today, period, onSaved }: { weighIns: { date: string; weight: number }[]; today: string; period: string; onSaved: () => void }) {
+/**
+ * Your goal weight and when you'd reach it: at your trend over the last 4 weeks, or before there's one, at the pace
+ * you set.
+ */
+function GoalStat({ weighIns, profile, goal, today }: { weighIns: WeighIn[]; profile: Profile; goal: number; today: string }) {
+  const current = weighIns.at(-1)?.weight ?? profile.startWeight
+  const trend = weightTrend(weighIns, today)
+  const eta = goalEta(current, goal, trend ?? plannedTrend(profile), today)
+  const when = (day: string) => parseDate(day).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: day.slice(0, 4) === today.slice(0, 4) ? undefined : 'numeric' })
+  const detail = eta === today ? 'You made it!' : eta ? `about ${when(eta)} ${trend === undefined ? 'at your planned pace' : 'at this pace'}` : 'Not heading there yet'
+  return (
+    <p className="mt-3 text-[15px]">
+      <span className="font-semibold">Goal {formatWeight(goal)} lb</span>
+      <span className="text-muted"> · {eta === today ? '' : `${formatWeight(Math.round(Math.abs(goal - current) * 10) / 10)} lb to go, `}{detail}</span>
+    </p>
+  )
+}
+
+function WeightCard({ weighIns: all, from, profile, today, period, onSaved }: { weighIns: WeighIn[]; from: string; profile?: Profile; today: string; period: string; onSaved: () => void }) {
   const [weighing, setWeighing] = useState(false)
+  const weighIns = all.filter((w) => w.date >= from)
   const first = weighIns[0]
   const last = weighIns.at(-1)
   const change = first && last ? last.weight - first.weight : 0
@@ -99,6 +118,7 @@ function WeightCard({ weighIns, today, period, onSaved }: { weighIns: { date: st
       ) : (
         <p className="mt-1 text-[15px] text-muted">{last ? `${formatWeight(last.weight)} lb on ${shortDate(last.date)}. ` : ''}Weigh in a few times to see your trend.</p>
       )}
+      {profile?.goalWeight && <GoalStat weighIns={all} profile={profile} goal={profile.goalWeight} today={today} />}
       <button onClick={() => setWeighing(true)} className={`-ml-1 ${plainButton}`}>
         <Icon name="plus" className="size-5" />
         Log Weight
@@ -228,8 +248,18 @@ function HabitsCard({ habits, from, today, period }: { habits: Habit[]; from: st
   )
 }
 
-function CaloriesCard({ days, goal, from, today, period, bucket }: { days: DayTotals[]; goal?: number; from: string; today: string; period: string; bucket: Bucket }) {
+function CaloriesCard({ days, profile, plan, from, today, period, bucket }: {
+  days: DayTotals[]
+  profile?: Profile
+  plan?: PlanDay[]
+  from: string
+  today: string
+  period: string
+  bucket: Bucket
+}) {
+  const goal = profile?.calorieGoal
   const logged = days.filter((d) => d.calories > 0)
+  const hit = profile && calorieAdherence(days, profile, plan, today)
   const average = (key: 'calories' | 'protein') => logged.reduce((sum, d) => sum + d[key], 0) / (logged.length || 1)
   const bars = calorieBars(days, from, today, bucket)
   return (
@@ -240,6 +270,12 @@ function CaloriesCard({ days, goal, from, today, period, bucket }: { days: DayTo
           <div className="mt-2 grid grid-cols-2 gap-3">
             <Stat label="Average a day" value={`${formatKcal(average('calories'))} kcal`} detail={goal ? `goal ${formatKcal(goal)}` : undefined} />
             <Stat label="Protein a day" value={`${Math.round(average('protein'))} g`} detail={`${logged.length} days logged`} />
+            {hit && hit.logged > 0 && (
+              <>
+                <Stat label="On target" value={`${hit.onTarget} of ${plural(hit.logged, 'day')}`} detail={hit.streak > 1 ? `${hit.streak} in a row` : 'within 10% of your goal'} />
+                <Stat label="Protein goal hit" value={`${hit.protein} of ${plural(hit.logged, 'day')}`} detail={`${profile!.proteinGoal} g or close`} />
+              </>
+            )}
           </div>
           <BarChart bars={bars} bucket={bucket} goal={goal} label={`Calories over the last ${period}`} color={RING.eat} format={(v) => formatKcal(v)} />
           <ChartTable caption="Calories" rows={[...bars].reverse().filter((b) => b.value !== undefined).map((b) => [shortDate(b.start, bucket), `${formatKcal(b.value!)} kcal`])} />

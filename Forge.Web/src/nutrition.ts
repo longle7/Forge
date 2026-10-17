@@ -1,5 +1,6 @@
-import type { Activity, Goal, Nutrition, Profile, Sex, WeighIn, Workout } from './api'
-import { addDays } from './dates'
+import type { Activity, DayTotals, Goal, Nutrition, PlanDay, Profile, Sex, WeighIn, Workout } from './api'
+import { addDays, parseDate } from './dates'
+import { isRestDay } from './plan'
 import { isCardioSet } from './workouts'
 
 /**
@@ -30,6 +31,9 @@ export function restingCalories(sex: Sex, weightLb: number, heightIn: number, ag
   return 10 * weightLb * KG_PER_LB + 6.25 * heightIn * 2.54 - 5 * age + (sex === 'male' ? 5 : -161)
 }
 
+/** The lowest daily goal Forge suggests: below it, getting enough nutrition is hard without a doctor's help. */
+const calorieFloor = (sex: Sex) => (sex === 'male' ? 1500 : 1200)
+
 /**
  * Daily goals: maintenance (resting × activity), then ±500 kcal for each pound a week to lose or gain, rounded to 10
  * and never below a safe floor (1,500 kcal for men, 1,200 for women). Protein 0.9 g per pound (counted up to 220 lb,
@@ -39,7 +43,7 @@ export function calculateGoals(inputs: GoalInputs, year: number): Nutrition & { 
   const age = year - inputs.birthYear
   const maintenance = Math.round(restingCalories(inputs.sex, inputs.weight, inputs.heightIn, age) * ACTIVITY[inputs.activity].factor)
   const change = inputs.goal === 'maintain' ? 0 : (inputs.goal === 'lose' ? -500 : 500) * inputs.pace
-  const calories = Math.max(inputs.sex === 'male' ? 1500 : 1200, Math.round((maintenance + change) / 10) * 10)
+  const calories = Math.max(calorieFloor(inputs.sex), Math.round((maintenance + change) / 10) * 10)
   const protein = Math.round(Math.min(inputs.weight, 220) * 0.9)
   const fat = Math.round((calories * 0.3) / 9)
   const carbs = Math.max(0, Math.round((calories - protein * 4 - fat * 9) / 4))
@@ -129,3 +133,69 @@ export const formatKcal = (calories: number) => kcal.format(Math.round(calories)
 
 /** "1 cup", or "2 × 1 cup" */
 export const servingLabel = (food: { serving: string; servings: number }) => (food.servings === 1 ? food.serving : `${food.servings} × ${food.serving}`)
+
+const DAY_MS = 86_400_000
+const dayNumber = (day: string) => Math.round(parseDate(day).getTime() / DAY_MS)
+
+/**
+ * Your weight trend in pounds a week (negative = losing): the least-squares slope through your weigh-ins in the `days`
+ * up to `today`, so one heavy morning doesn't swing it. Undefined with fewer than 2 weigh-ins, or under a week apart.
+ */
+export function weightTrend(weighIns: WeighIn[] | undefined, today: string, days = 28): number | undefined {
+  const since = addDays(today, -(days - 1))
+  const points = (weighIns ?? []).filter((w) => w.date >= since && w.date <= today).map((w) => ({ x: dayNumber(w.date), y: w.weight }))
+  if (points.length < 2 || points.at(-1)!.x - points[0].x < 7) return undefined
+  const mx = points.reduce((sum, p) => sum + p.x, 0) / points.length
+  const my = points.reduce((sum, p) => sum + p.y, 0) / points.length
+  const slope = points.reduce((sum, p) => sum + (p.x - mx) * (p.y - my), 0) / points.reduce((sum, p) => sum + (p.x - mx) ** 2, 0)
+  return slope * 7
+}
+
+/** Your planned change in pounds a week from your goal and pace: −1 to lose a pound a week. */
+export const plannedTrend = (profile: Profile) => (profile.goal === 'lose' ? -profile.pace : profile.goal === 'gain' ? profile.pace : 0)
+
+/**
+ * The day you'd reach `goal` from `current` at `lbPerWeek`: `today` once you're within half a pound, undefined when
+ * that pace isn't heading there (or would take over two years).
+ */
+export function goalEta(current: number, goal: number, lbPerWeek: number | undefined, today: string): string | undefined {
+  const toGo = goal - current
+  if (Math.abs(toGo) < 0.5) return today
+  if (!lbPerWeek || Math.sign(lbPerWeek) !== Math.sign(toGo)) return undefined
+  const days = Math.ceil((toGo / lbPerWeek) * 7)
+  return days <= 730 ? addDays(today, days) : undefined
+}
+
+/**
+ * How well the days you logged food before `today` matched your goals: on target when calories are within 10% of
+ * that day's goal (rest days have their own, see dayGoals), and protein hit at 90% of its goal or more. `streak`:
+ * on-target days in a row up to yesterday. Today is still going, so it doesn't count yet.
+ */
+export function calorieAdherence(days: DayTotals[], profile: Profile, plan: PlanDay[] | undefined, today: string): { logged: number; onTarget: number; protein: number; streak: number } {
+  const logged = days.filter((d) => d.date < today && d.calories > 0)
+  const goals = (day: string) => dayGoals(profile, isRestDay(plan, day))
+  const hit = (d: DayTotals) => Math.abs(d.calories - goals(d.date).calories) <= goals(d.date).calories * 0.1
+  const onTarget = new Set(logged.filter(hit).map((d) => d.date))
+  let streak = 0
+  while (onTarget.has(addDays(today, -(streak + 1)))) streak++
+  return { logged: logged.length, onTarget: onTarget.size, protein: logged.filter((d) => d.protein >= goals(d.date).protein * 0.9).length, streak }
+}
+
+/**
+ * The calorie goal your own numbers point to: over the 3 weeks before today, your maintenance is about what you ate on
+ * average less your weight change (3,500 kcal a pound), then your goal's deficit or surplus is applied (500 kcal a day
+ * per pound a week). Undefined until you've logged food on 14 of those days with a weight trend, or when it's within
+ * 75 kcal of your goal already.
+ * ponytail: days you logged only part of what you ate pull the average down; a "this day is complete" mark would fix it.
+ */
+export function adaptiveCalories(days: DayTotals[], weighIns: WeighIn[] | undefined, profile: Profile, today: string):
+  { average: number; trend: number; maintenance: number; suggested: number } | undefined {
+  const since = addDays(today, -21)
+  const logged = days.filter((d) => d.date >= since && d.date < today && d.calories > 0)
+  const trend = weightTrend(weighIns, addDays(today, -1), 21)
+  if (logged.length < 14 || trend === undefined) return undefined
+  const average = logged.reduce((sum, d) => sum + d.calories, 0) / logged.length
+  const maintenance = Math.round(average - (trend / 7) * 3500)
+  const suggested = Math.max(calorieFloor(profile.sex), Math.round((maintenance + plannedTrend(profile) * 500) / 10) * 10)
+  return Math.abs(suggested - profile.calorieGoal) < 75 ? undefined : { average: Math.round(average), trend, maintenance, suggested }
+}
