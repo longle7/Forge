@@ -3,15 +3,17 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { deleteWorkout, getExercises, getProfile, getWorkouts, type Workout } from '../api'
 import { ChartTable, HeartRateChart } from '../charts'
 import { Card, dangerButton, Notice, NotFound, Page, PrBadge, Status, tintedButton } from '../components'
+import { workoutDay } from '../dates'
 import { editDraft, loadDraft, repeatDraft, saveDraft, type Draft } from '../draft'
 import { maxHeartRate, timeInZones, ZONES } from '../heartRate'
 import { Icon } from '../icons'
-import { failure, usePolling, useSettled } from '../usePolling'
+import { drawShareCard, shareImage } from '../shareCard'
+import { failure, useAction, usePolling, useSettled } from '../usePolling'
 import { formatClock, formatDay, formatDuration, formatSet, formatTime, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
 
 const BACK = { to: '/workouts/history', label: 'History' }
 
-/** One finished workout: its sets and PRs, and Repeat, Edit, and Delete. Straight from Finish, a word of congrats. */
+/** One finished workout: its sets and PRs, and Repeat, Edit, Share, and Delete. Straight from Finish, a word of congrats. */
 export default function WorkoutDetailPage() {
   const { id } = useParams()
   const workouts = usePolling(getWorkouts, '/workouts')
@@ -37,6 +39,7 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
   const exercises = usePolling(getExercises, '/exercises')
   const [message, setMessage] = useState<string>()
   const [deleting, setDeleting] = useState(false)
+  const sharing = useAction()
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
   // groupSets keeps the same set objects, so PRs are looked up by object.
   const prs = personalRecords(workouts).get(workout.id) ?? new Set()
@@ -60,6 +63,19 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
     }
   }
 
+  // The workout as an image (shareCard.ts), to the share sheet on the iPhone or downloaded on the website.
+  const shareButton = (className: string) => (
+    <button
+      onClick={() => sharing.run(async () => shareImage(await drawShareCard(workout, { prCount: prs.size, names }), `forge-workout-${workoutDay(workout)}.png`))}
+      disabled={sharing.busy}
+      className={`${tintedButton} ${className}`}
+    >
+      <Icon name="share" className="size-5" />
+      {sharing.busy ? 'Preparing…' : 'Share'}
+    </button>
+  )
+  const notice = message ?? sharing.error
+
   return (
     <Page title={workout.name} back={BACK}>
       <p className="-mt-3 text-muted">
@@ -80,6 +96,7 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
               </span>
             </span>
           </div>
+          {shareButton('mt-3 w-full')}
         </Card>
       )}
 
@@ -102,19 +119,22 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
 
       {(!!workout.avgHeartRate || !!workout.heartRate?.length) && <HeartRateCard workout={workout} />}
 
-      {message && <Notice>{message}</Notice>}
+      {notice && <Notice>{notice}</Notice>}
 
-      {workout.sets.length > 0 && (
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => open(repeatDraft(workout))} className={tintedButton}>
-            <Icon name="repeat" className="size-5" />
-            Repeat
-          </button>
-          <button onClick={() => open(editDraft(workout))} className={tintedButton}>
-            Edit
-          </button>
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-2">
+        {workout.sets.length > 0 && (
+          <>
+            <button onClick={() => open(repeatDraft(workout))} className={tintedButton}>
+              <Icon name="repeat" className="size-5" />
+              Repeat
+            </button>
+            <button onClick={() => open(editDraft(workout))} className={tintedButton}>
+              Edit
+            </button>
+          </>
+        )}
+        {shareButton('col-span-2')}
+      </div>
       <button onClick={remove} disabled={deleting} className={dangerButton}>
         {deleting ? 'Deleting…' : 'Delete Workout'}
       </button>
