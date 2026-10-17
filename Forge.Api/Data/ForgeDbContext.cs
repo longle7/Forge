@@ -29,6 +29,7 @@ namespace Forge.Api.Data
         public DbSet<HabitCheck> HabitChecks { get; set; } = null!;
         public DbSet<SavedMeal> SavedMeals { get; set; } = null!;
         public DbSet<AppleAccount> AppleAccounts { get; set; } = null!;
+        public DbSet<TestedMax> TestedMaxes { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -163,6 +164,18 @@ namespace Forge.Api.Data
                 entity.Property(a => a.Sub).HasMaxLength(100);
                 entity.HasIndex(a => a.UserId).IsUnique(); // a beta ID is claimed by one Apple account at most
                 entity.Property(a => a.UserId).IsRequired().HasMaxLength(100);
+            });
+
+            modelBuilder.Entity<TestedMax>(entity =>
+            {
+                entity.Property(m => m.Id).ValueGeneratedNever(); // the app makes it up (see TestedMax.Id)
+                entity.HasIndex(m => new { m.UserId, m.ExerciseId });
+                entity.Property(m => m.UserId).IsRequired().HasMaxLength(100);
+                entity.Property(m => m.Weight).HasPrecision(6, 2); // like WorkoutSet.Weight
+                entity.HasOne(m => m.Exercise)
+                      .WithMany()
+                      .HasForeignKey(m => m.ExerciseId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

@@ -91,6 +91,17 @@ export interface WeighIn {
   weight: number // pounds
 }
 
+/** A max you tested outside a logged workout: a weight for 1 to 10 reps on a day. */
+export interface TestedMax {
+  id: string // made up by the app
+  exerciseId: number
+  date: string // YYYY-MM-DD, your time zone
+  weight: number // pounds
+  reps: number
+}
+
+export type TestedMaxInput = Omit<TestedMax, 'id'>
+
 export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 export const MEALS: { id: Meal; label: string }[] = [
   { id: 'breakfast', label: 'Breakfast' },
@@ -212,6 +223,10 @@ export const checkHabit = (id: string, date: string, count: number) => api<void>
 
 export const getWeighIns = () => api<WeighIn[]>('/weigh-ins')
 export const saveWeighIn = (date: string, weight: number) => api<WeighIn>(`/weigh-ins/${date}`, put({ weight }))
+
+export const getMaxes = () => api<TestedMax[]>('/maxes')
+export const saveMax = (id: string, max: TestedMaxInput) => api<TestedMax>(`/maxes/${id}`, put(max))
+export const deleteMax = (id: string) => api<void>(`/maxes/${id}`, { method: 'DELETE' })
 
 export const foodLogPath = (date: string) => `/food-log?date=${date}`
 export const getFoodLog = (date: string) => api<FoodEntry[]>(foodLogPath(date))

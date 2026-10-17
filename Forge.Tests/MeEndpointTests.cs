@@ -34,6 +34,8 @@ public class MeEndpointTests : IDisposable
         var habit = Guid.NewGuid();
         await client.PutAsJsonAsync($"/habits/{habit}", new HabitRequest("Water", "💧", 8, 127));
         await client.PutAsJsonAsync($"/habits/{habit}/checks/2026-10-10", new HabitCheckRequest(3));
+        // On your own exercise, so deleting it has to delete the max first.
+        await client.PutAsJsonAsync($"/maxes/{Guid.NewGuid()}", new TestedMaxRequest(exercise.Id, new DateOnly(2026, 10, 10), 225));
     }
 
     private static int RowsOf(string userId)
@@ -42,7 +44,8 @@ public class MeEndpointTests : IDisposable
         return db.Workouts.Count(w => w.UserId == userId) + db.PlanDays.Count(d => d.UserId == userId)
             + db.Exercises.Count(e => e.UserId == userId) + db.FoodEntries.Count(f => f.UserId == userId)
             + db.SavedMeals.Count(m => m.UserId == userId) + db.WeighIns.Count(w => w.UserId == userId)
-            + db.Habits.Count(h => h.UserId == userId) + db.UserProfiles.Count(p => p.UserId == userId);
+            + db.Habits.Count(h => h.UserId == userId) + db.UserProfiles.Count(p => p.UserId == userId)
+            + db.TestedMaxes.Count(m => m.UserId == userId);
     }
 
     [Fact]
@@ -57,12 +60,12 @@ public class MeEndpointTests : IDisposable
             db.ScanUsage.Add(new ScanUsage { UserId = "alice", Day = new DateOnly(2026, 10, 10), Count = 2 });
             db.SaveChanges();
         }
-        Assert.Equal(8, RowsOf("alice")); // one in each table, so the fill really did fill
+        Assert.Equal(9, RowsOf("alice")); // one in each table, so the fill really did fill
 
         Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync("/me")).StatusCode);
 
         Assert.Equal(0, RowsOf("alice"));
-        Assert.Equal(8, RowsOf("bob"));
+        Assert.Equal(9, RowsOf("bob"));
         using var after = TestDb.Open();
         Assert.False(after.ScanUsage.Any(u => u.UserId == "alice"));
         Assert.False(after.WorkoutSets.Any(s => s.Exercise!.UserId == "alice"));
