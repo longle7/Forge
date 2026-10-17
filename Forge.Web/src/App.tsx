@@ -9,6 +9,7 @@ import AddFoodPage from './pages/AddFoodPage'
 import CaloriesPage from './pages/CaloriesPage'
 import ExercisePage from './pages/ExercisePage'
 import ExercisesPage from './pages/ExercisesPage'
+import MaxesPage from './pages/MaxesPage'
 import HabitsPage from './pages/HabitsPage'
 import HistoryPage from './pages/HistoryPage'
 import HomePage from './pages/HomePage'
@@ -65,6 +66,7 @@ function Pages() {
           <Route path="/workouts/history" element={<HistoryPage />} />
           <Route path="/workouts/history/:id" element={<WorkoutDetailPage />} />
           <Route path="/workouts/exercises" element={<ExercisesPage />} />
+          <Route path="/workouts/maxes" element={<MaxesPage />} />
           <Route path="/workouts/exercises/:id" element={<ExercisePage />} />
           <Route path="/workouts/plan/:day" element={<PlanDayPage />} />
           <Route path="/calories" element={<CaloriesPage />} />

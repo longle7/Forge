@@ -30,9 +30,10 @@ public static class TestDb
         db.Habits.ExecuteDelete(); // their check-offs go with them
         db.WeighIns.ExecuteDelete();
         db.UserProfiles.ExecuteDelete();
-        // Workout sets and plan exercises point at exercises, so delete them (with their parents) before custom exercises.
+        // Workout sets, plan exercises, and tested maxes point at exercises, so delete them (with their parents) before custom exercises.
         db.PlanDays.ExecuteDelete();
         db.Workouts.ExecuteDelete();
+        db.TestedMaxes.ExecuteDelete();
         db.Exercises.Where(e => e.UserId != null).ExecuteDelete();
         return db;
     }

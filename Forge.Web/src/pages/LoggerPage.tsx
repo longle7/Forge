@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
-import { ApiError, getExercises, getWorkouts, isCardio, saveWorkout, type Exercise, type Workout } from '../api'
+import { ApiError, getExercises, getMaxes, getWorkouts, isCardio, saveWorkout, type Exercise, type TestedMax, type Workout } from '../api'
 import { readJson, write } from '../cache'
 import { Card, dangerButton, field, Notice, plainButton, PrBadge, primaryButton, Sheet, tintedButton } from '../components'
 import { loadDraft, saveDraft, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
@@ -8,7 +8,8 @@ import { ExercisePicker } from '../ExercisePicker'
 import { notifyRestEnd } from '../notify'
 import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
-import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, livePr, parseDuration, platesPerSide, plural, previousSets, progressionStep, recentExercises } from '../workouts'
+import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, livePr, oneRepMax, parseDuration, platesPerSide, plural, previousSets, progressionStep, recentExercises } from '../workouts'
+import { estimatedMax } from '../maxes'
 
 /** Rest after a checked-off set: 90 seconds, unless you choose another length for the exercise (kept on this device). */
 const REST_SECONDS = 90
@@ -52,6 +53,7 @@ export default function LoggerPage() {
   const [draft, setDraft] = useState(loadDraft)
   const workouts = usePolling(getWorkouts, '/workouts')
   const exercises = usePolling(getExercises, '/exercises')
+  const maxes = usePolling(getMaxes, '/maxes')
 
   // Every change is kept on this device at once, so a reload or a closed tab loses nothing.
   const update = (next: Draft) => {
@@ -60,14 +62,15 @@ export default function LoggerPage() {
   }
 
   if (!draft) return <Navigate to="/workouts" replace />
-  return <Logger draft={draft} update={update} workouts={workouts.data ?? []} exercises={exercises.data ?? []} />
+  return <Logger draft={draft} update={update} workouts={workouts.data ?? []} exercises={exercises.data ?? []} tested={maxes.data ?? []} />
 }
 
-function Logger({ draft, update, workouts, exercises }: {
+function Logger({ draft, update, workouts, exercises, tested }: {
   draft: Draft
   update: (draft: Draft) => void
   workouts: Workout[]
   exercises: Exercise[]
+  tested: TestedMax[]
 }) {
   const navigate = useNavigate()
   const now = useNow()
@@ -244,7 +247,11 @@ function Logger({ draft, update, workouts, exercises }: {
         const isCardioExercise = cardio.has(ex.exerciseId)
         const step = stepFor(ex)
         const rest = restFor(ex.exerciseId)
-        const pr = livePr(workouts, ex.exerciseId, ex.sets.map((s) => toSet(ex.exerciseId, s)), draft.editing ? draft.id : undefined)
+        const done = ex.sets.map((s) => toSet(ex.exerciseId, s))
+        const pr = livePr(workouts, ex.exerciseId, done, draft.editing ? draft.id : undefined)
+        // The best estimated 1-rep max checked off so far, next to your best before this workout.
+        const bestToday = Math.max(0, ...done.filter((s) => s && s.weight > 0).map((s) => oneRepMax(s!.weight, s!.reps)))
+        const bestBefore = bestToday ? estimatedMax(workouts.filter((w) => w.id !== draft.id), tested, ex.exerciseId)?.value : undefined
         return (
           <Card key={`${ex.exerciseId}-${e}`}>
             <div className="flex items-start justify-between gap-2">
@@ -333,6 +340,11 @@ function Logger({ draft, update, workouts, exercises }: {
                 )
               })}
             </div>
+            {bestToday > 0 && (
+              <p className="mt-2 text-[13px] text-muted tabular-nums">
+                Est. 1-rep max today {formatWeight(Math.round(bestToday))} lb{bestBefore ? ` · best ${formatWeight(Math.round(bestBefore))} lb` : ''}
+              </p>
+            )}
             <div className="mt-2 flex justify-between">
               <button onClick={() => addSet(e)} className={plainButton}>
                 <Icon name="plus" className="size-5" />
