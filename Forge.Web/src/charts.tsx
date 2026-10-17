@@ -1,6 +1,10 @@
 import { useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import type { HeartRatePoint } from './api'
+import { RING } from './colors'
 import { parseDate } from './dates'
+import { ZONES, zoneFloors } from './heartRate'
 import { niceTicks, shortDate, type Bucket } from './progress'
+import { formatClock } from './workouts'
 
 // Hand-drawn SVG charts for Progress, after the dataviz guide: 2 px lines, bars ≤ 24 px with 4 px rounded tops and a
 // 2 px gap, hairline solid gridlines, a crosshair (or per-bar) readout on pointer and keyboard, text in text colors
@@ -140,6 +144,64 @@ export function LineChart({ points, label, color, format, axis = format }: {
         onPointerMove={(e) => {
           const px = pointerX(e)
           setActive(times.reduce((best, t, i) => (Math.abs(x(t) - px) < Math.abs(x(times[best]) - px) ? i : best), 0))
+        }}
+        onPointerLeave={clear}
+      />
+    </Frame>
+  )
+}
+
+/**
+ * Heart rate through one workout, by time from its start (so not LineChart's by-day axis), with the zones as faint
+ * bands behind the line when your max is known.
+ */
+export function HeartRateChart({ points, max, label }: { points: HeartRatePoint[]; max?: number; label: string }) {
+  const { active, setActive, onKeyDown, clear } = useReadout(points.length)
+  const end = points.at(-1)!.s || 1
+  // Four steps, not three: heart rate spans ~90 bpm, and steps of 50 would leave the bottom of the plot empty.
+  const ticks = niceTicks(Math.min(...points.map((p) => p.bpm)), Math.max(...points.map((p) => p.bpm)), 4)
+  const [v0, v1] = [ticks[0], ticks.at(-1)!]
+  const x = (s: number) => PAD.left + (s / end) * PLOT_W
+  const y = (v: number) => PAD.top + (1 - (v - v0) / (v1 - v0)) * PLOT_H
+  const line = points.map((p, i) => `${i ? 'L' : 'M'}${x(p.s).toFixed(1)},${y(p.bpm).toFixed(1)}`).join('')
+  // Clock-friendly steps, at most four: 0:00, 15:00, 30:00, 45:00.
+  const step = 60 * ([1, 2, 5, 10, 15, 30, 60].find((m) => end / 60 / m <= 4) ?? 120)
+  const floors = max ? zoneFloors(max) : []
+
+  return (
+    <Frame
+      label={label}
+      onKeyDown={onKeyDown}
+      onBlur={clear}
+      readout={active === undefined ? undefined : { x: x(points[active].s), value: `${points[active].bpm} bpm`, detail: `at ${formatClock(points[active].s * 1000)}` }}
+    >
+      {floors.map((floor, i) => {
+        // Each band runs from its zone's floor to the next one's, cut to the plot.
+        const [top, bottom] = [Math.max(PAD.top, y(floors[i + 1] ?? v1)), Math.min(BASE, y(floor))]
+        return bottom > top && <rect key={floor} x={PAD.left} y={top} width={PLOT_W} height={bottom - top} style={{ fill: ZONES[i].color }} fillOpacity={0.15} />
+      })}
+      <YAxis ticks={ticks} y={y} format={String} />
+      {Array.from({ length: Math.floor(end / step) + 1 }, (_, i) => i * step).map((s, i) => (
+        <text key={s} x={x(s)} y={H - 5} textAnchor={i === 0 ? 'start' : x(s) > W - PAD.right - 16 ? 'end' : 'middle'} fontSize={11} style={{ fill: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+          {formatClock(s * 1000)}
+        </text>
+      ))}
+      <path d={line} fill="none" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ stroke: RING.move }} />
+      {active !== undefined && (
+        <>
+          <line x1={x(points[active].s)} x2={x(points[active].s)} y1={PAD.top} y2={BASE} strokeWidth={1} style={{ stroke: 'var(--muted)' }} />
+          <circle cx={x(points[active].s)} cy={y(points[active].bpm)} r={4.5} strokeWidth={2} style={{ fill: RING.move, stroke: 'var(--surface)' }} />
+        </>
+      )}
+      <rect
+        x={PAD.left}
+        y={0}
+        width={PLOT_W}
+        height={BASE}
+        fill="transparent"
+        onPointerMove={(e) => {
+          const px = pointerX(e)
+          setActive(points.reduce((best, p, i) => (Math.abs(x(p.s) - px) < Math.abs(x(points[best].s) - px) ? i : best), 0))
         }}
         onPointerLeave={clear}
       />
