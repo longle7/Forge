@@ -207,9 +207,9 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
         <p className="px-1 text-muted">Fill in your details to see your daily goal.</p>
       )}
 
-      <Group title="Fiber, sugar, and sodium" footer="Optional. Leave one empty to not track it. Foods from search, scans, and Quick Add can carry them.">
+      <Group title="Fiber, sugar, and sodium" footer="Optional: fiber at least, sugar and sodium at most. Leave one empty to not track it.">
         <div className="space-y-2 p-4">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 items-end gap-2">
             {MICRO_RANGES.map((r) => (
               <label key={r.key} className="block">
                 <span className="text-[15px] text-muted">{r.label}</span>
@@ -284,7 +284,7 @@ function adjusted(p: Profile, year: number): boolean {
 type MicroSetting = 'fiberGoal' | 'sugarLimit' | 'sodiumLimit'
 // The API's ProfileDto ranges.
 const MICRO_RANGES: { key: MicroSetting; label: string; min: number; max: number }[] = [
-  { key: 'fiberGoal', label: 'Fiber, at least (g)', min: 1, max: 150 },
-  { key: 'sugarLimit', label: 'Sugar, at most (g)', min: 1, max: 500 },
-  { key: 'sodiumLimit', label: 'Sodium, at most (mg)', min: 100, max: 10000 },
+  { key: 'fiberGoal', label: 'Fiber (g)', min: 1, max: 150 },
+  { key: 'sugarLimit', label: 'Sugar (g)', min: 1, max: 500 },
+  { key: 'sodiumLimit', label: 'Sodium (mg)', min: 100, max: 10000 },
 ]

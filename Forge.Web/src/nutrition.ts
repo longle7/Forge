@@ -195,7 +195,7 @@ export function adaptiveCalories(days: DayTotals[], weighIns: WeighIn[] | undefi
   const trend = weightTrend(weighIns, addDays(today, -1), 21)
   if (logged.length < 14 || trend === undefined) return undefined
   const average = logged.reduce((sum, d) => sum + d.calories, 0) / logged.length
-  const maintenance = Math.round(average - (trend / 7) * 3500)
+  const maintenance = Math.round((average - (trend / 7) * 3500) / 10) * 10
   const suggested = Math.max(calorieFloor(profile.sex), Math.round((maintenance + plannedTrend(profile) * 500) / 10) * 10)
   return Math.abs(suggested - profile.calorieGoal) < 75 ? undefined : { average: Math.round(average), trend, maintenance, suggested }
 }

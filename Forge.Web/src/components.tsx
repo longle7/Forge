@@ -185,7 +185,7 @@ export function MacroBar({ label, value, goal, color, unit = 'g', limit = false 
       <div className="flex justify-between text-[13px]">
         <span className="font-semibold">{label}</span>
         <span className="text-muted tabular-nums">
-          {Math.round(value)} / {goal} {unit}
+          {Math.round(value).toLocaleString()} / {goal.toLocaleString()} {unit}
           {over && ' · over'}
         </span>
       </div>
