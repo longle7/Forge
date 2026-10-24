@@ -34,12 +34,12 @@ const workout = (id: string, day: number, sets: WorkoutSet[]): Workout => ({
   sets,
 })
 
-it('groupSets keeps each exercise together, in the order it was first done', () => {
-  const groups = groupSets([set(BENCH, 135, 8), set(SQUAT, 185, 5), set(BENCH, 135, 6)])
-  expect(groups.map((g) => [g.exerciseId, g.sets.length])).toEqual([
-    [BENCH, 2],
-    [SQUAT, 1],
-  ])
+it.each([
+  { name: 'keeps a run of one exercise together', sets: [set(BENCH, 135, 8), set(BENCH, 135, 6), set(SQUAT, 185, 5)], groups: [[BENCH, 2], [SQUAT, 1]] },
+  { name: 'gives an exercise done twice a group each time', sets: [set(BENCH, 135, 8), set(SQUAT, 185, 5), set(BENCH, 135, 6)], groups: [[BENCH, 1], [SQUAT, 1], [BENCH, 1]] },
+  { name: 'starts a new group where a superset ends', sets: [{ ...set(SQUAT, 185, 5), superset: 1 }, set(SQUAT, 135, 10)], groups: [[SQUAT, 1], [SQUAT, 1]] },
+])('groupSets $name', ({ sets, groups }) => {
+  expect(groupSets(sets).map((g) => [g.exerciseId, g.sets.length])).toEqual(groups)
 })
 
 it('oneRepMax uses Epley, and a single rep is the weight itself', () => {

@@ -1,14 +1,17 @@
 import type { Workout, WorkoutSet } from './api'
 
-/** A workout's sets by exercise, in the order each exercise was first done. */
+/**
+ * A workout's sets, one group for each exercise as it was done. Sets are saved exercise by exercise (see toWorkout), so
+ * a group ends where the exercise or its superset changes, and an exercise done twice shows twice.
+ */
 export function groupSets(sets: WorkoutSet[]): { exerciseId: number; sets: WorkoutSet[] }[] {
-  const groups = new Map<number, WorkoutSet[]>()
+  const groups: { exerciseId: number; sets: WorkoutSet[] }[] = []
   for (const set of sets) {
-    const group = groups.get(set.exerciseId)
-    if (group) group.push(set)
-    else groups.set(set.exerciseId, [set])
+    const group = groups.at(-1)
+    if (group?.exerciseId === set.exerciseId && group.sets[0].superset === set.superset) group.sets.push(set)
+    else groups.push({ exerciseId: set.exerciseId, sets: [set] })
   }
-  return [...groups].map(([exerciseId, sets]) => ({ exerciseId, sets }))
+  return groups
 }
 
 /** Estimated one-rep max (Epley): what 8 reps at 135 lb says you could lift once (171 lb). */
