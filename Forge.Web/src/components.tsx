@@ -2,6 +2,7 @@ import { Component, useEffect, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { ApiError } from './api'
 import { Icon, type IconName } from './icons'
+import { haptic } from './notify'
 import { formatKcal } from './nutrition'
 import { useOnline, useTitle } from './usePolling'
 
@@ -216,6 +217,10 @@ export function Stepper({ value, onChange, min, max, label }: { value: number; o
 
 /** iOS's on/off switch. */
 export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (checked: boolean) => void; label: string; disabled?: boolean }) {
+  const toggle = () => {
+    void haptic('tap')
+    onChange(!checked)
+  }
   return (
     <button
       type="button"
@@ -223,7 +228,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
       aria-checked={checked}
       aria-label={label}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
+      onClick={toggle}
       className={`relative h-8 w-13 shrink-0 rounded-full transition disabled:opacity-50 ${checked ? 'bg-green-strong' : 'bg-muted/30'}`}
     >
       <span className={`absolute top-1 left-1 size-6 rounded-full bg-white shadow transition ${checked ? 'translate-x-5' : ''}`} />
@@ -238,6 +243,10 @@ export function Segmented<T extends string | number>({ options, value, onChange,
   onChange: (value: T) => void
   label: string
 }) {
+  const choose = (next: T) => {
+    if (next !== value) void haptic('tap')
+    onChange(next)
+  }
   return (
     <div role="radiogroup" aria-label={label} className="grid auto-cols-fr grid-flow-col gap-1 rounded-xl bg-fill p-1">
       {options.map((option) => {
@@ -248,7 +257,7 @@ export function Segmented<T extends string | number>({ options, value, onChange,
             type="button"
             role="radio"
             aria-checked={selected}
-            onClick={() => onChange(option.value)}
+            onClick={() => choose(option.value)}
             className={`min-h-9 rounded-lg px-2 text-[15px] font-semibold transition ${selected ? 'bg-surface text-ink shadow-[0_1px_3px_rgb(42_31_26/0.12)] dark:bg-[#4a3830]' : 'text-muted'}`}
           >
             {option.label}

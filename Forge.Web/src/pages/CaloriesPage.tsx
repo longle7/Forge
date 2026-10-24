@@ -23,6 +23,7 @@ import { AdaptiveGoalCard } from '../AdaptiveGoalCard'
 import { FoodSheet } from '../FoodSheet'
 import { FAT, RING } from '../colors'
 import { Icon } from '../icons'
+import { haptic } from '../notify'
 import { dayBudget, dayGoals, exerciseCalories, formatKcal, MICROS, microTotals, remaining, servingLabel, totals, weightOn } from '../nutrition'
 import { isRestDay } from '../plan'
 import { failure, useNow, usePolling, useAction } from '../usePolling'
@@ -250,6 +251,7 @@ function SaveMealSheet({ foods, onSaved, onClose }: { foods: FoodEntry[]; onSave
     await run(async () => {
       const items = foods.map((f) => ({ name: f.name, serving: f.serving, servings: f.servings, calories: f.calories, protein: f.protein, carbs: f.carbs, fat: f.fat, fiber: f.fiber, sugar: f.sugar, sodium: f.sodium }))
       await saveSavedMeal(randomId(), { name: name.trim(), items })
+      void haptic('success')
       onSaved(name.trim())
     })
   }

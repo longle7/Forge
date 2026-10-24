@@ -4,6 +4,7 @@ import { dangerButton, field, Group, Notice, Page, primaryButton, Sheet, Status,
 import { addDays, DAY_NAMES, localDate } from '../dates'
 import { completion, daysLabel, EVERY_DAY, habitStreak, SUGGESTIONS } from '../habits'
 import { Icon } from '../icons'
+import { haptic } from '../notify'
 import { failure, useNow, usePolling, useAction } from '../usePolling'
 import { plural } from '../workouts'
 
@@ -71,6 +72,7 @@ function HabitSheet({ id, habit, isNew, onSaved, onClose }: { id: string; habit:
   const run = (save: () => Promise<unknown>) =>
     action.run(async () => {
       await save()
+      void haptic('success')
       onSaved()
     })
 

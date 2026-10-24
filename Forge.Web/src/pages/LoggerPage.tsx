@@ -5,7 +5,7 @@ import { readJson, write } from '../cache'
 import { Card, dangerButton, field, Notice, plainButton, PrBadge, primaryButton, Sheet, tintedButton } from '../components'
 import { loadDraft, saveDraft, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
-import { notifyRestEnd } from '../notify'
+import { haptic, notifyRestEnd } from '../notify'
 import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
 import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, livePr, oneRepMax, parseDuration, platesPerSide, plural, previousSets, progressionStep, recentExercises } from '../workouts'
@@ -111,6 +111,15 @@ function Logger({ draft, update, workouts, exercises, tested }: {
     write(REST_KEY, JSON.stringify(next))
   }
 
+  // In the iPhone app you feel a set checked off: a tap, or a stronger buzz when it's a new PR.
+  const checkOff = (e: number, s: number, change: Partial<DraftSet>, rest?: Pick<Draft, 'restEndsAt' | 'restTotal'>) => {
+    const list = withSet(e, s, { ...change, done: true })
+    const { exerciseId, sets } = list[e]
+    const pr = livePr(workouts, exerciseId, sets.map((set) => toSet(exerciseId, set)), draft.editing ? draft.id : undefined)
+    void haptic(pr === s ? 'success' : 'tap')
+    setExercises(list, rest)
+  }
+
   // Checking off a set fills empty fields from last time (like Strong), with the weight raised when you hit every rep
   // last time, and starts the rest timer. Cardio has no rest timer, and fills in last time's only when both are empty.
   const toggleDone = (e: number, s: number) => {
@@ -126,14 +135,14 @@ function Logger({ draft, update, workouts, exercises, tested }: {
       const time = last ? (last.durationSeconds ? formatClock(last.durationSeconds * 1000) : '') : (set.time ?? '')
       if (!(Number(distance) > 0) && !(parseDuration(time) > 0)) return setMessage('Enter a distance or time first, then check it off.')
       setMessage(undefined)
-      return setExercises(withSet(e, s, { distance, time, done: true }))
+      return checkOff(e, s, { distance, time })
     }
     const reps = set.reps || (hint ? String(hint.reps) : '')
     if (!(Number(reps) > 0)) return setMessage('Enter the reps first, then check the set off.')
     setMessage(undefined)
     const weight = set.weight || (hint ? String(hint.weight + stepFor(ex)) : '')
     const rest = restFor(ex.exerciseId)
-    setExercises(withSet(e, s, { weight, reps, done: true }), draft.editing || !rest ? undefined : { restEndsAt: restEndsAt(rest), restTotal: rest })
+    checkOff(e, s, { weight, reps }, draft.editing || !rest ? undefined : { restEndsAt: restEndsAt(rest), restTotal: rest })
   }
 
   const addSet = (e: number) => {
@@ -192,13 +201,13 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   const doneSets = draft.exercises.reduce((n, ex) => n + ex.sets.filter((s) => s.done).length, 0)
 
   const restLeft = draft.restEndsAt ? Math.ceil((draft.restEndsAt - now.getTime()) / 1000) : 0
-  // When the rest is up: a chime, and a buzz on phones that allow it (iPhone Safari doesn't). Then the timer goes away.
+  // When the rest is up: a chime, and in the iPhone app a buzz. Then the timer goes away.
   // Coming back long after (the page was closed or in the background) only clears it.
   const restOver = !!draft.restEndsAt && restLeft <= 0
   const endRest = useEffectEvent(() => {
     if (Date.now() - (draft.restEndsAt ?? 0) < 5000) {
       chime()
-      navigator.vibrate?.([200, 100, 200])
+      void haptic('warning')
     }
     update({ ...draft, restEndsAt: undefined, restTotal: undefined })
   })

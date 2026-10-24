@@ -4,6 +4,7 @@ import { Card, Notice, SectionTitle } from './components'
 import { localDate } from './dates'
 import { countOn, EVERY_DAY, habitStreak, SUGGESTIONS, today as todayOf } from './habits'
 import { Icon } from './icons'
+import { haptic } from './notify'
 import { useNow, usePolling } from './usePolling'
 
 /**
@@ -22,6 +23,7 @@ export function HabitsCard() {
   const tap = async (habit: Habit, next = count(habit) >= habit.dailyTarget ? 0 : count(habit) + 1) => {
     setTaps((t) => ({ ...t, [habit.id]: next }))
     setError(undefined)
+    void haptic('tap')
     try {
       await checkHabit(habit.id, day, next)
     } catch (e) {

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { MEALS, type Meal, type Micros, type Nutrition } from './api'
 import { dangerButton, field, primaryButton, Segmented, Sheet } from './components'
+import { haptic } from './notify'
 import { formatKcal, MICROS } from './nutrition'
 import { useAction } from './usePolling'
 
@@ -24,7 +25,14 @@ export function FoodSheet({ title, food, initialServings = 1, initialMeal, submi
 }) {
   const [servings, setServings] = useState(String(initialServings))
   const [meal, setMeal] = useState(initialMeal)
-  const { busy, error, run } = useAction()
+  const action = useAction()
+  const { busy, error } = action
+  // A save or delete closes the sheet (the owner does that); in the iPhone app you feel that it went through.
+  const run = (save: () => Promise<void>) =>
+    action.run(async () => {
+      await save()
+      void haptic('success')
+    })
   const amount = Number(servings)
   const valid = amount > 0 && amount <= 100
 

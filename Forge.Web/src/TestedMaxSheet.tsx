@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { deleteMax, randomId, saveMax, type TestedMax } from './api'
 import { dangerButton, field, Notice, primaryButton, Sheet, Stepper } from './components'
+import { haptic } from './notify'
 import { oneRepMax, formatWeight } from './workouts'
 import { useAction } from './usePolling'
 
@@ -27,6 +28,7 @@ export function TestedMaxSheet({ exerciseId, max, today, onSaved, onClose }: {
     if (!date || date > today) return setError('Pick the day you lifted it.')
     void run(async () => {
       await saveMax(max?.id ?? randomId(), { exerciseId, date, weight: Math.round(pounds * 10) / 10, reps })
+      void haptic('success')
       onSaved()
     })
   }
@@ -34,6 +36,7 @@ export function TestedMaxSheet({ exerciseId, max, today, onSaved, onClose }: {
     if (!confirm('Delete this max?')) return
     void run(async () => {
       await deleteMax(max!.id)
+      void haptic('success')
       onSaved()
     })
   }

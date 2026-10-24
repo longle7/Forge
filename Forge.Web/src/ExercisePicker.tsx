@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { addExercise, MUSCLE_GROUPS, type Exercise } from './api'
 import { Notice, SearchInput, Sheet, tintedButton } from './components'
+import { haptic } from './notify'
 import { useAction } from './usePolling'
 
 /**
@@ -24,7 +25,9 @@ export function ExercisePicker({ exercises, recent = [], onPick, onClose }: {
 
   const add = async () => {
     await run(async () => {
-      onPick(await addExercise(q, group ?? 'Other'))
+      const exercise = await addExercise(q, group ?? 'Other')
+      void haptic('success')
+      onPick(exercise)
     })
   }
 

@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react'
 import { MEALS, randomId, saveFoodEntry, scanLabel, scanMeal, type Meal, type ScannedFood } from './api'
 import { field, Notice, plainButton, primaryButton, Sheet } from './components'
 import { Icon, type IconName } from './icons'
+import { haptic } from './notify'
 import { formatKcal, MICROS, optionalNumber } from './nutrition'
 import { giveScanConsent, hasScanConsent, shrinkPhoto } from './photo'
 import { useAction } from './usePolling'
@@ -138,6 +139,7 @@ function Review({ kind, initial, date, meal, onLogged, onClose }: { kind: Kind; 
           source: kind === 'label' ? 'label' : 'photo',
         })
       }
+      void haptic('success')
       onLogged()
     })
   }
