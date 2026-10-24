@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core'
 import { Directory, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
 import type { HeartRatePoint, Workout } from './api'
-import { formatDay, formatDuration, formatMiles, formatTime, formatWeight, isCardioSet, plural, volume, workoutLength } from './workouts'
+import { formatDay, formatDuration, formatMiles, formatTime, formatWeight, isCardioSet, isWarmup, plural, volume, workoutLength } from './workouts'
 
 // A finished workout as an image to post or send: 1080 × 1350 (4:5, the tallest a photo shows in Instagram's feed),
 // drawn on a canvas in the app's light Sunrise colors (index.css) whatever mode the phone is in.
@@ -71,7 +71,7 @@ type Stat = { label: string; value: string }
  */
 export function cardStats(workout: Workout): Stat[] {
   const miles = workout.sets.reduce((sum, s) => sum + (s.distance ?? 0), 0)
-  const lifts = workout.sets.filter((s) => !isCardioSet(s)).length
+  const lifts = workout.sets.filter((s) => !isCardioSet(s) && !isWarmup(s)).length
   const stats: (Stat | false | null | undefined | 0)[] = [
     { label: 'Time', value: formatDuration(workoutLength(workout)) },
     miles > 0 && { label: 'Distance', value: `${formatMiles(miles)} mi` },

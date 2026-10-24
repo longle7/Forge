@@ -20,6 +20,12 @@ export const oneRepMax = (weight: number, reps: number) => (reps === 1 ? weight 
 /** A cardio set: a distance and/or a time instead of weight and reps. */
 export const isCardioSet = (set: WorkoutSet) => set.distance != null || set.durationSeconds != null
 
+/** A warm-up set: it only gets you ready, so PRs, maxes, and totals leave it out. */
+export const isWarmup = (set: WorkoutSet) => set.kind === 'warmup'
+
+/** A set to estimate a 1-rep max from: weighted, not cardio, and not a warm-up. */
+export const isLift = (set: WorkoutSet) => set.weight > 0 && !isCardioSet(set) && !isWarmup(set)
+
 /**
  * How a set ranks for records: its estimated 1RM, its reps for a bodyweight set, or for cardio its distance (minutes
  * when it has no distance), so a cardio PR is your longest one.
@@ -42,7 +48,7 @@ export function personalRecords(workouts: Workout[]): Map<string, Set<WorkoutSet
     const top = new Map<number, number>() // exerciseId → index of this workout's best set
     workout.sets.forEach((set, i) => {
       const t = top.get(set.exerciseId)
-      if (t === undefined || score(set) > score(workout.sets[t])) top.set(set.exerciseId, i)
+      if (!isWarmup(set) && (t === undefined || score(set) > score(workout.sets[t]))) top.set(set.exerciseId, i)
     })
     const prs = new Set<WorkoutSet>()
     for (const [exerciseId, i] of top) {
@@ -61,7 +67,7 @@ export function bestSet(workouts: Workout[], exerciseId: number): { set: Workout
   let best: { set: WorkoutSet; workout: Workout } | undefined
   for (const workout of workouts) {
     for (const set of workout.sets) {
-      if (set.exerciseId === exerciseId && (!best || score(set) > score(best.set))) best = { set, workout }
+      if (set.exerciseId === exerciseId && !isWarmup(set) && (!best || score(set) > score(best.set))) best = { set, workout }
     }
   }
   return best
@@ -76,7 +82,7 @@ export function livePr(workouts: Workout[], exerciseId: number, sets: (WorkoutSe
   if (!best) return undefined
   let top: number | undefined
   sets.forEach((set, i) => {
-    if (set && score(set) > score(best.set) && (top === undefined || score(set) > score(sets[top]!))) top = i
+    if (set && !isWarmup(set) && score(set) > score(best.set) && (top === undefined || score(set) > score(sets[top]!))) top = i
   })
   return top
 }
@@ -97,8 +103,8 @@ export function previousSets(workouts: Workout[], exerciseId: number, excludeId?
 /** The exercises in your latest workouts, most recent first, for the top of the exercise picker. */
 export const recentExercises = (workouts: Workout[], count = 6) => [...new Set(workouts.flatMap((w) => w.sets.map((s) => s.exerciseId)))].slice(0, count)
 
-/** Total pounds lifted: weight × reps over every set. */
-export const volume = (workout: Workout) => workout.sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
+/** Total pounds lifted: weight × reps over every set but warm-ups. */
+export const volume = (workout: Workout) => workout.sets.filter((s) => !isWarmup(s)).reduce((sum, s) => sum + s.weight * s.reps, 0)
 
 /**
  * What a workout added up to: "12,345 lb", "3.1 mi", and from Apple Health "312 kcal" and "128 bpm avg", or ""
@@ -126,12 +132,13 @@ export function workoutLength(workout: Workout): number {
 export const pace = (set: WorkoutSet) => (set.distance && set.durationSeconds ? set.durationSeconds / set.distance : undefined)
 
 /**
- * How much weight to add this time: 5 lb (10 for legs) when last time's sets all hit their target reps (this
- * workout's reps, which a plan fills in), with at least as many sets; otherwise 0, as with no weights to go on.
+ * How much weight to add this time: 5 lb (10 for legs) when last time's sets, warm-ups aside, all hit their target reps
+ * (this workout's reps, which a plan fills in), with at least as many sets; otherwise 0, as with no weights to go on.
  */
 export function progressionStep(previous: WorkoutSet[], targets: number[], legs: boolean): number {
+  const workingSets = previous.filter((s) => !isWarmup(s))
   const hitEveryRep =
-    targets.length > 0 && previous.length >= targets.length && targets.every((reps, i) => reps > 0 && previous[i].weight > 0 && previous[i].reps >= reps)
+    targets.length > 0 && workingSets.length >= targets.length && targets.every((reps, i) => reps > 0 && workingSets[i].weight > 0 && workingSets[i].reps >= reps)
   return hitEveryRep ? (legs ? 10 : 5) : 0
 }
 

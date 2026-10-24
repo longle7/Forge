@@ -153,6 +153,23 @@ describe('progressionStep', () => {
   })
 })
 
+describe('warm-ups never count', () => {
+  // Heavier than the real sets, so it would win everywhere if it counted.
+  const warmup: WorkoutSet = { ...set(BENCH, 225, 5), kind: 'warmup' }
+  const lastTime = workout('a', 1, [set(BENCH, 135, 8)])
+
+  it.each([
+    { name: 'personalRecords: not a PR', value: () => personalRecords([lastTime, workout('b', 3, [warmup, set(BENCH, 135, 8)])]).get('b'), expected: new Set() },
+    { name: 'personalRecords: after only warm-ups, the first real set is still the first time', value: () => personalRecords([workout('a', 1, [warmup]), workout('b', 3, [set(BENCH, 135, 8)])]).get('b'), expected: new Set() },
+    { name: 'bestSet: not the best set', value: () => bestSet([workout('b', 3, [warmup]), lastTime], BENCH)?.set, expected: set(BENCH, 135, 8) },
+    { name: 'livePr: not a PR while logging', value: () => livePr([lastTime], BENCH, [warmup]), expected: undefined },
+    { name: 'volume: no pounds', value: () => volume(workout('b', 3, [warmup, set(BENCH, 135, 8)])), expected: 1080 },
+    { name: 'progressionStep: not a target to hit', value: () => progressionStep([warmup, set(BENCH, 135, 8)], [8], false), expected: 5 },
+  ])('$name', ({ value, expected }) => {
+    expect(value()).toEqual(expected)
+  })
+})
+
 it('platesPerSide loads the heaviest plates first, and says when it can\'t be exact', () => {
   expect(platesPerSide(225)).toEqual({ plates: [45, 45], loaded: 225 })
   expect(platesPerSide(185)).toEqual({ plates: [45, 25], loaded: 185 })

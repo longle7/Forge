@@ -8,7 +8,7 @@ import { ExercisePicker } from '../ExercisePicker'
 import { notifyRestEnd } from '../notify'
 import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
-import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, livePr, oneRepMax, parseDuration, platesPerSide, plural, previousSets, progressionStep, recentExercises } from '../workouts'
+import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, isLift, livePr, oneRepMax, parseDuration, platesPerSide, plural, previousSets, progressionStep, recentExercises } from '../workouts'
 import { estimatedMax } from '../maxes'
 
 /** Rest after a checked-off set: 90 seconds, unless you choose another length for the exercise (kept on this device). */
@@ -250,7 +250,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
         const done = ex.sets.map((s) => toSet(ex.exerciseId, s))
         const pr = livePr(workouts, ex.exerciseId, done, draft.editing ? draft.id : undefined)
         // The best estimated 1-rep max checked off so far, next to your best before this workout.
-        const bestToday = Math.max(0, ...done.filter((s) => s && s.weight > 0).map((s) => oneRepMax(s!.weight, s!.reps)))
+        const bestToday = Math.max(0, ...done.filter((s) => s && isLift(s)).map((s) => oneRepMax(s!.weight, s!.reps)))
         const bestBefore = bestToday ? estimatedMax(workouts.filter((w) => w.id !== draft.id), tested, ex.exerciseId)?.value : undefined
         return (
           <Card key={`${ex.exerciseId}-${e}`}>

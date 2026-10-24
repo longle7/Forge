@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { PlanDay, Workout } from './api'
+import type { PlanDay, Workout, WorkoutSet } from './api'
 import { adherence, calorieBars, niceTicks, plannedDays, strengthSeries, streak, topLifts, weekStatuses } from './progress'
 
 it('niceTicks spans the values with round steps', () => {
@@ -63,6 +63,17 @@ it('strengthSeries is each workout’s best estimated 1RM, oldest first', () => 
   const series = strengthSeries(workouts, 1, '2026-09-28')
   expect(series.map((p) => p.day)).toEqual(['2026-10-01', '2026-10-08'])
   expect(series[1].value).toBeCloseTo(180) // 135 × 10 → 180 beats 145 × 5 → 169.2
+})
+
+describe('warm-ups never count', () => {
+  const warmup: WorkoutSet = { exerciseId: 1, weight: 225, reps: 5, kind: 'warmup' }
+
+  it.each([
+    { name: 'topLifts: an exercise with only warm-ups isn’t a lift', value: () => topLifts([trainedOn('2026-10-01', [warmup])]), expected: [] },
+    { name: 'strengthSeries: not the day’s best', value: () => strengthSeries([trainedOn('2026-10-01', [warmup, { exerciseId: 1, weight: 135, reps: 1 }])], 1, '2026-09-28').map((p) => p.value), expected: [135] },
+  ])('$name', ({ value, expected }) => {
+    expect(value()).toEqual(expected)
+  })
 })
 
 it('calorieBars buckets by day, week, or month, and leaves empty periods empty', () => {

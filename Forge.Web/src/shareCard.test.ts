@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Workout } from './api'
+import type { Workout, WorkoutSet } from './api'
 import { cardStats, fitList, fitText, heartRateLine } from './shareCard'
 
 // Every character is half the font size wide.
@@ -64,6 +64,15 @@ describe('cardStats', () => {
       { label: 'Time', value: '1h 5m' },
       { label: 'Volume', value: '1,950 lb' },
       { label: 'Sets', value: '2' },
+    ])
+  })
+
+  it('leaves warm-ups out of the volume and sets', () => {
+    const sets: WorkoutSet[] = [{ exerciseId: 1, weight: 95, reps: 10, kind: 'warmup' }, { exerciseId: 1, weight: 135, reps: 8 }]
+    expect(cardStats(workout({ sets }))).toEqual([
+      { label: 'Time', value: '1h 5m' },
+      { label: 'Volume', value: '1,080 lb' },
+      { label: 'Sets', value: '1' },
     ])
   })
 
