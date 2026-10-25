@@ -44,6 +44,21 @@ describe('sticking to the plan', () => {
     expect(weekStatuses(plan, [trainedOn('2026-10-10')], '2026-10-12', 1)[0].map((d) => d.status)).toEqual(['planned', 'rest', 'rest', 'planned', 'rest', 'rest', 'rest'])
     expect(weekStatuses(plan, [trainedOn('2026-10-10')], '2026-10-11', 1)[0][5].status).toBe('extra') // a Saturday workout
   })
+
+  // The week before the plan began, with a workout on Thursday 9/24, and the plan's first week.
+  it.each([
+    { name: 'a workout before the plan began is done', planDays: plan, weeks: ['none none none done none none none', 'done rest rest done rest rest rest'] },
+    { name: 'without a plan, every workout is done', planDays: [], weeks: ['none none none done none none none', 'done none none done none none none'] },
+  ])('weekStatuses through a given day: $name', ({ planDays, weeks }) => {
+    const statuses = weekStatuses(planDays, [trainedOn('2026-09-24'), ...workouts], today, 2, '2026-10-04')
+    expect(statuses.map((week) => week.map((d) => d.status).join(' '))).toEqual(weeks)
+  })
+
+  it('weekStatuses gives each training day its first workout', () => {
+    const morning = { ...trainedOn('2026-10-08'), id: 'morning', startedAt: new Date(2026, 9, 8, 7).toISOString() }
+    const week = weekStatuses(plan, [...workouts, morning], today, 1, '2026-10-08')[0]
+    expect(week.map((d) => d.workoutId)).toEqual([undefined, undefined, undefined, 'morning', undefined, '2026-10-10', undefined])
+  })
 })
 
 it('topLifts ranks weighted exercises by how many workouts have them', () => {

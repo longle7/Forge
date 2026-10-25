@@ -39,25 +39,30 @@ export function streak(plan: PlanDay[], workouts: Workout[], today: string): num
 export type DayStatus = 'done' | 'missed' | 'planned' | 'rest' | 'extra' | 'none'
 
 /**
- * The last `weeks` weeks, Monday first, each day's status: done (trained on a planned day), missed (a planned day that
- * passed without a workout), planned (today or ahead), rest, extra (trained on a rest day), or none (before the plan).
+ * The `weeks` weeks through the one with `end` (by default the last 4 weeks), Monday first, each day's status: done
+ * (trained on a planned day, or on any day before the plan or without one), missed (a planned day that passed without
+ * a workout), planned (today or ahead), rest, extra (trained on a rest day), or none (no workout, before the plan or
+ * without one). A training day also has the ID of its first workout.
  */
-export function weekStatuses(plan: PlanDay[], workouts: Workout[], today: string, weeks = 4): { day: string; status: DayStatus }[][] {
+export function weekStatuses(plan: PlanDay[], workouts: Workout[], today: string, weeks = 4, end = today): { day: string; status: DayStatus; workoutId?: string }[][] {
   const start = planStart(plan)
-  const trained = new Set(workouts.map(workoutDay))
-  const monday = addDays(today, -((weekday(today) + 6) % 7) - 7 * (weeks - 1))
+  const firstWorkout = new Map<string, Workout>()
+  for (const workout of workouts) {
+    const day = workoutDay(workout)
+    const earlier = firstWorkout.get(day)
+    if (!earlier || Date.parse(workout.startedAt) < Date.parse(earlier.startedAt)) firstWorkout.set(day, workout)
+  }
+  const monday = addDays(end, -((weekday(end) + 6) % 7) - 7 * (weeks - 1))
   return Array.from({ length: weeks }, (_, w) =>
     Array.from({ length: 7 }, (_, d) => {
       const day = addDays(monday, w * 7 + d)
-      const planned = planFor(plan, day)
+      const workout = firstWorkout.get(day)
       const status: DayStatus =
-        !start || day < start ? 'none'
-        : planned && trained.has(day) ? 'done'
-        : planned && day >= today ? 'planned'
-        : planned ? 'missed'
-        : trained.has(day) ? 'extra'
+        !start || day < start ? (workout ? 'done' : 'none')
+        : planFor(plan, day) ? (workout ? 'done' : day >= today ? 'planned' : 'missed')
+        : workout ? 'extra'
         : 'rest'
-      return { day, status }
+      return { day, status, workoutId: workout?.id }
     }),
   )
 }
