@@ -94,7 +94,7 @@ export function HabitsCard() {
           })}
         </div>
       )}
-      {error && <Notice>{error}</Notice>}
+      {error && <Notice tone="error">{error}</Notice>}
     </>
   )
 }

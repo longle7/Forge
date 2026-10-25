@@ -326,25 +326,36 @@ export function PrBadge() {
   )
 }
 
-/** A message under a form or action: what happened, or what to do next. */
-export function Notice({ children }: { children: ReactNode }) {
+// Errors look the same everywhere: a Status box, an error Notice.
+const errorColors = 'bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100'
+
+/** A message under a form or action: what happened, or what to do next. `tone="error"` when something failed. */
+export function Notice({ tone, children }: { tone?: 'error'; children: ReactNode }) {
   return (
-    <p role="status" className="rounded-2xl bg-amber/15 px-4 py-3 text-[15px] text-ink">
+    <p role={tone === 'error' ? 'alert' : 'status'} className={`rounded-2xl px-4 py-3 text-[15px] ${tone === 'error' ? errorColors : 'bg-amber/15 text-ink'}`}>
       {children}
     </p>
   )
 }
 
-/** An error box with a way out, or `rows` placeholder cards while loading. */
-export function Status({ error, loading, rows = 3 }: { error?: Error; loading?: boolean; rows?: number }) {
+/**
+ * An error box with Try Again, or `rows` placeholder cards while loading. `onRetry` loads again (a page passes its
+ * usePolling reload); without it, Try Again reloads the whole app.
+ */
+export function Status({ error, loading, rows = 3, onRetry = () => location.reload() }: {
+  error?: Error
+  loading?: boolean
+  rows?: number
+  onRetry?: () => void
+}) {
   const online = useOnline()
   if (error) {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-2xl bg-red-50 p-4 text-[15px] text-red-900 dark:bg-red-950 dark:text-red-100">
-        {/* Offline, a reload would only show the browser's error page; data refreshes by itself once back online. */}
+      <div className={`flex items-center justify-between gap-3 rounded-2xl p-4 text-[15px] ${errorColors}`}>
+        {/* Offline, trying again can only fail; data refreshes by itself once back online. */}
         <p>{online ? friendlyError(error) : "You're offline. Forge will refresh when you're back online."}</p>
         {online && (
-          <button onClick={() => location.reload()} className="shrink-0 rounded-lg bg-red-900/10 px-3 py-2 font-semibold dark:bg-white/10">
+          <button onClick={onRetry} className="min-h-11 shrink-0 rounded-lg bg-red-900/10 px-3 font-semibold dark:bg-white/10">
             Try again
           </button>
         )}

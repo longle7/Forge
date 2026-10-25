@@ -27,6 +27,10 @@ export default function HomePage() {
   const activity = usePolling(() => getActivity(today, today), activityPath(today, today))
   const [weighing, setWeighing] = useState(false)
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
+  const retry = () => {
+    profile.reload()
+    workouts.reload()
+  }
 
   const goals = profile.data
   const day = todaySoFar({ plan: plan.data, workouts: workouts.data, food: food.data, weighIns: weighIns.data, habits: habits.data }, today)
@@ -69,7 +73,7 @@ export default function HomePage() {
     >
       {/* Can't reach Forge with nothing saved on the phone: say so, rather than look like a brand-new account. */}
       {/* First visit (nothing remembered yet): hold the Welcome card's place while the profile loads. */}
-      <Status error={failure(profile) ?? failure(workouts)} loading={profile.data === undefined} rows={1} />
+      <Status error={failure(profile) ?? failure(workouts)} loading={profile.data === undefined} rows={1} onRetry={retry} />
       {goals === null && (
         <Card>
           <p className="text-[13px] font-semibold tracking-wide text-coral-ink uppercase">Welcome to Forge</p>

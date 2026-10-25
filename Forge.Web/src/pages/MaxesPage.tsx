@@ -28,6 +28,10 @@ export default function MaxesPage() {
   const all = workouts.data ?? []
   const tested = maxes.data ?? []
   const loaded = workouts.data !== undefined && maxes.data !== undefined
+  const retry = () => {
+    workouts.reload()
+    maxes.reload()
+  }
   const big = bigThree(all, tested, since)
   const bodyweight = weightOn(weighIns.data, today, profile.data?.startWeight ?? 0)
   const times = (value: number) => `${(value / bodyweight).toFixed(2)}× bodyweight`
@@ -36,7 +40,7 @@ export default function MaxesPage() {
   return (
     <Page title="Maxes" back={BACK}>
       <p className="-mt-3 text-muted">Estimated 1-rep maxes from your last {CURRENT_DAYS} days of sets and the maxes you tested.</p>
-      <Status loading={!loaded && !workouts.error && !maxes.error} error={failure(workouts) ?? failure(maxes)} rows={3} />
+      <Status loading={!loaded && !workouts.error && !maxes.error} error={failure(workouts) ?? failure(maxes)} rows={3} onRetry={retry} />
 
       {loaded && (
         <Card>

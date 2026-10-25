@@ -68,7 +68,7 @@ export function TestedMaxSheet({ exerciseId, max, today, onSaved, onClose }: {
           <input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} className={field} />
         </label>
         {pounds > 0 && reps > 1 && <p className="text-[15px] text-muted">That's about {formatWeight(Math.round(oneRepMax(pounds, reps)))} lb for one rep.</p>}
-        {error && <Notice>{error}</Notice>}
+        {error && <Notice tone="error">{error}</Notice>}
         {max && (
           <button type="button" onClick={remove} disabled={busy} className={dangerButton}>
             Delete

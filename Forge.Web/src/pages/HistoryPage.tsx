@@ -21,7 +21,7 @@ export default function HistoryPage() {
 
   return (
     <Page title="History" back={{ to: '/workouts', label: 'Workouts' }}>
-      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} />
+      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} onRetry={workouts.reload} />
       {workouts.data?.length === 0 && <p className="text-muted">No workouts yet. Finish one and it shows up here.</p>}
       {workouts.data?.map((workout, i) => {
         const groups = groupSets(workout.sets)

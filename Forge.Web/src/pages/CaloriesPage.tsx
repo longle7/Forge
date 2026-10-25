@@ -134,7 +134,7 @@ export default function CaloriesPage() {
       )}
       {message && <Notice>{message}</Notice>}
 
-      <Status loading={log.data === undefined && !log.error} error={failure(log)} rows={2} />
+      <Status loading={log.data === undefined && !log.error} error={failure(log)} rows={2} onRetry={log.reload} />
       {log.data &&
         MEALS.map(({ id, label }) => {
           const entries = log.data!.filter((e) => e.meal === id)
@@ -278,7 +278,7 @@ function SaveMealSheet({ foods, onSaved, onClose }: { foods: FoodEntry[]; onSave
         <p className="text-[15px] text-muted">
           {foods.map((f) => f.name).join(', ')} · {formatKcal(totals(foods).calories)} kcal
         </p>
-        {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
+        {error && <Notice tone="error">{error}</Notice>}
       </form>
     </Sheet>
   )

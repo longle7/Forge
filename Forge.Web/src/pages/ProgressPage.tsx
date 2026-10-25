@@ -41,7 +41,7 @@ export default function ProgressPage() {
     <Page title="Progress">
       {/* One range for every chart below, so their numbers always agree. */}
       <Segmented label="Time range" options={RANGES} value={days} onChange={setDays} />
-      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={3} />
+      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={3} onRetry={workouts.reload} />
 
       <WeightCard weighIns={weighIns.data ?? []} from={from} profile={profile.data ?? undefined} today={today} period={period} onSaved={weighIns.reload} />
       <PlanCard plan={plan.data ?? []} workouts={workouts.data ?? []} from={from} today={today} period={period} />

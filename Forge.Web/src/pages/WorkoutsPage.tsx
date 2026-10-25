@@ -40,7 +40,7 @@ export default function WorkoutsPage() {
       </Group>
 
       <SectionTitle title="History" link={workouts.data?.length ? { to: '/workouts/history', label: 'See All' } : undefined} />
-      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={2} />
+      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={2} onRetry={workouts.reload} />
       {workouts.data?.length === 0 && <p className="px-1 text-muted">Finished workouts show up here.</p>}
       {recent.length > 0 && (
         <Group>

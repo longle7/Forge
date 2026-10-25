@@ -51,7 +51,7 @@ export function ExercisePicker({ exercises, recent = [], onPick, onClose }: {
           {adding ? 'Adding…' : `Add “${q}” as a new exercise`}
         </button>
       )}
-      {error && <Notice>{error}</Notice>}
+      {error && <Notice tone="error">{error}</Notice>}
       {recentShown.length > 0 && (
         <>
           <h3 className="px-1 pt-1 text-[13px] font-semibold text-muted uppercase">Recent</h3>

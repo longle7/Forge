@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { MEALS, type Meal, type Micros, type Nutrition } from './api'
-import { dangerButton, field, plainButton, Segmented, Sheet } from './components'
+import { dangerButton, field, Notice, plainButton, Segmented, Sheet } from './components'
 import { haptic } from './notify'
 import { formatKcal, MICROS } from './nutrition'
 import { useAction } from './usePolling'
@@ -89,7 +89,7 @@ export function FoodSheet({ title, food, initialServings = 1, initialMeal, submi
         </p>
       )}
 
-      {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
       {onDelete && (
         <button onClick={() => run(onDelete)} disabled={busy} className={dangerButton}>
           Delete

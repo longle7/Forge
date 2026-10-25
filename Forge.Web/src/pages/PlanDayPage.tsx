@@ -120,7 +120,7 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
         Add Exercise
       </button>
 
-      {message && <Notice>{message}</Notice>}
+      {message && <Notice tone="error">{message}</Notice>}
       <button onClick={save} disabled={saving} className={primaryButton}>
         {saving ? 'Saving…' : `Save ${DAY_NAMES[day]}`}
       </button>

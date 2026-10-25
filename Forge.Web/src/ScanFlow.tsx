@@ -59,7 +59,7 @@ export function ScanFlow({ date, meal, onLogged }: { date: string; meal: Meal; o
         <ScanTile icon="camera" title="Scan a Label" detail="Reads the Nutrition Facts" onChange={choose('label')} />
         <ScanTile icon="sparkles" title="Snap a Meal" detail="Estimates each food" onChange={choose('meal')} />
       </div>
-      {error && <Notice>{error}</Notice>}
+      {error && <Notice tone="error">{error}</Notice>}
 
       {step?.at === 'consent' && (
         <Sheet title="Photo Logging" onClose={() => setStep(undefined)}>
@@ -199,7 +199,7 @@ function Review({ kind, initial, date, meal, onLogged, onClose }: { kind: Kind; 
           </div>
         ))}
       </div>
-      {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
       <button onClick={add} disabled={saving} className={primaryButton}>
         {saving ? 'Logging…' : `Add to ${mealLabel} · ${formatKcal(total)} kcal`}
       </button>

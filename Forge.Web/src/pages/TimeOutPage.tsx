@@ -39,7 +39,7 @@ export default function TimeOutPage() {
   if (!profile.data) {
     return (
       <Page title="Time Out">
-        <Status loading={!profile.error} error={failure(profile)} rows={3} />
+        <Status loading={!profile.error} error={failure(profile)} rows={3} onRetry={profile.reload} />
       </Page>
     )
   }
@@ -114,7 +114,7 @@ export default function TimeOutPage() {
           <Switch checked={rules.unlockAfterHabits ?? false} onChange={(on) => change({ unlockAfterHabits: on })} label="Finish today's habits" />
         </div>
       </Group>
-      {message && <Notice>{message}</Notice>}
+      {message && <Notice tone="error">{message}</Notice>}
 
       <Group
         title="Apps to lock"

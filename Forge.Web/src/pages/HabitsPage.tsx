@@ -42,7 +42,7 @@ export default function HabitsPage() {
 
   return (
     <Page title="Habits" back={{ to: '/', label: 'Home' }}>
-      <Status loading={habits.data === undefined && !habits.error} error={failure(habits)} rows={3} />
+      <Status loading={habits.data === undefined && !habits.error} error={failure(habits)} rows={3} onRetry={habits.reload} />
       {active.length > 0 && <Group footer="Streaks count the days each habit is scheduled. Last 4 weeks shown.">{active.map(row)}</Group>}
       <button onClick={() => setEditing({ id: randomId(), habit: { name: '', emoji: '', dailyTarget: 1, days: EVERY_DAY, archived: false }, isNew: true })} className={`w-full ${tintedButton}`}>
         <Icon name="plus" className="size-5" />
@@ -128,7 +128,7 @@ function HabitSheet({ id, habit, isNew, onSaved, onClose }: { id: string; habit:
           })}
         </div>
       </div>
-      {error && <Notice>{error}</Notice>}
+      {error && <Notice tone="error">{error}</Notice>}
       {!isNew && (
         <>
           <button onClick={() => run(() => saveHabit(id, { ...habit, archived: !habit.archived }))} disabled={busy} className={`w-full ${tintedButton}`}>
