@@ -6,6 +6,7 @@ import { Card, dangerButton, field, Notice, plainButton, PrBadge, primaryButton,
 import { loadDraft, saveDraft, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
 import { notifyRestEnd } from '../notify'
+import { activityState, endWorkout, isLive, showWorkout } from '../liveActivity'
 import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
 import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, livePr, oneRepMax, parseDuration, platesPerSide, plural, previousSets, progressionStep, recentExercises } from '../workouts'
@@ -91,6 +92,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   const close = (to: string, finished = false) => {
     saveDraft(undefined)
     void notifyRestEnd(undefined)
+    void endWorkout()
     navigate(to, { replace: true, state: finished ? { finished } : undefined })
   }
 
@@ -209,6 +211,13 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   useEffect(() => {
     void notifyRestEnd(draft.restEndsAt)
   }, [draft.restEndsAt])
+  // In the iPhone app, the workout is on the Lock Screen, in the Dynamic Island, and on the Watch too. It's sent only
+  // when what it shows changes (typing a weight doesn't), and comes down once the workout is finished.
+  const liveActivity = isLive(draft) ? JSON.stringify(activityState(draft, names)) : undefined
+  useEffect(() => {
+    if (liveActivity) void showWorkout(JSON.parse(liveActivity))
+    else void endWorkout()
+  }, [liveActivity])
 
   const finishLabel = saving ? 'Saving…' : draft.editing ? 'Save' : 'Finish'
 
