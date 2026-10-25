@@ -50,12 +50,15 @@ export function Page({ title, eyebrow, back, action, children }: {
   )
 }
 
-/** The bar above a deeper screen's title: Back, labeled with where it goes, like iOS. */
+/**
+ * The bar above a deeper screen's title: Back, labeled with where it goes, like iOS. It sticks just under the iPhone's
+ * status bar, which App blurs.
+ */
 function NavBar({ back }: { back: { to: string; label: string } }) {
   const location = useLocation()
   const navigate = useNavigate()
   return (
-    <div className="sticky top-0 z-10 -mx-4 bg-canvas/85 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+    <div className="sticky top-[env(safe-area-inset-top)] z-10 -mx-4 bg-canvas/85 px-2 backdrop-blur-md">
       <button
         // Opened from a link or bookmark there's no history to go back to, so go to the parent screen.
         onClick={() => (location.key === 'default' ? navigate(back.to) : navigate(-1))}

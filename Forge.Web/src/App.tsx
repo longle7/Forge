@@ -48,6 +48,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <OfflineBanner />
+      {/* Under the iPhone's clock and battery, what scrolls by is blurred, as in iOS apps. 0 px tall in a browser. */}
+      <div className="fixed inset-x-0 top-0 z-10 h-[env(safe-area-inset-top)] bg-canvas/85 backdrop-blur-md" aria-hidden />
       {/* Bottom padding keeps the last item clear of the tab bar and the iPhone home indicator. */}
       {/* Focusable (but not tabbable) so navigation can move focus here; see ScrollAndFocus. */}
       <main tabIndex={-1} className="mx-auto max-w-xl space-y-4 px-4 pt-[env(safe-area-inset-top)] pb-[calc(6rem+env(safe-area-inset-bottom))] outline-none">

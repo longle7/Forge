@@ -224,7 +224,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   return (
     <>
       {/* Like an iOS nav bar: Back keeps the workout going (it stays on this phone); Finish saves it. */}
-      <div className="sticky top-0 z-10 -mx-4 flex items-center justify-between bg-canvas/85 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <div className="sticky top-[env(safe-area-inset-top)] z-10 -mx-4 flex items-center justify-between bg-canvas/85 px-2 backdrop-blur-md">
         <button onClick={() => navigate('/workouts')} className={plainButton}>
           <Icon name="chevronLeft" className="size-7" />
           Workouts
