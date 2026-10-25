@@ -1,5 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
-import { getActivity, getExercises, getWorkouts, saveActivity, saveWorkout, saveWorkoutHealth, type Exercise, type HeartRatePoint, type Workout, type WorkoutHealth, type WorkoutInput } from './api'
+import { getActivity, getExercises, getWeighIns, getWorkouts, saveActivity, saveWeighIn, saveWorkout, saveWorkoutHealth, type Exercise, type HeartRatePoint, type WeighIn, type Workout, type WorkoutHealth, type WorkoutInput } from './api'
 import { read, readJson, write } from './cache'
 import { addDays, localDate } from './dates'
 import { REFRESH } from './usePolling'
@@ -180,14 +180,28 @@ export function sleepByNight(samples: SleepSample[]): HealthDay[] {
   return [...minutes].map(([date, value]) => ({ date, value }))
 }
 
+/**
+ * Weights from Health (a smart scale, or typed into Health) for days without a weigh-in in Forge, rounded to 0.1 lb
+ * like one you type, and only 50 to 1,000 lb, as the API takes. A weight you typed in Forge is never replaced, and
+ * bringing them in again adds nothing.
+ */
+export function newWeighIns(scale: HealthDay[], saved: WeighIn[]): WeighIn[] {
+  const weighed = new Set(saved.map((w) => w.date))
+  return scale
+    .filter((day) => !weighed.has(day.date))
+    .map((day) => ({ date: day.date, weight: Math.round(day.value * 10) / 10 }))
+    .filter((w) => w.weight >= 50 && w.weight <= 1000)
+}
+
 let syncing: Promise<number> | undefined
 
 /**
  * Brings in Apple Health workouts since the last sync (the last 30 days the first time): one that's the same session
  * as a workout you logged in Forge adds its calories and heart rate to it; any other becomes a workout of its own,
  * saved under Apple Health's ID so it's never added twice. Then the last week's active calories, for the calorie
- * budget (see dayBudget). Runs when the app opens or comes back (at most every 5 minutes) and from Settings → Sync Now
- * (`force`). Resolves to how many workouts came in or got Watch data.
+ * budget (see dayBudget), and the last 30 days' weights from a smart scale, as weigh-ins on days without one. Runs when
+ * the app opens or comes back (at most every 5 minutes) and from Settings → Sync Now (`force`). Resolves to how many
+ * workouts came in or got Watch data.
  */
 export function syncHealth(force = false): Promise<number> {
   if (!healthConnected()) return Promise.resolve(0)
@@ -226,6 +240,14 @@ async function sync(): Promise<number> {
     const kcal = Math.min(10_000, Math.round(day.value))
     if (kcal === 0 || saved.find((s) => s.date === day.date)?.kcal === kcal) continue
     await saveActivity(day.date, kcal)
+    changed = true
+  }
+
+  // Weights from the last 30 days, so a scale that syncs late, or a weigh-in from before you allowed weight, still
+  // comes in.
+  const [scale, weighIns] = await Promise.all([healthDaily('bodyMass', addDays(to, -29), to), getWeighIns()])
+  for (const weighIn of newWeighIns(scale, weighIns)) {
+    await saveWeighIn(weighIn.date, weighIn.weight)
     changed = true
   }
   if (changed) window.dispatchEvent(new Event(REFRESH))

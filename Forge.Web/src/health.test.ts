@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Exercise, Workout } from './api'
-import { matchWorkout, sleepByNight, toForgeWorkout, workoutHealth, type WatchWorkout } from './health'
+import { matchWorkout, newWeighIns, sleepByNight, toForgeWorkout, workoutHealth, type WatchWorkout } from './health'
 import { workoutTotals } from './workouts'
 
 const at = (time: string) => Date.parse(`2026-10-10T${time}:00Z`)
@@ -120,4 +120,12 @@ describe('sleepByNight', () => {
   ])('$name', ({ samples, nights }) => {
     expect(sleepByNight(samples)).toEqual(nights)
   })
+})
+
+it.each([
+  { name: 'brings in a day without a weigh-in, to 0.1 lb', scale: [{ date: '2026-10-23', value: 181.46 }], weighIns: [{ date: '2026-10-23', weight: 181.5 }] },
+  { name: 'never replaces a weigh-in you typed', scale: [{ date: '2026-10-22', value: 181.9 }], weighIns: [] },
+  { name: 'skips weights the API would refuse', scale: [{ date: '2026-10-21', value: 30 }, { date: '2026-10-20', value: 1200 }], weighIns: [] },
+])('newWeighIns $name', ({ scale, weighIns }) => {
+  expect(newWeighIns(scale, [{ date: '2026-10-22', weight: 182 }])).toEqual(weighIns)
 })
