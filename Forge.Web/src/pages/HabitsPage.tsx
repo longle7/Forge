@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { deleteHabit, getHabits, randomId, saveHabit, type Habit, type HabitInput } from '../api'
-import { dangerButton, field, Group, Notice, Page, primaryButton, Sheet, Status, Stepper, tintedButton } from '../components'
+import { dangerButton, field, Group, Notice, Page, plainButton, Sheet, Status, Stepper, tintedButton } from '../components'
 import { addDays, DAY_NAMES, localDate } from '../dates'
 import { completion, daysLabel, EVERY_DAY, habitStreak, SUGGESTIONS } from '../habits'
 import { Icon } from '../icons'
@@ -75,9 +75,18 @@ function HabitSheet({ id, habit, isNew, onSaved, onClose }: { id: string; habit:
       void haptic('success')
       onSaved()
     })
+  const submit = () => (form.days ? run(() => saveHabit(id, { ...form, name: form.name.trim() })) : setError('Pick at least one day.'))
 
   return (
-    <Sheet title={isNew ? 'New Habit' : 'Edit Habit'} onClose={onClose}>
+    <Sheet
+      title={isNew ? 'New Habit' : 'Edit Habit'}
+      onClose={onClose}
+      action={
+        <button onClick={submit} disabled={busy || !form.name.trim()} className={plainButton}>
+          {isNew ? 'Add' : 'Save'}
+        </button>
+      }
+    >
       {isNew && !form.name && (
         <div className="flex flex-wrap gap-2">
           {SUGGESTIONS.map((s) => (
@@ -120,9 +129,6 @@ function HabitSheet({ id, habit, isNew, onSaved, onClose }: { id: string; habit:
         </div>
       </div>
       {error && <Notice>{error}</Notice>}
-      <button onClick={() => (form.days ? run(() => saveHabit(id, { ...form, name: form.name.trim() })) : setError('Pick at least one day.'))} disabled={busy || !form.name.trim()} className={primaryButton}>
-        {isNew ? 'Add Habit' : 'Save'}
-      </button>
       {!isNew && (
         <>
           <button onClick={() => run(() => saveHabit(id, { ...habit, archived: !habit.archived }))} disabled={busy} className={`w-full ${tintedButton}`}>

@@ -17,7 +17,7 @@ import {
   saveSavedMeal,
   type FoodEntry,
 } from '../api'
-import { Card, field, FoodRow, Group, MacroBar, Notice, Page, primaryButton, Rings, Sheet, Status, tintedButton } from '../components'
+import { Card, field, FoodRow, Group, MacroBar, Notice, Page, plainButton, primaryButton, Rings, Sheet, Status, tintedButton } from '../components'
 import { addDays, dayLabel, localDate, workoutDay } from '../dates'
 import { AdaptiveGoalCard } from '../AdaptiveGoalCard'
 import { FoodSheet } from '../FoodSheet'
@@ -257,8 +257,17 @@ function SaveMealSheet({ foods, onSaved, onClose }: { foods: FoodEntry[]; onSave
   }
 
   return (
-    <Sheet title="Save as Meal" onClose={onClose}>
+    <Sheet
+      title="Save as Meal"
+      onClose={onClose}
+      action={
+        <button type="submit" form="save-meal" disabled={saving} className={plainButton}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      }
+    >
       <form
+        id="save-meal"
         onSubmit={(e) => {
           e.preventDefault()
           void save()
@@ -270,9 +279,6 @@ function SaveMealSheet({ foods, onSaved, onClose }: { foods: FoodEntry[]; onSave
           {foods.map((f) => f.name).join(', ')} · {formatKcal(totals(foods).calories)} kcal
         </p>
         {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
-        <button disabled={saving} className={primaryButton}>
-          {saving ? 'Saving…' : 'Save Meal'}
-        </button>
       </form>
     </Sheet>
   )

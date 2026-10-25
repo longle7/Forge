@@ -1,4 +1,4 @@
-import { Component, useEffect, useRef, type ReactNode } from 'react'
+import { Component, useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { ApiError } from './api'
 import { Icon, type IconName } from './icons'
@@ -272,29 +272,44 @@ export function Segmented<T extends string | number>({ options, value, onChange,
 }
 
 /**
- * A bottom sheet: a native modal <dialog> sliding up from the bottom, with Cancel at its top left. It traps focus,
- * and Escape or Cancel calls `onClose`; the owner removes it from the page when it's done. `full` fills the screen.
+ * A bottom sheet: a native modal <dialog> that slides up from the bottom, with Cancel at its top left and `action`
+ * (Save, Add) at its top right, in bold like iOS's Done and above the keyboard. It traps focus; Escape, Cancel, or a
+ * tap on the dimmed backdrop calls `onClose`, and the owner removes it from the page when it's done. `full` fills the
+ * screen.
  */
-export function Sheet({ title, full, onClose, children }: { title: string; full?: boolean; onClose: () => void; children: ReactNode }) {
+export function Sheet({ title, full, action, onClose, children }: {
+  title: string
+  full?: boolean
+  action?: ReactNode
+  onClose: () => void
+  children: ReactNode
+}) {
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     if (!dialog.current?.open) dialog.current?.showModal() // StrictMode runs this twice in development
   }, [])
+  // A tap on the backdrop lands on the <dialog> itself, outside the panel. A full sheet has no backdrop, and a tap on
+  // the <dialog> there is on its empty space, which mustn't close it.
+  const closeOnBackdrop = (event: MouseEvent<HTMLDialogElement>) => {
+    if (!full && event.target === event.currentTarget) dialog.current?.close()
+  }
   return (
     <dialog
       ref={dialog}
       onClose={onClose}
+      onClick={closeOnBackdrop}
       aria-label={title}
-      className={`${full ? 'm-0 h-full max-h-none max-w-none' : 'mx-auto mt-auto mb-0 max-h-[92dvh] max-w-xl rounded-t-3xl border-t border-line'} w-full bg-canvas p-0 text-ink backdrop:bg-black/40 dark:backdrop:bg-black/65`}
+      className={`${full ? 'm-0 h-full max-h-none max-w-none' : 'mx-auto mt-auto mb-0 max-h-[92dvh] max-w-xl rounded-t-3xl border-t border-line'} sheet-enter w-full bg-canvas p-0 text-ink backdrop:bg-black/40 dark:backdrop:bg-black/65`}
     >
       <div className={`mx-auto max-w-xl space-y-4 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${full ? 'pt-[calc(0.5rem+env(safe-area-inset-top))]' : 'pt-2'}`}>
         {!full && <div className="mx-auto h-1.5 w-10 rounded-full bg-line" aria-hidden />}
-        <div className="flex items-center justify-between">
-          <button type="button" onClick={() => dialog.current?.close()} className={plainButton}>
+        {/* Three columns, so the title stays centered whatever the buttons beside it say. */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <button type="button" onClick={() => dialog.current?.close()} className={`justify-self-start ${plainButton}`}>
             Cancel
           </button>
           <h2 className="font-semibold">{title}</h2>
-          <span className="w-14" aria-hidden />
+          <div className="justify-self-end font-semibold">{action}</div>
         </div>
         {children}
       </div>

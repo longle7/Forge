@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { saveWeighIn } from './api'
-import { field, primaryButton, Sheet } from './components'
+import { field, plainButton, Sheet } from './components'
 import { haptic } from './notify'
 import { useAction } from './usePolling'
 
@@ -21,16 +21,21 @@ export function WeighInSheet({ day, current, onSaved, onClose }: { day: string; 
   }
 
   return (
-    <Sheet title="Log Weight" onClose={onClose}>
-      <form onSubmit={save} className="space-y-3">
+    <Sheet
+      title="Log Weight"
+      onClose={onClose}
+      action={
+        <button type="submit" form="weigh-in" disabled={saving} className={plainButton}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      }
+    >
+      <form id="weigh-in" onSubmit={save} className="space-y-3">
         <label className="block">
           <span className="text-[15px] text-muted">Today's weight (lb)</span>
           <input value={weight} onChange={(e) => setWeight(e.target.value)} inputMode="decimal" placeholder="185.0" className={`${field} min-h-14 text-center text-[28px] font-bold`} />
         </label>
         {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
-        <button disabled={saving} className={primaryButton}>
-          {saving ? 'Saving…' : 'Save'}
-        </button>
       </form>
     </Sheet>
   )

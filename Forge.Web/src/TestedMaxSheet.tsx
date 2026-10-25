@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { deleteMax, randomId, saveMax, type TestedMax } from './api'
-import { dangerButton, field, Notice, primaryButton, Sheet, Stepper } from './components'
+import { dangerButton, field, Notice, plainButton, Sheet, Stepper } from './components'
 import { haptic } from './notify'
 import { oneRepMax, formatWeight } from './workouts'
 import { useAction } from './usePolling'
@@ -42,8 +42,16 @@ export function TestedMaxSheet({ exerciseId, max, today, onSaved, onClose }: {
   }
 
   return (
-    <Sheet title={max ? 'Tested Max' : 'Add Tested Max'} onClose={onClose}>
-      <form onSubmit={save} className="space-y-3">
+    <Sheet
+      title={max ? 'Tested Max' : 'Add Tested Max'}
+      onClose={onClose}
+      action={
+        <button type="submit" form="tested-max" disabled={busy} className={plainButton}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+      }
+    >
+      <form id="tested-max" onSubmit={save} className="space-y-3">
         <label className="block">
           <span className="text-[15px] text-muted">Weight (lb)</span>
           <input value={weight} onChange={(e) => setWeight(e.target.value)} inputMode="decimal" placeholder="225" className={`${field} min-h-14 text-center text-[28px] font-bold`} />
@@ -61,9 +69,6 @@ export function TestedMaxSheet({ exerciseId, max, today, onSaved, onClose }: {
         </label>
         {pounds > 0 && reps > 1 && <p className="text-[15px] text-muted">That's about {formatWeight(Math.round(oneRepMax(pounds, reps)))} lb for one rep.</p>}
         {error && <Notice>{error}</Notice>}
-        <button disabled={busy} className={primaryButton}>
-          {busy ? 'Saving…' : 'Save'}
-        </button>
         {max && (
           <button type="button" onClick={remove} disabled={busy} className={dangerButton}>
             Delete

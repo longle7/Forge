@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { MEALS, type Meal, type Micros, type Nutrition } from './api'
-import { dangerButton, field, primaryButton, Segmented, Sheet } from './components'
+import { dangerButton, field, plainButton, Segmented, Sheet } from './components'
 import { haptic } from './notify'
 import { formatKcal, MICROS } from './nutrition'
 import { useAction } from './usePolling'
@@ -37,7 +37,15 @@ export function FoodSheet({ title, food, initialServings = 1, initialMeal, submi
   const valid = amount > 0 && amount <= 100
 
   return (
-    <Sheet title={title} onClose={onClose}>
+    <Sheet
+      title={title}
+      onClose={onClose}
+      action={
+        <button onClick={() => run(() => onSubmit(amount, meal))} disabled={!valid || busy} className={plainButton}>
+          {submitLabel}
+        </button>
+      }
+    >
       <div>
         <p className="text-[20px] leading-snug font-semibold">{food.name}</p>
         <p className="text-[15px] text-muted">
@@ -82,9 +90,6 @@ export function FoodSheet({ title, food, initialServings = 1, initialMeal, submi
       )}
 
       {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
-      <button onClick={() => run(() => onSubmit(amount, meal))} disabled={!valid || busy} className={primaryButton}>
-        {submitLabel}
-      </button>
       {onDelete && (
         <button onClick={() => run(onDelete)} disabled={busy} className={dangerButton}>
           Delete
