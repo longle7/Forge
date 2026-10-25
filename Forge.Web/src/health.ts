@@ -17,13 +17,32 @@ export interface WatchWorkout {
   maxHeartRate?: number
 }
 
+/** A day's reading from Apple Health: its total (steps), average (resting heart rate), or latest (weight). */
+export interface HealthDay {
+  date: string // YYYY-MM-DD, your time zone
+  value: number
+}
+
+/** A stretch of sleep as Health keeps it. Times in ms since 1970; `value` is the stage (see ASLEEP). */
+export interface SleepSample {
+  start: number
+  end: number
+  value: number
+}
+
+// What `daily` can read, by HealthKit's names: active calories (kcal), steps, resting heart rate (bpm), heart rate
+// variability (ms), and weight (lb).
+type DailyType = 'activeEnergy' | 'stepCount' | 'restingHeartRate' | 'heartRateVariabilitySDNN' | 'bodyMass'
+
 // The native side: plugins/health. Read-only; Forge never writes to Apple Health.
 const Health = registerPlugin<{
   isAvailable(): Promise<{ available: boolean }>
   requestAccess(): Promise<void>
+  needsAccess(): Promise<{ needed: boolean }>
   workouts(options: { since: number }): Promise<{ workouts: WatchWorkout[] }>
   heartRate(options: { start: number; end: number }): Promise<{ points: HeartRatePoint[] }>
-  activeEnergy(options: { from: string; to: string }): Promise<{ days: { date: string; kcal: number }[] }>
+  daily(options: { type: DailyType; from: string; to: string }): Promise<{ days: HealthDay[] }>
+  sleep(options: { from: string; to: string }): Promise<{ samples: SleepSample[] }>
 }>('Health')
 
 const CONNECTED_KEY = 'forge.healthConnected'
@@ -44,6 +63,12 @@ export async function connectHealth(): Promise<number> {
   write(CONNECTED_KEY, '1')
   return syncHealth(true)
 }
+
+/** Whether Health has something to ask you about: what Forge started reading after you connected, like sleep. */
+export const healthNeedsAccess = () => Health.needsAccess().then((r) => r.needed)
+
+/** Shows Apple Health's permission sheet for what it hasn't asked about yet. Resolves whatever you allow. */
+export const requestHealthAccess = () => Health.requestAccess()
 
 /** Stops bringing in Apple Health data on this phone. What came in stays; Health's own switch is in Health → Sharing. */
 export function disconnectHealth() {
@@ -129,6 +154,32 @@ export function toForgeWorkout(watch: WatchWorkout, exercises: Exercise[], point
   }
 }
 
+// The sleep stages that are sleep: 1 asleep (from apps and Watches that don't record stages), 3 core, 4 deep, 5 REM; not
+// 0 in bed or 2 awake. Health's raw numbers, so the plugin needs no checks for iOS 16, which added the stages.
+const ASLEEP = new Set([1, 3, 4, 5])
+
+/**
+ * Minutes asleep each night, by the day you woke up, oldest first. The Watch, the iPhone, and other apps can each record
+ * the same night, so overlapping stretches are merged before they're added up. A night runs from 6 PM to 6 PM, so sleep
+ * before a wake-up before midnight still counts toward the morning after.
+ * ponytail: naps count as sleep (after 6 PM, toward the next morning); split them out by time of day if that misleads.
+ */
+export function sleepByNight(samples: SleepSample[]): HealthDay[] {
+  const asleep = samples.filter((s) => ASLEEP.has(s.value)).sort((a, b) => a.start - b.start)
+  const merged: { start: number; end: number }[] = []
+  for (const { start, end } of asleep) {
+    const last = merged.at(-1)
+    if (last && start <= last.end) last.end = Math.max(last.end, end)
+    else merged.push({ start, end })
+  }
+  const minutes = new Map<string, number>()
+  for (const { start, end } of merged) {
+    const night = localDate(new Date(end + 6 * 3_600_000))
+    minutes.set(night, (minutes.get(night) ?? 0) + (end - start) / 60_000)
+  }
+  return [...minutes].map(([date, value]) => ({ date, value }))
+}
+
 let syncing: Promise<number> | undefined
 
 /**
@@ -172,7 +223,7 @@ async function sync(): Promise<number> {
   const [days, saved] = await Promise.all([healthActiveEnergy(from, to), getActivity(from, to)])
   let changed = count > 0
   for (const day of days) {
-    const kcal = Math.min(10_000, Math.round(day.kcal))
+    const kcal = Math.min(10_000, Math.round(day.value))
     if (kcal === 0 || saved.find((s) => s.date === day.date)?.kcal === kcal) continue
     await saveActivity(day.date, kcal)
     changed = true
@@ -181,5 +232,11 @@ async function sync(): Promise<number> {
   return count
 }
 
+/** Each day's reading of `type` from Apple Health, `from` to `to` (YYYY-MM-DD); days without one are left out. */
+export const healthDaily = (type: DailyType, from: string, to: string) => Health.daily({ type, from, to }).then((r) => r.days)
+
 /** Active calories (Move ring) per day from Apple Health, for `from` to `to` (YYYY-MM-DD). */
-export const healthActiveEnergy = (from: string, to: string) => Health.activeEnergy({ from, to }).then((r) => r.days)
+export const healthActiveEnergy = (from: string, to: string) => healthDaily('activeEnergy', from, to)
+
+/** Minutes asleep each night from `from` to `to` (YYYY-MM-DD), by the day you woke up (see sleepByNight). */
+export const healthSleep = (from: string, to: string) => Health.sleep({ from, to }).then((r) => sleepByNight(r.samples).filter((night) => night.date >= from && night.date <= to))

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Exercise, Workout } from './api'
-import { matchWorkout, toForgeWorkout, workoutHealth, type WatchWorkout } from './health'
+import { matchWorkout, sleepByNight, toForgeWorkout, workoutHealth, type WatchWorkout } from './health'
 import { workoutTotals } from './workouts'
 
 const at = (time: string) => Date.parse(`2026-10-10T${time}:00Z`)
@@ -74,4 +74,50 @@ describe('workoutHealth', () => {
 it('workoutTotals adds the Watch calories and average heart rate', () => {
   const workout: Workout = { ...logged('a', '17:00', '18:00'), activeCalories: 1312.6, avgHeartRate: 128 }
   expect(workoutTotals(workout)).toBe('925 lb · 1,313 kcal · 128 bpm avg')
+})
+
+describe('sleepByNight', () => {
+  // Local times, as the phone sees them.
+  const stretch = (start: string, end: string, value: number) => ({ start: Date.parse(start), end: Date.parse(end), value })
+
+  it.each([
+    {
+      name: 'adds up core, deep, and REM, but not in bed or awake',
+      samples: [
+        stretch('2026-10-23T22:30', '2026-10-24T07:00', 0), // in bed
+        stretch('2026-10-23T23:00', '2026-10-24T01:00', 3),
+        stretch('2026-10-24T01:00', '2026-10-24T01:10', 2), // awake
+        stretch('2026-10-24T01:10', '2026-10-24T02:00', 4),
+        stretch('2026-10-24T02:00', '2026-10-24T03:00', 5),
+        stretch('2026-10-24T03:00', '2026-10-24T06:30', 3),
+      ],
+      nights: [{ date: '2026-10-24', value: 440 }],
+    },
+    {
+      name: 'counts a night two apps recorded once',
+      samples: [stretch('2026-10-23T23:00', '2026-10-24T07:00', 3), stretch('2026-10-23T23:30', '2026-10-24T07:30', 1)],
+      nights: [{ date: '2026-10-24', value: 510 }],
+    },
+    {
+      name: 'keeps sleep from before a wake-up before midnight with the morning after',
+      samples: [stretch('2026-10-23T22:00', '2026-10-23T23:40', 1), stretch('2026-10-23T23:50', '2026-10-24T06:30', 1)],
+      nights: [{ date: '2026-10-24', value: 500 }],
+    },
+    {
+      name: 'counts a nap toward its day',
+      samples: [stretch('2026-10-23T23:00', '2026-10-24T06:00', 1), stretch('2026-10-24T14:00', '2026-10-24T14:30', 1)],
+      nights: [{ date: '2026-10-24', value: 450 }],
+    },
+    {
+      name: 'gives each night its own day',
+      samples: [stretch('2026-10-23T23:30', '2026-10-24T07:00', 1), stretch('2026-10-22T23:00', '2026-10-23T06:00', 1)],
+      nights: [
+        { date: '2026-10-23', value: 420 },
+        { date: '2026-10-24', value: 450 },
+      ],
+    },
+    { name: 'no sleep recorded', samples: [], nights: [] },
+  ])('$name', ({ samples, nights }) => {
+    expect(sleepByNight(samples)).toEqual(nights)
+  })
 })
