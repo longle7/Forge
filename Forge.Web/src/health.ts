@@ -180,6 +180,51 @@ export function sleepByNight(samples: SleepSample[]): HealthDay[] {
   return [...minutes].map(([date, value]) => ({ date, value }))
 }
 
+/** A recovery measure today against your usual: the average of the 30 days before it, ± 1 standard deviation. */
+export interface RecoveryReading {
+  today: number
+  low: number
+  average: number
+  high: number
+}
+
+/** Today's recovery verdict and the readings behind it. */
+export interface Recovery {
+  verdict?: 'Ready' | 'Normal' | 'Take it easy' // none without either reading
+  hrv?: RecoveryReading // heart rate variability, ms
+  restingHeartRate?: RecoveryReading // bpm
+}
+
+/**
+ * How recovered you look today, from heart rate variability (HRV, higher is better) and resting heart rate (lower is
+ * better), each against your usual. "Take it easy" when either is outside your usual on the bad side, "Ready" when both
+ * are at least as good as average, otherwise "Normal". Either one alone is enough.
+ * ponytail: a heuristic, not a medical score; compare a 3-day average instead of today if the label flips too often.
+ */
+export function recovery(days: { hrv: HealthDay[]; restingHeartRate: HealthDay[] }, today: string): Recovery {
+  const hrv = recoveryReading(days.hrv, today, { log: true, minDeviation: 0.05 })
+  const restingHeartRate = recoveryReading(days.restingHeartRate, today, { minDeviation: 2 })
+  if (!hrv && !restingHeartRate) return {}
+  const takeItEasy = (hrv && hrv.today < hrv.low) || (restingHeartRate && restingHeartRate.today > restingHeartRate.high)
+  const ready = (!hrv || hrv.today >= hrv.average) && (!restingHeartRate || restingHeartRate.today <= restingHeartRate.average)
+  return { verdict: takeItEasy ? 'Take it easy' : ready ? 'Ready' : 'Normal', hrv, restingHeartRate }
+}
+
+/**
+ * Today's reading against the 30 days before it, which need at least 14 readings: their average ± 1 standard deviation,
+ * worked out in log space with `log` (HRV is skewed: good days run further above average than bad days fall below), and
+ * never narrower than ± `minDeviation` there, so a very steady month doesn't make an ordinary day look unusual.
+ */
+function recoveryReading(days: HealthDay[], today: string, { log = false, minDeviation }: { log?: boolean; minDeviation: number }): RecoveryReading | undefined {
+  const reading = days.find((d) => d.date === today)
+  const month = days.filter((d) => d.date >= addDays(today, -30) && d.date < today).map((d) => (log ? Math.log(d.value) : d.value))
+  if (!reading || month.length < 14) return undefined
+  const average = month.reduce((sum, v) => sum + v, 0) / month.length
+  const deviation = Math.max(minDeviation, Math.sqrt(month.reduce((sum, v) => sum + (v - average) ** 2, 0) / month.length))
+  const unlog = (v: number) => (log ? Math.exp(v) : v)
+  return { today: reading.value, low: unlog(average - deviation), average: unlog(average), high: unlog(average + deviation) }
+}
+
 /**
  * Weights from Health (a smart scale, or typed into Health) for days without a weigh-in in Forge, rounded to 0.1 lb
  * like one you type, and only 50 to 1,000 lb, as the API takes. A weight you typed in Forge is never replaced, and

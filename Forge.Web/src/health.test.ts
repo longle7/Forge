@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Exercise, Workout } from './api'
-import { matchWorkout, newWeighIns, sleepByNight, toForgeWorkout, workoutHealth, type WatchWorkout } from './health'
+import { addDays } from './dates'
+import { matchWorkout, newWeighIns, recovery, sleepByNight, toForgeWorkout, workoutHealth, type WatchWorkout } from './health'
 import { workoutTotals } from './workouts'
 
 const at = (time: string) => Date.parse(`2026-10-10T${time}:00Z`)
@@ -119,6 +120,49 @@ describe('sleepByNight', () => {
     { name: 'no sleep recorded', samples: [], nights: [] },
   ])('$name', ({ samples, nights }) => {
     expect(sleepByNight(samples)).toEqual(nights)
+  })
+})
+
+describe('recovery', () => {
+  const today = '2026-10-24'
+  // One reading a day before today, yesterday first, alternating between two values.
+  const alternating = (a: number, b: number, days = 20) => Array.from({ length: days }, (_, i) => ({ date: addDays(today, -1 - i), value: i % 2 ? a : b }))
+  const withToday = (days: { date: string; value: number }[], value: number | undefined) => (value === undefined ? days : [...days, { date: today, value }])
+  const hrvMonth = alternating(40, 60) // usual 40–60 ms, average 49 (worked out in log space)
+  const restingMonth = alternating(55, 59) // usual 55–59 bpm, average 57
+
+  it.each([
+    { name: 'both on the good side of average', hrv: 52, resting: 56, verdict: 'Ready' },
+    { name: 'HRV under average but in your usual', hrv: 45, resting: 56, verdict: 'Normal' },
+    { name: 'HRV below your usual', hrv: 38, resting: 56, verdict: 'Take it easy' },
+    { name: 'resting heart rate above your usual', hrv: 55, resting: 61, verdict: 'Take it easy' },
+    { name: 'HRV alone', hrv: 52, resting: undefined, verdict: 'Ready' },
+    { name: 'resting heart rate alone', hrv: undefined, resting: 58, verdict: 'Normal' },
+    { name: 'no readings today', hrv: undefined, resting: undefined, verdict: undefined },
+  ])('$name: $verdict', ({ hrv, resting, verdict }) => {
+    expect(recovery({ hrv: withToday(hrvMonth, hrv), restingHeartRate: withToday(restingMonth, resting) }, today).verdict).toBe(verdict)
+  })
+
+  it("gives today's readings with your usual range", () => {
+    const { hrv, restingHeartRate } = recovery({ hrv: withToday(hrvMonth, 38), restingHeartRate: withToday(restingMonth, 56) }, today)
+    expect(hrv?.today).toBe(38)
+    expect(hrv?.low).toBeCloseTo(40)
+    expect(hrv?.high).toBeCloseTo(60)
+    expect(restingHeartRate).toEqual({ today: 56, low: 55, average: 57, high: 59 })
+  })
+
+  it('needs readings on 14 of the 30 days before today', () => {
+    expect(recovery({ hrv: withToday(alternating(40, 60, 13), 52), restingHeartRate: [] }, today)).toEqual({})
+    const monthsAgo = hrvMonth.map((d) => ({ ...d, date: addDays(d.date, -30) }))
+    expect(recovery({ hrv: withToday(monthsAgo, 52), restingHeartRate: [] }, today)).toEqual({})
+  })
+
+  it.each([
+    { hrv: 48, resting: 58, verdict: 'Normal' },
+    { hrv: 47, resting: 58, verdict: 'Take it easy' }, // more than 5% under
+    { hrv: 50, resting: 60, verdict: 'Take it easy' }, // more than 2 bpm over
+  ])('a steady month still allows ±5% HRV and ±2 bpm: HRV $hrv, resting $resting is $verdict', ({ hrv, resting, verdict }) => {
+    expect(recovery({ hrv: withToday(alternating(50, 50), hrv), restingHeartRate: withToday(alternating(57, 57), resting) }, today).verdict).toBe(verdict)
   })
 })
 

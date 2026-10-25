@@ -7,6 +7,7 @@ import { RING } from '../colors'
 import { Icon } from '../icons'
 import { HabitsCard } from '../HabitsCard'
 import { dayBudget, exerciseCalories, formatKcal, remaining, totals, weekChange, weightOn } from '../nutrition'
+import { RecoveryCard } from '../RecoveryCard'
 import { isUnlocked, todaySoFar, unlockGoals } from '../timeout'
 import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
@@ -102,6 +103,7 @@ export default function HomePage() {
 
       <TodayWorkoutCard quiet={goals === null} />
       <HabitsCard />
+      <RecoveryCard />
 
       <div className="grid grid-cols-2 gap-3">
         <Card to="/calories">
