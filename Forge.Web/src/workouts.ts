@@ -8,7 +8,8 @@ export function groupSets(sets: WorkoutSet[]): { exerciseId: number; sets: Worko
   const groups: { exerciseId: number; sets: WorkoutSet[] }[] = []
   for (const set of sets) {
     const group = groups.at(-1)
-    if (group?.exerciseId === set.exerciseId && group.sets[0].superset === set.superset) group.sets.push(set)
+    // null (from the API) and missing (made in the app) both mean "not in a superset".
+    if (group?.exerciseId === set.exerciseId && (group.sets[0].superset ?? null) === (set.superset ?? null)) group.sets.push(set)
     else groups.push({ exerciseId: set.exerciseId, sets: [set] })
   }
   return groups
