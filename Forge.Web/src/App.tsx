@@ -18,6 +18,7 @@ import HomePage from './pages/HomePage'
 import LoggerPage from './pages/LoggerPage'
 import PlanDayPage from './pages/PlanDayPage'
 import ProgressPage from './pages/ProgressPage'
+import RoutinePage from './pages/RoutinePage'
 import SettingsPage from './pages/SettingsPage'
 import SetupPage from './pages/SetupPage'
 import TimeOutPage from './pages/TimeOutPage'
@@ -88,6 +89,7 @@ function Pages() {
           <Route path="/workouts/maxes" element={<MaxesPage />} />
           <Route path="/workouts/exercises/:id" element={<ExercisePage />} />
           <Route path="/workouts/plan/:day" element={<PlanDayPage />} />
+          <Route path="/workouts/routines/:id" element={<RoutinePage />} />
           <Route path="/calories" element={<CaloriesPage />} />
           <Route path="/calories/add" element={<AddFoodPage />} />
           <Route path="/setup" element={<SetupPage />} />
