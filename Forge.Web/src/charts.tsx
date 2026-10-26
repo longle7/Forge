@@ -17,7 +17,10 @@ const PLOT_W = W - PAD.left - PAD.right
 const PLOT_H = H - PAD.top - PAD.bottom
 const BASE = H - PAD.bottom
 
-/** Arrow keys walk the points; Home/End jump to the ends; Escape (or leaving) hides the readout. */
+/**
+ * Arrow keys walk the points; Home/End jump to the ends; Escape (or leaving) hides the readout. A tap shows it and it
+ * stays after the finger lifts; a scroll that starts on the chart hides it.
+ */
 function useReadout(count: number) {
   const [active, setActive] = useState<number>()
   const onKeyDown = (e: KeyboardEvent) => {
@@ -28,7 +31,10 @@ function useReadout(count: number) {
     e.preventDefault()
     setActive(Math.max(0, Math.min(count - 1, next)))
   }
-  return { active, setActive, onKeyDown, clear: () => setActive(undefined) }
+  const clear = () => setActive(undefined)
+  // A finger "leaves" as it lifts, which would hide what the tap just showed; a mouse leaving does hide it.
+  const onPointerLeave = (e: PointerEvent) => e.pointerType !== 'touch' && clear()
+  return { active, setActive, onKeyDown, clear, onPointerLeave }
 }
 
 /** Where the pointer is, in chart units (0..W). */
@@ -39,7 +45,8 @@ const pointerX = (e: PointerEvent<SVGElement>) => {
 
 function Frame({ label, readout, children, onKeyDown, onBlur }: { label: string; readout?: { x: number; value: string; detail: string }; children: ReactNode; onKeyDown: (e: KeyboardEvent) => void; onBlur: () => void }) {
   return (
-    <div className="relative mt-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-coral" tabIndex={0} role="group" aria-label={`${label}. Use the arrow keys to read each value.`} onKeyDown={onKeyDown} onBlur={onBlur}>
+    // touch-pan-y: a sideways drag reads along the chart, and an up-and-down one still scrolls the page.
+    <div className="relative mt-3 touch-pan-y rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-coral" tabIndex={0} role="group" aria-label={`${label}. Use the arrow keys to read each value.`} onKeyDown={onKeyDown} onBlur={onBlur}>
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full overflow-visible select-none" aria-hidden>
         {children}
       </svg>
@@ -94,7 +101,7 @@ export function LineChart({ points, label, color, format, axis = format }: {
   format: (value: number) => string
   axis?: (value: number) => string
 }) {
-  const { active, setActive, onKeyDown, clear } = useReadout(points.length)
+  const { active, setActive, onKeyDown, clear, onPointerLeave } = useReadout(points.length)
   const times = points.map((p) => parseDate(p.day).getTime())
   const [t0, t1] = [times[0], times.at(-1)!]
   const ticks = niceTicks(Math.min(...points.map((p) => p.value)), Math.max(...points.map((p) => p.value)))
@@ -104,6 +111,10 @@ export function LineChart({ points, label, color, format, axis = format }: {
   const line = points.map((p, i) => `${i ? 'L' : 'M'}${x(times[i]).toFixed(1)},${y(p.value).toFixed(1)}`).join('')
   const shown = active ?? points.length - 1
   const end = points.at(-1)!
+  const showNearest = (e: PointerEvent<SVGElement>) => {
+    const px = pointerX(e)
+    setActive(times.reduce((best, t, i) => (Math.abs(x(t) - px) < Math.abs(x(times[best]) - px) ? i : best), 0))
+  }
 
   return (
     <Frame
@@ -141,11 +152,10 @@ export function LineChart({ points, label, color, format, axis = format }: {
         width={PLOT_W}
         height={BASE}
         fill="transparent"
-        onPointerMove={(e) => {
-          const px = pointerX(e)
-          setActive(times.reduce((best, t, i) => (Math.abs(x(t) - px) < Math.abs(x(times[best]) - px) ? i : best), 0))
-        }}
-        onPointerLeave={clear}
+        onPointerDown={showNearest}
+        onPointerMove={showNearest}
+        onPointerLeave={onPointerLeave}
+        onPointerCancel={clear}
       />
     </Frame>
   )
@@ -156,7 +166,7 @@ export function LineChart({ points, label, color, format, axis = format }: {
  * bands behind the line when your max is known.
  */
 export function HeartRateChart({ points, max, label }: { points: HeartRatePoint[]; max?: number; label: string }) {
-  const { active, setActive, onKeyDown, clear } = useReadout(points.length)
+  const { active, setActive, onKeyDown, clear, onPointerLeave } = useReadout(points.length)
   const end = points.at(-1)!.s || 1
   // Four steps, not three: heart rate spans ~90 bpm, and steps of 50 would leave the bottom of the plot empty.
   const ticks = niceTicks(Math.min(...points.map((p) => p.bpm)), Math.max(...points.map((p) => p.bpm)), 4)
@@ -167,6 +177,10 @@ export function HeartRateChart({ points, max, label }: { points: HeartRatePoint[
   // Clock-friendly steps, at most four: 0:00, 15:00, 30:00, 45:00.
   const step = 60 * ([1, 2, 5, 10, 15, 30, 60].find((m) => end / 60 / m <= 4) ?? 120)
   const floors = max ? zoneFloors(max) : []
+  const showNearest = (e: PointerEvent<SVGElement>) => {
+    const px = pointerX(e)
+    setActive(points.reduce((best, p, i) => (Math.abs(x(p.s) - px) < Math.abs(x(points[best].s) - px) ? i : best), 0))
+  }
 
   return (
     <Frame
@@ -199,11 +213,10 @@ export function HeartRateChart({ points, max, label }: { points: HeartRatePoint[
         width={PLOT_W}
         height={BASE}
         fill="transparent"
-        onPointerMove={(e) => {
-          const px = pointerX(e)
-          setActive(points.reduce((best, p, i) => (Math.abs(x(p.s) - px) < Math.abs(x(points[best].s) - px) ? i : best), 0))
-        }}
-        onPointerLeave={clear}
+        onPointerDown={showNearest}
+        onPointerMove={showNearest}
+        onPointerLeave={onPointerLeave}
+        onPointerCancel={clear}
       />
     </Frame>
   )
@@ -224,7 +237,7 @@ export function BarChart({ bars, bucket, goal, label, color, format }: {
   color: string
   format: (value: number) => string
 }) {
-  const { active, setActive, onKeyDown, clear } = useReadout(bars.length)
+  const { active, setActive, onKeyDown, clear, onPointerLeave } = useReadout(bars.length)
   const ticks = niceTicks(0, Math.max(goal ?? 0, ...bars.map((b) => b.value ?? 0), 1))
   const top = ticks.at(-1)!
   const y = (v: number) => PAD.top + (1 - v / top) * PLOT_H
@@ -274,7 +287,7 @@ export function BarChart({ bars, bucket, goal, label, color, format }: {
       )}
       {/* Each slot is its bar's hit area: taller and wider than the bar itself. */}
       {bars.map((bar, i) => (
-        <rect key={bar.start} x={PAD.left + slot * i} y={0} width={slot} height={BASE} fill="transparent" onPointerEnter={() => setActive(i)} onPointerMove={() => setActive(i)} onPointerLeave={clear} />
+        <rect key={bar.start} x={PAD.left + slot * i} y={0} width={slot} height={BASE} fill="transparent" onPointerEnter={() => setActive(i)} onPointerMove={() => setActive(i)} onPointerLeave={onPointerLeave} onPointerCancel={clear} />
       ))}
     </Frame>
   )
