@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router'
 import { getExercises, getPlan, isCardio, makeRestDay, savePlanDay, type Exercise, type PlanDay, type PlanExercise } from '../api'
 import { Card, dangerButton, field, Notice, NotFound, Page, primaryButton, Status, Stepper, tintedButton } from '../components'
 import { DAY_NAMES } from '../dates'
+import { planDraft, useStartWorkout } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
 import { Icon } from '../icons'
 import { usePolling, useAction } from '../usePolling'
@@ -34,6 +35,7 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
   const [picking, setPicking] = useState(false)
   const [added, setAdded] = useState<Exercise[]>([]) // made in the picker, before the list reloads
   const { busy: saving, error: message, setError: setMessage, run } = useAction()
+  const startWorkout = useStartWorkout()
   const names = new Map([...exercises, ...added].map((e) => [e.id, e.name]))
   const cardio = new Set([...exercises, ...added].filter(isCardio).map((e) => e.id))
 
@@ -70,6 +72,13 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
 
   return (
     <Page title={DAY_NAMES[day]} back={BACK}>
+      {/* The saved plan, whichever day it is: to do Thursday's workout on Wednesday, or catch up on a missed one. */}
+      {existing && (
+        <button onClick={() => setMessage(startWorkout(planDraft(existing, cardio)))} className={`w-full ${tintedButton}`}>
+          <Icon name="play" className="size-5 fill-current" />
+          Start {existing.name}
+        </button>
+      )}
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, like Push Day" aria-label="Workout name" maxLength={50} className={field} />
       {!name && (
         <div className="flex flex-wrap gap-2">
