@@ -1,12 +1,12 @@
 import { Link, useNavigate } from 'react-router'
 import { getExercises, getPlan, getWorkouts, isCardio } from '../api'
-import { Card, Group, Page, plainButton, PrBadge, primaryButton, Row, SectionTitle, Status, tintedButton } from '../components'
+import { Card, Group, Page, plainButton, primaryButton, Row, SectionTitle, Status, tintedButton, WorkoutRow } from '../components'
 import { addDays, DAY_NAMES, localDate, WEEK, weekday } from '../dates'
 import { emptyDraft, loadDraft, planDraft, repeatDraft, saveDraft, type Draft } from '../draft'
 import { Icon } from '../icons'
 import { planFor, workedOut } from '../plan'
 import { failure, useNow, usePolling } from '../usePolling'
-import { formatDay, formatDuration, formatTime, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
+import { formatDay, formatTime, personalRecords, plural } from '../workouts'
 
 /** The Workouts tab: today's workout, this week's plan, recent history, the exercise list, and your maxes. */
 export default function WorkoutsPage() {
@@ -45,12 +45,7 @@ export default function WorkoutsPage() {
       {recent.length > 0 && (
         <Group>
           {recent.map((w) => (
-            <Row key={w.id} to={`/workouts/history/${w.id}`} detail={(records.get(w.id)?.size ?? 0) > 0 ? <PrBadge /> : undefined}>
-              <span className="block font-medium">{w.name}</span>
-              <span className="block text-[15px] text-muted">
-                {[formatDay(w.startedAt), formatDuration(workoutLength(w)), workoutTotals(w)].filter(Boolean).join(' · ')}
-              </span>
-            </Row>
+            <WorkoutRow key={w.id} workout={w} prs={records.get(w.id)?.size ?? 0} />
           ))}
         </Group>
       )}

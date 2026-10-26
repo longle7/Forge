@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { activityPath, foodLogPath, getActivity, getExercises, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts } from '../api'
-import { Card, Page, PrBadge, primaryButton, Rings, SectionTitle, Status } from '../components'
+import { Card, Group, Page, primaryButton, Rings, SectionTitle, Status, WorkoutRow } from '../components'
 import { dayLabel, localDate, workoutDay } from '../dates'
 import { RING } from '../colors'
 import { Icon } from '../icons'
@@ -10,7 +10,7 @@ import { dayBudget, exerciseCalories, formatKcal, remaining, totals, weekChange,
 import { isUnlocked, todaySoFar, unlockGoals } from '../timeout'
 import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
-import { formatDay, formatDuration, formatWeight, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
+import { formatWeight, personalRecords } from '../workouts'
 import { TodayWorkoutCard } from './WorkoutsPage'
 
 /** Home: today at a glance: your rings, today's workout, calories left, your weight, and your latest workout. */
@@ -144,15 +144,9 @@ export default function HomePage() {
       {last && (
         <>
           <SectionTitle title="Recent" />
-          <Card to={`/workouts/history/${last.id}`}>
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-semibold">{last.name}</p>
-              {prs > 0 && <PrBadge />}
-            </div>
-            <p className="text-[15px] text-muted">
-              {[formatDay(last.startedAt), formatDuration(workoutLength(last)), last.sets.length > 0 && plural(groupSets(last.sets).length, 'exercise'), workoutTotals(last)].filter(Boolean).join(' · ')}
-            </p>
-          </Card>
+          <Group>
+            <WorkoutRow workout={last} prs={prs} />
+          </Group>
         </>
       )}
 

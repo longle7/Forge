@@ -1,10 +1,11 @@
 import { Component, useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { ApiError } from './api'
+import { ApiError, type Workout } from './api'
 import { Icon, type IconName } from './icons'
 import { haptic } from './notify'
 import { formatKcal } from './nutrition'
 import { useOnline, useTitle } from './usePolling'
+import { formatDay, formatDuration, workoutLength, workoutTotals } from './workouts'
 
 // Buttons: one look per job, every one at least 44 px tall (Apple's minimum tap size).
 
@@ -326,6 +327,17 @@ export function PrBadge() {
     <span className="rounded-full bg-amber/20 px-2 py-0.5 text-xs font-bold text-amber-ink">
       PR<span className="sr-only"> (personal record)</span>
     </span>
+  )
+}
+
+/** A finished workout in a list (Home, Workouts, History): its name, "day · length · totals", and PR when it set any. */
+export function WorkoutRow({ workout, prs }: { workout: Workout; prs: number }) {
+  const summary = [formatDay(workout.startedAt), formatDuration(workoutLength(workout)), workoutTotals(workout)].filter(Boolean).join(' · ')
+  return (
+    <Row to={`/workouts/history/${workout.id}`} detail={prs > 0 ? <PrBadge /> : undefined}>
+      <span className="block font-medium">{workout.name}</span>
+      <span className="block text-[15px] text-muted">{summary}</span>
+    </Row>
   )
 }
 
