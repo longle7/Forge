@@ -104,6 +104,8 @@ public class WorkoutsEndpointTests : IDisposable
             Request() with { FinishedAt = Start.AddMinutes(-1) },
             Request() with { FinishedAt = Start.AddHours(25) },
             Request() with { Name = new string('x', 101) },
+            Request() with { Sets = [new(Bench, 135, 8, Kind: "superset")] }, // a superset has its own field
+            Request() with { Sets = [new(Bench, 135, 8, Superset: 0)] },
         ];
 
         foreach (var request in invalid)
@@ -156,6 +158,32 @@ public class WorkoutsEndpointTests : IDisposable
             Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
         }
         Assert.Single(await ListAsync(alice));
+    }
+
+    [Fact]
+    public async Task SetKindsAndSupersets_RoundTrip_ButCardioSetsHaveNoKind()
+    {
+        using var alice = _factory.ClientFor("alice");
+        var exercises = await alice.GetFromJsonAsync<List<ExerciseResponse>>("/exercises");
+        var running = exercises!.Single(e => e.Name == "Running").Id;
+
+        // A bench warm-up, bench and squats as a superset, and a bench drop set; then a run.
+        var response = await alice.PutAsJsonAsync($"/workouts/{Guid.NewGuid()}", Request() with
+        {
+            Sets =
+            [
+                new(Bench, 95, 10, Kind: "warmup"),
+                new(Bench, 135, 8, Superset: 1),
+                new(Squat, 185, 5, Kind: "failure", Superset: 1),
+                new(Bench, 115, 10, Kind: "drop"),
+                new(running, 0, 0, DurationSeconds: 600, Kind: "warmup", Superset: 2), // keeps its superset, never a kind
+            ],
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(
+            [(Bench, "warmup", null), (Bench, null, 1), (Squat, "failure", 1), (Bench, "drop", null), (running, null, (int?)2)],
+            Assert.Single(await ListAsync(alice)).Sets.Select(s => (s.ExerciseId, s.Kind, s.Superset)));
     }
 
     [Fact]

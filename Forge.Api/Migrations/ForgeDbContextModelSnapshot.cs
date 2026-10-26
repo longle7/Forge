@@ -739,10 +739,17 @@ namespace Forge.Api.Migrations
                     b.Property<int>("ExerciseId")
                         .HasColumnType("int");
 
+                    b.Property<string>("Kind")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
                     b.Property<int>("Position")
                         .HasColumnType("int");
 
                     b.Property<int>("Reps")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Superset")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Weight")

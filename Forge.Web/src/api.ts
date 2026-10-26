@@ -16,7 +16,12 @@ export interface WorkoutSet {
   reps: number // 0 for cardio
   distance?: number | null // cardio only: miles
   durationSeconds?: number | null // cardio only; a cardio set has a distance, a time, or both
+  kind?: SetKind | null // lifting only; null or missing = a normal set
+  superset?: number | null // exercises done back to back as a superset share this group number (1, 2, …)
 }
+
+/** A set that isn't a normal one: a warm-up (left out of PRs, maxes, and totals), a drop set, or a set to failure. */
+export type SetKind = 'warmup' | 'drop' | 'failure'
 
 export interface Workout {
   id: string // made up by the app when the workout starts (see draft.ts); Apple Health's own ID for a Watch workout
