@@ -1,4 +1,4 @@
-import type { Workout, WorkoutSet } from './api'
+import type { SetKind, Workout, WorkoutSet } from './api'
 
 /**
  * A workout's sets, one group for each exercise as it was done. Sets are saved exercise by exercise (see toWorkout), so
@@ -22,7 +22,7 @@ export const oneRepMax = (weight: number, reps: number) => (reps === 1 ? weight 
 export const isCardioSet = (set: WorkoutSet) => set.distance != null || set.durationSeconds != null
 
 /** A warm-up set: it only gets you ready, so PRs, maxes, and totals leave it out. */
-export const isWarmup = (set: WorkoutSet) => set.kind === 'warmup'
+export const isWarmup = (set: Pick<WorkoutSet, 'kind'>) => set.kind === 'warmup'
 
 /** A set to estimate a 1-rep max from: weighted, not cardio, and not a warm-up. */
 export const isLift = (set: WorkoutSet) => set.weight > 0 && !isCardioSet(set) && !isWarmup(set)
@@ -99,6 +99,53 @@ export function previousSets(workouts: Workout[], exerciseId: number, excludeId?
     if (sets.length > 0) return sets
   }
   return []
+}
+
+/**
+ * Last time's set to show beside set `index` of `sets`, and to fill it in from: warm-ups match warm-ups and working sets
+ * match working sets, by their place among their own kind, or the last one of that kind when last time had fewer.
+ */
+export function previousFor(previous: WorkoutSet[], sets: Pick<WorkoutSet, 'kind'>[], index: number): WorkoutSet | undefined {
+  const warmup = isWarmup(sets[index])
+  const sameKind = previous.filter((s) => isWarmup(s) === warmup)
+  const place = sets.slice(0, index).filter((s) => isWarmup(s) === warmup).length
+  return sameKind[place] ?? sameKind.at(-1)
+}
+
+/** What each kind of set is called, in menus and to screen readers, and the letter that marks it in a list of sets. */
+export const SET_KINDS: Record<SetKind, { name: string; letter: string }> = {
+  warmup: { name: 'Warm-up', letter: 'W' },
+  drop: { name: 'Drop set', letter: 'D' },
+  failure: { name: 'Failure', letter: 'F' },
+}
+
+/** How each set is marked in a list: W, D, or F, or its number among the normal sets, so warm-ups don't use up numbers. */
+export function setLabels(sets: Pick<WorkoutSet, 'kind'>[]): string[] {
+  let normalSets = 0
+  return sets.map((set) => (set.kind ? SET_KINDS[set.kind].letter : String(++normalSets)))
+}
+
+/**
+ * Exercises as they're done: the neighbours that share a superset number together, every other exercise on its own. A
+ * number only counts when a neighbour shares it, so moving or removing an exercise needs no cleanup. `superset` reads
+ * an exercise's number (null or undefined: none).
+ */
+export function groupSupersets<T>(exercises: T[], superset: (exercise: T) => number | null | undefined): T[][] {
+  const groups: T[][] = []
+  for (const exercise of exercises) {
+    const group = groups.at(-1)
+    const number = superset(exercise)
+    if (group && number != null && superset(group[0]) === number) group.push(exercise)
+    else groups.push([exercise])
+  }
+  return groups
+}
+
+/** The list with the item at `index` swapped with its neighbour: `by` -1 moves it up, 1 down (an exercise in a plan or workout). */
+export function move<T>(list: T[], index: number, by: number): T[] {
+  const moved = [...list]
+  ;[moved[index], moved[index + by]] = [moved[index + by], moved[index]]
+  return moved
 }
 
 /** The exercises in your latest workouts, most recent first, for the top of the exercise picker. */

@@ -1,16 +1,17 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { activityPath, foodLogPath, getActivity, getExercises, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts } from '../api'
-import { Card, Page, PrBadge, primaryButton, Rings, SectionTitle, Status } from '../components'
+import { Card, Group, Page, primaryButton, Rings, SectionTitle, Status, WorkoutRow } from '../components'
 import { dayLabel, localDate, workoutDay } from '../dates'
 import { RING } from '../colors'
 import { Icon } from '../icons'
 import { HabitsCard } from '../HabitsCard'
 import { dayBudget, exerciseCalories, formatKcal, remaining, totals, weekChange, weightOn } from '../nutrition'
+import { RecoveryCard } from '../RecoveryCard'
 import { isUnlocked, todaySoFar, unlockGoals } from '../timeout'
 import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
-import { formatDay, formatDuration, formatWeight, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
+import { formatWeight, personalRecords } from '../workouts'
 import { TodayWorkoutCard } from './WorkoutsPage'
 
 /** Home: today at a glance: your rings, today's workout, calories left, your weight, and your latest workout. */
@@ -27,6 +28,10 @@ export default function HomePage() {
   const activity = usePolling(() => getActivity(today, today), activityPath(today, today))
   const [weighing, setWeighing] = useState(false)
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
+  const retry = () => {
+    profile.reload()
+    workouts.reload()
+  }
 
   const goals = profile.data
   const day = todaySoFar({ plan: plan.data, workouts: workouts.data, food: food.data, weighIns: weighIns.data, habits: habits.data }, today)
@@ -69,7 +74,7 @@ export default function HomePage() {
     >
       {/* Can't reach Forge with nothing saved on the phone: say so, rather than look like a brand-new account. */}
       {/* First visit (nothing remembered yet): hold the Welcome card's place while the profile loads. */}
-      <Status error={failure(profile) ?? failure(workouts)} loading={profile.data === undefined} rows={1} />
+      <Status error={failure(profile) ?? failure(workouts)} loading={profile.data === undefined} rows={1} onRetry={retry} />
       {goals === null && (
         <Card>
           <p className="text-[13px] font-semibold tracking-wide text-coral-ink uppercase">Welcome to Forge</p>
@@ -102,6 +107,7 @@ export default function HomePage() {
 
       <TodayWorkoutCard quiet={goals === null} />
       <HabitsCard />
+      <RecoveryCard />
 
       <div className="grid grid-cols-2 gap-3">
         <Card to="/calories">
@@ -118,15 +124,14 @@ export default function HomePage() {
             </>
           )}
         </Card>
-        <Card>
+        {/* The whole tile logs your weight; the + only says so. */}
+        <Card onClick={() => setWeighing(true)}>
           <div className="flex items-start justify-between">
             <p className="text-[13px] font-semibold text-muted uppercase">Weight</p>
-            <button onClick={() => setWeighing(true)} aria-label="Log weight" className="-mt-2 -mr-2 grid size-10 place-items-center rounded-full text-coral-ink active:bg-fill">
-              <Icon name="plus" className="size-5" />
-            </button>
+            <Icon name="plus" className="size-5 text-coral-ink" />
           </div>
-          <p className="text-[28px] leading-tight font-bold">{latestWeighIn ? formatWeight(latestWeighIn.weight) : '–'}</p>
-          <p className="text-[15px] text-muted">{latestWeighIn ? `lb · ${dayLabel(latestWeighIn.date, today)}` : 'Tap + to log'}</p>
+          <p className="mt-3 text-[28px] leading-tight font-bold">{latestWeighIn ? formatWeight(latestWeighIn.weight) : '–'}</p>
+          <p className="text-[15px] text-muted">{latestWeighIn ? `lb · ${dayLabel(latestWeighIn.date, today)}` : 'Tap to log'}</p>
           {change !== undefined && (
             <p className="text-[13px] text-muted">
               {change > 0 ? '+' : change < 0 ? '−' : '±'}
@@ -140,15 +145,9 @@ export default function HomePage() {
       {last && (
         <>
           <SectionTitle title="Recent" />
-          <Card to={`/workouts/history/${last.id}`}>
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-semibold">{last.name}</p>
-              {prs > 0 && <PrBadge />}
-            </div>
-            <p className="text-[15px] text-muted">
-              {[formatDay(last.startedAt), formatDuration(workoutLength(last)), last.sets.length > 0 && plural(groupSets(last.sets).length, 'exercise'), workoutTotals(last)].filter(Boolean).join(' · ')}
-            </p>
-          </Card>
+          <Group>
+            <WorkoutRow workout={last} prs={prs} />
+          </Group>
         </>
       )}
 

@@ -2,7 +2,7 @@
   "name": "forge-health",
   "version": "1.0.0",
   "private": true,
-  "description": "Reads Apple Watch / Apple Health workouts, heart rate, and active calories for Forge's iPhone app (read-only).",
+  "description": "Reads Apple Watch / Apple Health workouts, heart rate, active calories, steps, resting heart rate, heart rate variability, sleep, and weight for Forge's iPhone app (read-only).",
   "capacitor": {
     "ios": {
       "src": "ios"

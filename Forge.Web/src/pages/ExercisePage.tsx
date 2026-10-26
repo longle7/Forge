@@ -36,7 +36,7 @@ export default function ExercisePage() {
   if (!exercise) {
     return (
       <Page title="" back={BACK}>
-        <Status loading={!exercises.error} error={failure(exercises)} />
+        <Status loading={!exercises.error} error={failure(exercises)} onRetry={exercises.reload} />
       </Page>
     )
   }
@@ -63,7 +63,7 @@ export default function ExercisePage() {
         {exercise.isCustom && ' · added by you'}
       </p>
 
-      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={1} />
+      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={1} onRetry={workouts.reload} />
       {workouts.data && !best && !max && <p className="text-muted">You haven't logged this exercise yet.</p>}
       {(best || max) && (
         <div className="grid grid-cols-2 gap-3">

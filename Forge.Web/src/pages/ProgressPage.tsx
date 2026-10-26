@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, type DayTotals, type Exercise, type Habit, type PlanDay, type Profile, type WeighIn, type Workout } from '../api'
+import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, isNative, type DayTotals, type Exercise, type Habit, type PlanDay, type Profile, type WeighIn, type Workout } from '../api'
 import { BodyMap } from '../BodyMap'
 import { completion, habitStreak } from '../habits'
 import { BarChart, ChartTable, LineChart, Sparkline } from '../charts'
@@ -10,6 +10,7 @@ import { addDays, dayLabel, localDate, monthStart, parseDate, workoutDay } from 
 import { Icon } from '../icons'
 import { calorieAdherence, formatKcal, goalEta, plannedTrend, weightTrend } from '../nutrition'
 import { adherence, calorieBars, muscleSets, plannedDays, shortDate, strengthSeries, streak, topLifts, weekStatuses, type Bucket, type DayStatus } from '../progress'
+import { SleepAndStepsCard } from '../SleepAndStepsCard'
 import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
 import { formatSet, formatWeight, personalRecords, plural } from '../workouts'
@@ -42,9 +43,10 @@ export default function ProgressPage() {
     <Page title="Progress">
       {/* One range for every chart below, so their numbers always agree. */}
       <Segmented label="Time range" options={RANGES} value={days} onChange={setDays} />
-      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={3} />
+      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={3} onRetry={workouts.reload} />
 
       <WeightCard weighIns={weighIns.data ?? []} from={from} profile={profile.data ?? undefined} today={today} period={period} onSaved={weighIns.reload} />
+      <SleepAndStepsCard from={from} today={today} period={period} bucket={range.bucket} />
       <PlanCard plan={plan.data ?? []} workouts={workouts.data ?? []} from={from} today={today} period={period} />
       <TrainingCalendar plan={plan.data ?? []} workouts={workouts.data ?? []} today={today} />
       <HabitsCard habits={(habits.data ?? []).filter((h) => !h.archived)} from={from} today={today} period={period} />
@@ -53,15 +55,18 @@ export default function ProgressPage() {
       <MusclesCard workouts={workouts.data ?? []} exercises={exercises.data ?? []} from={from} today={today} period={period} />
       <RecordsCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
 
-      <Card>
-        <CardTitle icon="hourglass" title="Screen time" />
-        <p className="mt-1 text-[15px] text-muted">With the Forge iPhone app, this shows how much time Time Out saved you each week.</p>
-      </Card>
+      {/* Points the website to the iPhone app; inside the app it would point at itself. */}
+      {!isNative && (
+        <Card>
+          <CardTitle icon="hourglass" title="Screen time" />
+          <p className="mt-1 text-[15px] text-muted">With the Forge iPhone app, this shows how much time Time Out saved you each week.</p>
+        </Card>
+      )}
     </Page>
   )
 }
 
-function CardTitle({ icon, title, detail }: { icon: Parameters<typeof Icon>[0]['name']; title: string; detail?: string }) {
+export function CardTitle({ icon, title, detail }: { icon: Parameters<typeof Icon>[0]['name']; title: string; detail?: string }) {
   return (
     <div className="flex items-center gap-2">
       <Icon name={icon} className="size-5 text-coral-ink" />
@@ -72,7 +77,7 @@ function CardTitle({ icon, title, detail }: { icon: Parameters<typeof Icon>[0]['
 }
 
 /** A stat: label, then the value (proportional figures, as a standalone number should be). */
-function Stat({ label, value, detail }: { label: string; value: string; detail?: string }) {
+export function Stat({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
     <div>
       <p className="text-[13px] text-muted">{label}</p>

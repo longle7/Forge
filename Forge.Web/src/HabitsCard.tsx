@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { checkHabit, getHabits, randomId, saveHabit, type Habit } from './api'
-import { Card, Notice, SectionTitle } from './components'
+import { Card, Notice, SectionTitle, Status, tapArea } from './components'
 import { localDate } from './dates'
 import { countOn, EVERY_DAY, habitStreak, SUGGESTIONS, today as todayOf } from './habits'
 import { Icon } from './icons'
+import { haptic } from './notify'
 import { useNow, usePolling } from './usePolling'
 
 /**
@@ -22,6 +23,7 @@ export function HabitsCard() {
   const tap = async (habit: Habit, next = count(habit) >= habit.dailyTarget ? 0 : count(habit) + 1) => {
     setTaps((t) => ({ ...t, [habit.id]: next }))
     setError(undefined)
+    void haptic('tap')
     try {
       await checkHabit(habit.id, day, next)
     } catch (e) {
@@ -39,7 +41,8 @@ export function HabitsCard() {
     }
   }
 
-  if (!habits.data) return null
+  // First visit, before habits load: hold the card's place. Offline with nothing remembered, it stays hidden.
+  if (!habits.data) return <Status loading={!habits.error} rows={1} />
   return (
     <>
       <SectionTitle title="Habits" link={{ to: '/habits', label: habits.data.length ? 'Edit' : 'Add' }} />
@@ -49,7 +52,7 @@ export function HabitsCard() {
           <p className="text-[15px] text-muted">Small things, checked off each day. Pick one to start:</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {SUGGESTIONS.slice(0, 4).map((s) => (
-              <button key={s.name} onClick={() => start(s)} className="min-h-9 rounded-full bg-coral/12 px-3 text-[15px] text-coral-ink active:opacity-70">
+              <button key={s.name} onClick={() => start(s)} className={`${tapArea} min-h-9 rounded-full bg-coral/12 px-3 text-[15px] text-coral-ink active:opacity-70`}>
                 {s.emoji} {s.name}
               </button>
             ))}
@@ -92,7 +95,7 @@ export function HabitsCard() {
           })}
         </div>
       )}
-      {error && <Notice>{error}</Notice>}
+      {error && <Notice tone="error">{error}</Notice>}
     </>
   )
 }

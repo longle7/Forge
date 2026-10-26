@@ -28,13 +28,17 @@ interface PollState<T> {
  * `key` names what's fetched and is where it's remembered, so it must be unique per request: use its API path.
  * Keeps the last good data when a refresh fails. The last good data is also kept on the device and shown at once on
  * the next visit, even offline; `updatedAt` says how old it is. `reload()` fetches again now, e.g. right after a
- * change was saved.
+ * change was saved, or for Try Again.
  */
 export function usePolling<T>(fetcher: () => Promise<T>, key: string): PollState<T> & { reload: () => void } {
   const start = (k: string) => ({ key: k, error: undefined, ...(remembered<T>(k) || { data: undefined, updatedAt: undefined }) })
   const [state, setState] = useState<PollState<T> & { key: string }>(() => start(key))
   const [reloads, setReloads] = useState(0)
-  const reload = () => setReloads((n) => n + 1)
+  // The last error goes, so a page shows it's loading again (Try Again) rather than the old error.
+  const reload = () => {
+    setState((s) => ({ ...s, error: undefined }))
+    setReloads((n) => n + 1)
+  }
   // A new key starts from what's remembered for it, not the previous key's data.
   if (state.key !== key) setState(start(key))
 

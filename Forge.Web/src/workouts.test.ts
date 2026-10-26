@@ -7,13 +7,17 @@ import {
   formatDuration,
   formatSet,
   groupSets,
+  groupSupersets,
   livePr,
+  move,
   oneRepMax,
   parseDuration,
   personalRecords,
   platesPerSide,
+  previousFor,
   previousSets,
   progressionStep,
+  setLabels,
   volume,
   workoutLength,
   workoutTotals,
@@ -41,6 +45,49 @@ it.each([
   { name: 'reads no superset from the API (null) and from the app (missing) alike', sets: [{ ...set(BENCH, 135, 8), superset: null }, set(BENCH, 135, 6)], groups: [[BENCH, 2]] },
 ])('groupSets $name', ({ sets, groups }) => {
   expect(groupSets(sets).map((g) => [g.exerciseId, g.sets.length])).toEqual(groups)
+})
+
+describe('previousFor', () => {
+  const warmup = (weight: number, reps: number): WorkoutSet => ({ ...set(BENCH, weight, reps), kind: 'warmup' })
+  const lastTime = [warmup(45, 10), warmup(95, 5), set(BENCH, 135, 8), set(BENCH, 135, 7)]
+  const W = { kind: 'warmup' as const }
+  const N = {}
+
+  it.each([
+    { name: 'a warm-up matches the warm-up in its place', sets: [W, W, N], index: 1, expected: warmup(95, 5) },
+    { name: 'a working set matches by its place among working sets', sets: [W, N, N], index: 2, expected: set(BENCH, 135, 7) },
+    { name: 'drop and failure sets are working sets', sets: [N, { kind: 'drop' as const }], index: 1, expected: set(BENCH, 135, 7) },
+    { name: 'past last time’s sets, the last of its kind', sets: [N, N, N], index: 2, expected: set(BENCH, 135, 7) },
+    { name: 'a warm-up never matches a working set', sets: [W], index: 0, previous: [set(BENCH, 135, 8)], expected: undefined },
+    { name: 'nothing last time', sets: [N], index: 0, previous: [], expected: undefined },
+  ])('$name', ({ sets, index, previous = lastTime, expected }) => {
+    expect(previousFor(previous, sets, index)).toEqual(expected)
+  })
+})
+
+it.each([
+  { name: 'numbers normal sets', kinds: [undefined, undefined, undefined], labels: ['1', '2', '3'] },
+  { name: 'warm-ups don’t use up numbers', kinds: ['warmup', 'warmup', undefined, undefined], labels: ['W', 'W', '1', '2'] },
+  { name: 'marks drop and failure sets', kinds: [undefined, 'drop', undefined, 'failure'], labels: ['1', 'D', '2', 'F'] },
+  { name: 'reads the API’s null as a normal set', kinds: [null], labels: ['1'] },
+] as const)('setLabels $name', ({ kinds, labels }) => {
+  expect(setLabels(kinds.map((kind) => ({ kind })))).toEqual(labels)
+})
+
+it.each([
+  { name: 'keeps neighbours with one number together', supersets: [undefined, 1, 1, undefined], groups: [[0], [1, 2], [3]] },
+  { name: 'a number no neighbour shares is no superset', supersets: [1, undefined, 1], groups: [[0], [1], [2]] },
+  { name: 'two supersets side by side stay apart', supersets: [1, 1, 2, 2], groups: [[0, 1], [2, 3]] },
+  { name: 'reads null as no superset', supersets: [null, null], groups: [[0], [1]] },
+])('groupSupersets $name', ({ supersets, groups }) => {
+  expect(groupSupersets([...supersets.keys()], (i) => supersets[i])).toEqual(groups)
+})
+
+it.each([
+  { by: -1, expected: ['b', 'a', 'c'] },
+  { by: 1, expected: ['a', 'c', 'b'] },
+])('move by $by swaps with that neighbour', ({ by, expected }) => {
+  expect(move(['a', 'b', 'c'], 1, by)).toEqual(expected)
 })
 
 it('oneRepMax uses Epley, and a single rep is the weight itself', () => {

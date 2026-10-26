@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodLogPath, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, saveProfile, type Profile } from '../api'
+import { foodLogPath, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, isNative, saveProfile, type Profile } from '../api'
 import { Card, Group, Notice, Page, primaryButton, Status, Stepper, Switch } from '../components'
 import { localDate } from '../dates'
 import { Icon } from '../icons'
@@ -39,7 +39,7 @@ export default function TimeOutPage() {
   if (!profile.data) {
     return (
       <Page title="Time Out">
-        <Status loading={!profile.error} error={failure(profile)} rows={3} />
+        <Status loading={!profile.error} error={failure(profile)} rows={3} onRetry={profile.reload} />
       </Page>
     )
   }
@@ -114,20 +114,23 @@ export default function TimeOutPage() {
           <Switch checked={rules.unlockAfterHabits ?? false} onChange={(on) => change({ unlockAfterHabits: on })} label="Finish today's habits" />
         </div>
       </Group>
-      {message && <Notice>{message}</Notice>}
+      {message && <Notice tone="error">{message}</Notice>}
 
-      <Group
-        title="Apps to lock"
-        footer="Locking apps uses Apple's Screen Time, which only iPhone apps can use. In the Forge iPhone app you'll choose apps like Instagram here, and they'll stay locked until your goals are met."
-      >
-        <div className="flex min-h-11 items-center gap-3 px-4 py-2.5 text-muted">
-          <span className="grid size-8 place-items-center rounded-lg bg-fill">
-            <Icon name="lock" className="size-5" />
-          </span>
-          <span className="flex-1">Choose apps</span>
-          <span className="text-[15px]">In the iPhone app</span>
-        </div>
-      </Group>
+      {/* Points the website to the iPhone app; inside the app it would point at itself. */}
+      {!isNative && (
+        <Group
+          title="Apps to lock"
+          footer="Locking apps uses Apple's Screen Time, which only iPhone apps can use. In the Forge iPhone app you'll choose apps like Instagram here, and they'll stay locked until your goals are met."
+        >
+          <div className="flex min-h-11 items-center gap-3 px-4 py-2.5 text-muted">
+            <span className="grid size-8 place-items-center rounded-lg bg-fill">
+              <Icon name="lock" className="size-5" />
+            </span>
+            <span className="flex-1">Choose apps</span>
+            <span className="text-[15px]">In the iPhone app</span>
+          </div>
+        </Group>
+      )}
     </Page>
   )
 }

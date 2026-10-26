@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Group, Notice, plainButton, tintedButton } from './components'
-import { connectHealth, disconnectHealth, healthConnected, lastHealthSync, syncHealth } from './health'
+import { connectHealth, disconnectHealth, healthConnected, healthNeedsAccess, lastHealthSync, requestHealthAccess, syncHealth } from './health'
 import { useAction } from './usePolling'
 import { plural } from './workouts'
 
@@ -29,14 +29,15 @@ export function HealthSettings() {
       title="Apple Health"
       footer={
         connected
-          ? 'Forge brings in new workouts when you open it. To stop Forge reading Health entirely, open the Health app → Sharing → Apps → Forge.'
-          : 'Bring in workouts from your Apple Watch and other apps, with their calories and heart rate. Forge only reads from Health; it never writes to it.'
+          ? 'Forge brings in new workouts and weigh-ins when you open it. To stop Forge reading Health entirely, open the Health app → Sharing → Apps → Forge.'
+          : 'Bring in workouts from your Apple Watch and other apps with their calories and heart rate, and weigh-ins from a smart scale. Forge also reads your resting heart rate, heart rate variability, sleep, and steps to show your recovery and activity; those stay on this iPhone. Forge only reads from Health; it never writes to it.'
       }
     >
       <div className="space-y-2 p-4">
         {connected ? (
           <>
             <p className="text-[15px] text-muted">{synced ? `Last synced ${new Date(synced).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'Not synced yet'}</p>
+            <AllowHealthButton />
             <button onClick={syncNow} disabled={busy} className={`w-full ${tintedButton}`}>
               {busy ? 'Syncing…' : 'Sync Now'}
             </button>
@@ -50,8 +51,37 @@ export function HealthSettings() {
           </button>
         )}
         {result && !error && <p className="text-[15px] text-muted">{result}</p>}
-        {error && <Notice>{error}</Notice>}
+        {error && <Notice tone="error">{error}</Notice>}
       </div>
     </Group>
+  )
+}
+
+/**
+ * For people who connected before Forge read sleep, steps, recovery, and weight: asks Health about just those. Shows
+ * only while Health has something to ask; `onAllowed` runs once you've answered.
+ */
+export function AllowHealthButton({ onAllowed }: { onAllowed?: () => void }) {
+  const [needed, setNeeded] = useState(false)
+  const { busy, error, run } = useAction()
+  useEffect(() => {
+    healthNeedsAccess().then(setNeeded, () => {}) // can't tell: no button
+  }, [])
+
+  const allow = () =>
+    run(async () => {
+      await requestHealthAccess()
+      setNeeded(false)
+      onAllowed?.()
+    })
+
+  if (!needed) return null
+  return (
+    <>
+      <button onClick={allow} disabled={busy} className={`w-full ${tintedButton}`}>
+        Allow Sleep, Steps &amp; Recovery
+      </button>
+      {error && <Notice>{error}</Notice>}
+    </>
   )
 }
