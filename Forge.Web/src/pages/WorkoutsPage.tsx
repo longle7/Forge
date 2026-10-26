@@ -300,16 +300,18 @@ export function TodayWorkoutCard({ quiet = false }: { quiet?: boolean }) {
           Start {routine.name}
         </button>
       ))}
-      {firstRoutines.length > 0 && (
-        <Link to="/workouts#routines" className={`mt-2 -ml-1 ${plainButton}`}>
-          <Icon name="list" className="size-5" />
-          All routines
+      <div className="mt-2 -ml-1 flex flex-wrap gap-x-5">
+        {firstRoutines.length > 0 && (
+          <Link to="/workouts#routines" className={plainButton}>
+            <Icon name="list" className="size-5" />
+            All routines
+          </Link>
+        )}
+        <Link to={`/workouts/plan/${weekday(today)}`} className={plainButton}>
+          <Icon name="calendar" className="size-5" />
+          Plan your week
         </Link>
-      )}
-      <Link to={`/workouts/plan/${weekday(today)}`} className={`mt-2 -ml-1 ${plainButton}`}>
-        <Icon name="calendar" className="size-5" />
-        Plan your week
-      </Link>
+      </div>
     </Card>
   )
 }
