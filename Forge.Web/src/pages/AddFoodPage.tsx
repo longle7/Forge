@@ -14,7 +14,7 @@ import {
   type SavedMeal,
 } from '../api'
 import { read, remembered, write } from '../cache'
-import { Card, field, FoodRow, Group, Page, primaryButton, SearchInput, Segmented, Status } from '../components'
+import { Card, field, FoodRow, Group, Notice, Page, primaryButton, SearchInput, Segmented, Status } from '../components'
 import { localDate } from '../dates'
 import { FoodSheet, type FoodChoice } from '../FoodSheet'
 import { Icon } from '../icons'
@@ -120,7 +120,7 @@ function FoodSearch({ onChoose }: { onChoose: (food: FoodResult) => void }) {
     <>
       <SearchInput value={query} onChange={setQuery} placeholder="Search foods, like greek yogurt" />
       {q.length >= 2 && !current && <Status loading rows={3} />}
-      {current?.error && <p className="px-1 text-[15px] text-red-600 dark:text-red-400">{current.error}</p>}
+      {current?.error && <Notice tone="error">{current.error}</Notice>}
       {current?.foods?.length === 0 && <p className="px-1 text-muted">Nothing found for “{q}”. Try other words, or use Quick Add.</p>}
       {current?.foods && current.foods.length > 0 && (
         <Group>
@@ -138,7 +138,7 @@ function RecentFoods({ onChoose }: { onChoose: (entry: FoodEntry) => void }) {
   const recent = usePolling(getRecentFoods, '/food-log/recent')
   return (
     <>
-      <Status loading={recent.data === undefined && !recent.error} error={failure(recent)} rows={3} />
+      <Status loading={recent.data === undefined && !recent.error} error={failure(recent)} rows={3} onRetry={recent.reload} />
       {recent.data?.length === 0 && <p className="px-1 text-muted">Foods you log show up here, ready to log again in one tap.</p>}
       {recent.data && recent.data.length > 0 && (
         <Group>
@@ -164,9 +164,9 @@ function SavedMeals({ onLog }: { onLog: (meal: SavedMeal) => Promise<void> }) {
 
   return (
     <>
-      <Status loading={meals.data === undefined && !meals.error} error={failure(meals)} rows={2} />
+      <Status loading={meals.data === undefined && !meals.error} error={failure(meals)} rows={2} onRetry={meals.reload} />
       {meals.data?.length === 0 && <p className="px-1 text-muted">Save a meal you eat often from the Calories tab (Save as Meal, under the meal), then log it here in one tap.</p>}
-      {error && <p className="px-1 text-[15px] text-red-600 dark:text-red-400">{error}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
       {meals.data && meals.data.length > 0 && (
         <Group footer="Tap a meal to log all of it.">
           {meals.data.map((meal) => (
@@ -228,7 +228,7 @@ function QuickAdd({ onAdd }: { onAdd: (food: FoodChoice) => Promise<void> }) {
             ))}
           </div>
         </details>
-        {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
+        {error && <Notice tone="error">{error}</Notice>}
         <button onClick={add} disabled={saving} className={primaryButton}>
           {saving ? 'Adding…' : 'Add'}
         </button>

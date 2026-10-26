@@ -1,15 +1,16 @@
-import { useState } from 'react'
+import { Fragment, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
-import { deleteWorkout, getExercises, getProfile, getRoutines, getWorkouts, randomId, saveRoutine, type Routine, type Workout } from '../api'
+import { deleteWorkout, getExercises, getProfile, getRoutines, getWorkouts, randomId, saveRoutine, type Routine, type Workout, type WorkoutSet } from '../api'
 import { ChartTable, HeartRateChart } from '../charts'
-import { Card, dangerButton, field, Notice, NotFound, Page, PrBadge, primaryButton, Sheet, Status, tintedButton } from '../components'
+import { BarRow, Card, dangerButton, field, Notice, NotFound, Page, plainButton, PrBadge, Sheet, Status, SupersetGroup, tintedButton } from '../components'
 import { workoutDay } from '../dates'
 import { editDraft, repeatDraft, useStartWorkout, type Draft } from '../draft'
 import { maxHeartRate, timeInZones, ZONES } from '../heartRate'
 import { Icon } from '../icons'
+import { haptic } from '../notify'
 import { drawShareCard, shareImage } from '../shareCard'
 import { failure, useAction, usePolling, useSettled } from '../usePolling'
-import { exerciseNames, formatClock, formatDay, formatDuration, formatSet, formatTime, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
+import { exerciseNames, formatClock, formatDay, formatDuration, formatSet, formatTime, groupSets, groupSupersets, personalRecords, plural, SET_KINDS, setLabels, workoutLength, workoutTotals } from '../workouts'
 
 const BACK = { to: '/workouts/history', label: 'History' }
 
@@ -29,7 +30,7 @@ export default function WorkoutDetailPage() {
   if (!workout) {
     return (
       <Page title="" back={BACK}>
-        <Status loading={!workouts.error} error={failure(workouts)} />
+        <Status loading={!workouts.error} error={failure(workouts)} onRetry={workouts.reload} />
       </Page>
     )
   }
@@ -118,22 +119,10 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
         </Card>
       )}
 
-      {groupSets(workout.sets).map((group, g) => (
-        <Card key={g}>
-          <Link to={`/workouts/exercises/${group.exerciseId}`} className="font-semibold text-coral-ink">
-            {names.get(group.exerciseId) ?? 'Exercise'}
-          </Link>
-          <ol className="mt-2 space-y-1.5">
-            {group.sets.map((set, i) => (
-              <li key={i} className="flex items-center gap-3">
-                <span className="w-5 text-[15px] font-semibold text-muted">{i + 1}</span>
-                <span>{formatSet(set)}</span>
-                {prs.has(set) && <PrBadge />}
-              </li>
-            ))}
-          </ol>
-        </Card>
-      ))}
+      {groupSupersets(groupSets(workout.sets), (group) => group.sets[0].superset).map((superset, g) => {
+        const cards = superset.map((group, i) => <ExerciseSets key={i} group={group} name={names.get(group.exerciseId) ?? 'Exercise'} prs={prs} />)
+        return superset.length > 1 ? <SupersetGroup key={g}>{cards}</SupersetGroup> : <Fragment key={g}>{cards}</Fragment>
+      })}
 
       {(!!workout.avgHeartRate || !!workout.heartRate?.length) && <HeartRateCard workout={workout} />}
 
@@ -147,6 +136,7 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
               Repeat
             </button>
             <button onClick={() => open(editDraft(workout))} className={tintedButton}>
+              <Icon name="pencil" className="size-5" />
               Edit
             </button>
             <button onClick={() => setNaming(true)} className={tintedButton}>
@@ -180,33 +170,65 @@ function SaveRoutineSheet({ workout, names, onSaved, onClose }: { workout: Worko
   const [name, setName] = useState(workout.name.slice(0, 50)) // a workout's name can be longer than a routine's
   const { busy: saving, error, setError, run } = useAction()
 
-  const save = async () => {
+  const save = async (event: FormEvent) => {
+    event.preventDefault()
     if (!name.trim()) return setError('Give it a name, like Push A.')
     await run(async () => {
       await saveRoutine(randomId(), { name: name.trim(), sets: workout.sets })
+      void haptic('success')
       onSaved(name.trim())
     })
   }
 
   return (
-    <Sheet title="Save as Routine" onClose={onClose}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          void save()
-        }}
-        className="space-y-3"
-      >
+    <Sheet
+      title="Save as Routine"
+      onClose={onClose}
+      action={
+        <button type="submit" form="save-routine" disabled={saving} className={plainButton}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      }
+    >
+      <form id="save-routine" onSubmit={save} className="space-y-3">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, like Push A" aria-label="Routine name" maxLength={50} className={field} />
         <p className="text-[15px] text-muted">
           {exerciseNames(workout.sets, names).join(', ')} · {plural(workout.sets.length, 'set')}
         </p>
-        {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
-        <button disabled={saving} className={primaryButton}>
-          {saving ? 'Saving…' : 'Save Routine'}
-        </button>
+        {error && <Notice tone="error">{error}</Notice>}
       </form>
     </Sheet>
+  )
+}
+
+/** One exercise's sets, marked W, D, or F or numbered among the normal sets, with their PRs. */
+function ExerciseSets({ group, name, prs }: { group: { exerciseId: number; sets: WorkoutSet[] }; name: string; prs: Set<WorkoutSet> }) {
+  const labels = setLabels(group.sets)
+  return (
+    <Card>
+      <Link to={`/workouts/exercises/${group.exerciseId}`} className="font-semibold text-coral-ink">
+        {name}
+      </Link>
+      <ol className="mt-2 space-y-1.5">
+        {group.sets.map((set, i) => (
+          <li key={i} className="flex items-center gap-3">
+            <span className="w-5 text-[15px] font-semibold text-muted">
+              {/* A letter alone means little read aloud, so screen readers get the kind's name. */}
+              {set.kind ? (
+                <>
+                  <span aria-hidden>{labels[i]}</span>
+                  <span className="sr-only">{SET_KINDS[set.kind].name}</span>
+                </>
+              ) : (
+                labels[i]
+              )}
+            </span>
+            <span>{formatSet(set)}</span>
+            {prs.has(set) && <PrBadge />}
+          </li>
+        ))}
+      </ol>
+    </Card>
   )
 }
 
@@ -235,15 +257,17 @@ function HeartRateCard({ workout }: { workout: Workout }) {
           <p className="mt-3 text-[13px] text-muted">Time in each zone, from your estimated max of {max} bpm</p>
           <ul className="mt-2 space-y-2 text-[15px]">
             {ZONES.map((zone, i) => (
-              <li key={zone.name} className="flex items-center gap-3">
-                <span className="w-28 shrink-0">
-                  <span className="font-semibold">{zone.name}</span> <span className="text-muted">{zone.label}</span>
-                </span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-fill">
-                  <div className="h-full rounded-full" style={{ width: `${(zones[i] / recorded) * 100}%`, background: zone.color }} />
-                </div>
-                <span className="w-14 shrink-0 text-right text-muted tabular-nums">{zones[i] ? formatDuration(zones[i] * 1000) : '0m'}</span>
-              </li>
+              <BarRow
+                key={zone.name}
+                label={
+                  <>
+                    <span className="font-semibold">{zone.name}</span> <span className="text-muted">{zone.label}</span>
+                  </>
+                }
+                share={zones[i] / recorded}
+                color={zone.color}
+                value={zones[i] ? formatDuration(zones[i] * 1000) : '0m'}
+              />
             ))}
           </ul>
         </>

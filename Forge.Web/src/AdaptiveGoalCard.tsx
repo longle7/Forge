@@ -43,7 +43,7 @@ export function AdaptiveGoalCard({ profile, weighIns, today, onUpdated }: { prof
         your goal, that means {formatKcal(advice.suggested)} kcal a day ({change > 0 ? '+' : '−'}
         {formatKcal(Math.abs(change))}).
       </p>
-      {error && <Notice>{error}</Notice>}
+      {error && <Notice tone="error">{error}</Notice>}
       <div className="mt-3 flex items-center gap-2">
         <button onClick={update} disabled={busy} className={`flex-1 ${tintedButton}`}>
           {busy ? 'Updating…' : `Update to ${formatKcal(advice.suggested)}`}

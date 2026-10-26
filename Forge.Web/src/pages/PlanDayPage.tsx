@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { getExercises, getPlan, isCardio, makeRestDay, savePlanDay, type Exercise, type PlanDay, type PlanExercise } from '../api'
-import { Card, dangerButton, field, Notice, NotFound, Page, primaryButton, Status, Stepper, tintedButton } from '../components'
+import { Card, dangerButton, field, Notice, NotFound, Page, plainButton, primaryButton, Status, Stepper, tapArea, tintedButton } from '../components'
 import { DAY_NAMES } from '../dates'
 import { planDraft, useStartWorkout } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
 import { Icon } from '../icons'
 import { usePolling, useAction } from '../usePolling'
+import { move } from '../workouts'
 
 const BACK = { to: '/workouts', label: 'Workouts' }
 const NAME_IDEAS = ['Push Day', 'Pull Day', 'Leg Day', 'Upper Body', 'Lower Body', 'Full Body']
@@ -40,11 +41,6 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
   const cardio = new Set([...exercises, ...added].filter(isCardio).map((e) => e.id))
 
   const change = (i: number, update: Partial<PlanExercise>) => setItems(items.map((item, j) => (j === i ? { ...item, ...update } : item)))
-  const move = (i: number, by: number) => {
-    const next = [...items]
-    ;[next[i], next[i + by]] = [next[i + by], next[i]]
-    setItems(next)
-  }
   const pick = (exercise: Exercise) => {
     setPicking(false)
     if (!names.has(exercise.id)) setAdded((list) => [...list, exercise])
@@ -83,7 +79,7 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
       {!name && (
         <div className="flex flex-wrap gap-2">
           {NAME_IDEAS.map((idea) => (
-            <button key={idea} onClick={() => setName(idea)} className="min-h-9 rounded-full bg-surface px-3 text-[15px] text-coral-ink shadow-[0_1px_2px_rgb(42_31_26/0.06)] active:opacity-70">
+            <button key={idea} onClick={() => setName(idea)} className={`${tapArea} min-h-9 rounded-full bg-surface px-3 text-[15px] text-coral-ink shadow-[0_1px_2px_rgb(42_31_26/0.06)] active:opacity-70`}>
               {idea}
             </button>
           ))}
@@ -97,10 +93,10 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
             <div className="flex items-start justify-between gap-2">
               <p className="pt-2 font-semibold">{label}</p>
               <div className="flex text-muted">
-                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${label} up`} className="grid size-10 place-items-center rounded-lg active:bg-fill disabled:opacity-30">
+                <button onClick={() => setItems(move(items, i, -1))} disabled={i === 0} aria-label={`Move ${label} up`} className="grid size-10 place-items-center rounded-lg active:bg-fill disabled:opacity-30">
                   <Icon name="arrowUp" className="size-5" />
                 </button>
-                <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label={`Move ${label} down`} className="grid size-10 place-items-center rounded-lg active:bg-fill disabled:opacity-30">
+                <button onClick={() => setItems(move(items, i, 1))} disabled={i === items.length - 1} aria-label={`Move ${label} down`} className="grid size-10 place-items-center rounded-lg active:bg-fill disabled:opacity-30">
                   <Icon name="arrowDown" className="size-5" />
                 </button>
                 <button onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label={`Remove ${label}`} className="grid size-10 place-items-center rounded-lg active:bg-fill">
@@ -129,11 +125,12 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
         Add Exercise
       </button>
 
-      {message && <Notice>{message}</Notice>}
+      {message && <Notice tone="error">{message}</Notice>}
       <button onClick={save} disabled={saving} className={primaryButton}>
         {saving ? 'Saving…' : `Save ${DAY_NAMES[day]}`}
       </button>
-      <button onClick={rest} className={dangerButton}>
+      {/* Red only when a plan would go; keeping a rest day loses nothing. */}
+      <button onClick={rest} className={existing ? dangerButton : `w-full justify-center ${plainButton}`}>
         {existing ? 'Make It a Rest Day' : 'Keep It a Rest Day'}
       </button>
 

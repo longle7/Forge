@@ -143,3 +143,51 @@ export function toSet(exerciseId: number, s: DraftSet): WorkoutSet | undefined {
   const reps = Math.round(Number(s.reps))
   return reps > 0 ? { exerciseId, weight: Number(s.weight) || 0, reps, kind: s.kind } : undefined
 }
+
+// Supersets: exercises done back to back share a number, and an exercise is in a superset only while a neighbour shares
+// its number (groupSupersets). So moving, removing, or replacing an exercise needs no cleanup.
+
+/** The superset an exercise is in: its number when a neighbour shares it, else undefined. */
+function supersetOf(exercises: DraftExercise[], index: number): number | undefined {
+  const { superset } = exercises[index]
+  return superset !== undefined && (exercises[index - 1]?.superset === superset || exercises[index + 1]?.superset === superset) ? superset : undefined
+}
+
+/**
+ * Puts an exercise in a superset with the next one: the superset either is in already (both join into one), or a new
+ * one numbered one past the highest, so a number left on an exercise from an old superset is never reused.
+ */
+export function supersetWithNext(exercises: DraftExercise[], index: number): DraftExercise[] {
+  const nextSuperset = supersetOf(exercises, index + 1)
+  const number = supersetOf(exercises, index) ?? nextSuperset ?? Math.max(0, ...exercises.map((e) => e.superset ?? 0)) + 1
+  // The next exercise brings the rest of its superset along.
+  let last = index + 1
+  while (nextSuperset !== undefined && exercises[last + 1]?.superset === nextSuperset) last++
+  return exercises.map((exercise, i) => (i >= index && i <= last ? { ...exercise, superset: number } : exercise))
+}
+
+/** Takes an exercise out of its superset. */
+export const leaveSuperset = (exercises: DraftExercise[], index: number) =>
+  exercises.map((exercise, i) => (i === index ? { ...exercise, superset: undefined } : exercise))
+
+/**
+ * Whether checking off a set of exercise `index` starts the rest timer: not while a later exercise in its superset
+ * still has a set to do, so in a superset you rest after each round.
+ */
+export function restsAfter(exercises: DraftExercise[], index: number): boolean {
+  const { superset } = exercises[index]
+  for (let i = index + 1; superset !== undefined && exercises[i]?.superset === superset; i++) {
+    if (exercises[i].sets.some((s) => !s.done)) return false
+  }
+  return true
+}
+
+/**
+ * An exercise swapped for another (Replace): its sets keep their reps and kinds, but not the weights, which were for the
+ * other exercise, and none stays checked off. A cardio exercise's sets start empty.
+ */
+export const replaceExercise = (exercise: DraftExercise, exerciseId: number, cardio: boolean): DraftExercise => ({
+  ...exercise,
+  exerciseId,
+  sets: exercise.sets.map(({ reps, kind }) => (cardio ? { weight: '', reps: '', done: false } : { weight: '', reps, kind, done: false })),
+})

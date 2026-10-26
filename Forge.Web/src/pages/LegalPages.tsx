@@ -79,12 +79,15 @@ export function PrivacyPage() {
           </li>
           <li>
             <strong>Apple Health, if you connect it.</strong> In the iPhone app you can let Forge read your workouts (from
-            your Apple Watch and other apps), heart rate, and active calories from Apple Health. Forge stores the workouts
-            it brings in, with their calories and heart rate, and your daily active calories on our server, to show them
-            with your training and count them in your calorie budget. Health data is never used for advertising or
-            marketing, never sold, and never shared with anyone else. Forge only reads from Health; it never writes to it.
-            You can stop it any time in the Health app (Sharing → Apps → Forge), and Delete Account removes everything it
-            brought in.
+            your Apple Watch and other apps), heart rate, active calories, resting heart rate, heart rate variability,
+            sleep, steps, and weight from Apple Health. Forge stores the workouts it brings in, with their calories and
+            heart rate, your daily active calories, and your weight (as weigh-ins, on days you haven't logged one) on our
+            server, to show them with your training and count them in your calorie budget. Your resting heart rate, heart
+            rate variability, sleep, and steps stay on your phone: Forge uses them there to show your recovery and
+            progress, and never sends them to our server. Health data is never used for advertising or marketing, never
+            sold, and never shared with anyone else. Forge only reads from Health; it never writes to it. To stop it, use
+            Settings → Apple Health → Stop Syncing on This iPhone in Forge, or the Health app (Sharing → Apps → Forge).
+            Delete Account removes everything it brought in.
           </li>
           <li>
             <strong>Photos you scan.</strong> When you scan a nutrition label or a meal, the photo goes to our server and on

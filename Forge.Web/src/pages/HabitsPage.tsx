@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { deleteHabit, getHabits, randomId, saveHabit, type Habit, type HabitInput } from '../api'
-import { dangerButton, field, Group, Notice, Page, primaryButton, Sheet, Status, Stepper, tintedButton } from '../components'
+import { dangerButton, field, Group, Notice, Page, plainButton, Sheet, Status, Stepper, tapArea, tintedButton } from '../components'
 import { addDays, DAY_NAMES, localDate } from '../dates'
 import { completion, daysLabel, EVERY_DAY, habitStreak, SUGGESTIONS } from '../habits'
 import { Icon } from '../icons'
+import { haptic } from '../notify'
 import { failure, useNow, usePolling, useAction } from '../usePolling'
 import { plural } from '../workouts'
 
@@ -41,7 +42,7 @@ export default function HabitsPage() {
 
   return (
     <Page title="Habits" back={{ to: '/', label: 'Home' }}>
-      <Status loading={habits.data === undefined && !habits.error} error={failure(habits)} rows={3} />
+      <Status loading={habits.data === undefined && !habits.error} error={failure(habits)} rows={3} onRetry={habits.reload} />
       {active.length > 0 && <Group footer="Streaks count the days each habit is scheduled. Last 4 weeks shown.">{active.map(row)}</Group>}
       <button onClick={() => setEditing({ id: randomId(), habit: { name: '', emoji: '', dailyTarget: 1, days: EVERY_DAY, archived: false }, isNew: true })} className={`w-full ${tintedButton}`}>
         <Icon name="plus" className="size-5" />
@@ -71,15 +72,25 @@ function HabitSheet({ id, habit, isNew, onSaved, onClose }: { id: string; habit:
   const run = (save: () => Promise<unknown>) =>
     action.run(async () => {
       await save()
+      void haptic('success')
       onSaved()
     })
+  const submit = () => (form.days ? run(() => saveHabit(id, { ...form, name: form.name.trim() })) : setError('Pick at least one day.'))
 
   return (
-    <Sheet title={isNew ? 'New Habit' : 'Edit Habit'} onClose={onClose}>
+    <Sheet
+      title={isNew ? 'New Habit' : 'Edit Habit'}
+      onClose={onClose}
+      action={
+        <button onClick={submit} disabled={busy || !form.name.trim()} className={plainButton}>
+          {isNew ? 'Add' : 'Save'}
+        </button>
+      }
+    >
       {isNew && !form.name && (
         <div className="flex flex-wrap gap-2">
           {SUGGESTIONS.map((s) => (
-            <button key={s.name} onClick={() => set(s)} className="min-h-9 rounded-full bg-surface px-3 text-[15px] text-coral-ink active:opacity-70">
+            <button key={s.name} onClick={() => set(s)} className={`${tapArea} min-h-9 rounded-full bg-surface px-3 text-[15px] text-coral-ink active:opacity-70`}>
               {s.emoji} {s.name}
             </button>
           ))}
@@ -117,10 +128,7 @@ function HabitSheet({ id, habit, isNew, onSaved, onClose }: { id: string; habit:
           })}
         </div>
       </div>
-      {error && <Notice>{error}</Notice>}
-      <button onClick={() => (form.days ? run(() => saveHabit(id, { ...form, name: form.name.trim() })) : setError('Pick at least one day.'))} disabled={busy || !form.name.trim()} className={primaryButton}>
-        {isNew ? 'Add Habit' : 'Save'}
-      </button>
+      {error && <Notice tone="error">{error}</Notice>}
       {!isNew && (
         <>
           <button onClick={() => run(() => saveHabit(id, { ...habit, archived: !habit.archived }))} disabled={busy} className={`w-full ${tintedButton}`}>

@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react'
 import { MEALS, randomId, saveFoodEntry, scanLabel, scanMeal, type Meal, type ScannedFood } from './api'
 import { field, Notice, plainButton, primaryButton, Sheet } from './components'
 import { Icon, type IconName } from './icons'
+import { haptic } from './notify'
 import { formatKcal, MICROS, optionalNumber } from './nutrition'
 import { giveScanConsent, hasScanConsent, shrinkPhoto } from './photo'
 import { useAction } from './usePolling'
@@ -58,7 +59,7 @@ export function ScanFlow({ date, meal, onLogged }: { date: string; meal: Meal; o
         <ScanTile icon="camera" title="Scan a Label" detail="Reads the Nutrition Facts" onChange={choose('label')} />
         <ScanTile icon="sparkles" title="Snap a Meal" detail="Estimates each food" onChange={choose('meal')} />
       </div>
-      {error && <Notice>{error}</Notice>}
+      {error && <Notice tone="error">{error}</Notice>}
 
       {step?.at === 'consent' && (
         <Sheet title="Photo Logging" onClose={() => setStep(undefined)}>
@@ -138,6 +139,7 @@ function Review({ kind, initial, date, meal, onLogged, onClose }: { kind: Kind; 
           source: kind === 'label' ? 'label' : 'photo',
         })
       }
+      void haptic('success')
       onLogged()
     })
   }
@@ -197,12 +199,12 @@ function Review({ kind, initial, date, meal, onLogged, onClose }: { kind: Kind; 
           </div>
         ))}
       </div>
-      {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
       <button onClick={add} disabled={saving} className={primaryButton}>
         {saving ? 'Logging…' : `Add to ${mealLabel} · ${formatKcal(total)} kcal`}
       </button>
       <button onClick={onClose} className={`w-full justify-center ${plainButton}`}>
-        Retake
+        Cancel
       </button>
     </Sheet>
   )

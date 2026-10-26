@@ -18,6 +18,12 @@ export function addDays(day: string, days: number): string {
   return localDate(date)
 }
 
+/** The first day of `day`'s month, or of the month `months` after (or, negative, before) it: "2026-10-01". */
+export function monthStart(day: string, months = 0): string {
+  const date = parseDate(day)
+  return localDate(new Date(date.getFullYear(), date.getMonth() + months, 1))
+}
+
 /** 0 = Sunday … 6 = Saturday. */
 export const weekday = (day: string) => parseDate(day).getDay()
 
