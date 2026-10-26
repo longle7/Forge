@@ -22,6 +22,8 @@ export const dangerButton =
 /** Text and number fields. 16 px or larger text stops iOS Safari from zooming in on focus. */
 export const field =
   'min-h-11 w-full rounded-xl bg-fill px-3 text-[17px] text-ink outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-coral'
+/** For a 36 px chip or button: its tap area reaches 4 px past each edge, to 44 px, while it looks the same. */
+export const tapArea = 'relative before:absolute before:-inset-1'
 
 /**
  * Every screen: an iOS large title, with a back button above it on deeper screens. `eyebrow` is the small line over
@@ -89,7 +91,8 @@ export function SectionTitle({ title, link }: { title: string; link?: { to: stri
     <div className="flex items-end justify-between px-1 pt-2">
       <h2 className="text-[22px] font-bold tracking-tight">{title}</h2>
       {link && (
-        <Link to={link.to} className="text-coral-ink active:opacity-60">
+        // Padding grows the tap area to 44 px; the negative margin keeps the text where it was.
+        <Link to={link.to} className="-m-2.5 p-2.5 text-coral-ink active:opacity-60">
           {link.label}
         </Link>
       )}
@@ -202,7 +205,7 @@ export function MacroBar({ label, value, goal, color, unit = 'g', limit = false 
 
 /** − value + buttons, like iOS's stepper. */
 export function Stepper({ value, onChange, min, max, label }: { value: number; onChange: (value: number) => void; min: number; max: number; label: string }) {
-  const button = 'grid size-9 place-items-center rounded-lg bg-fill text-[20px] leading-none text-coral-ink active:opacity-60 disabled:opacity-30'
+  const button = `${tapArea} grid size-9 place-items-center rounded-lg bg-fill text-[20px] leading-none text-coral-ink active:opacity-60 disabled:opacity-30`
   return (
     <div role="group" aria-label={label} className="flex items-center gap-1">
       <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} aria-label={`Less ${label}`} className={button}>
@@ -261,7 +264,7 @@ export function Segmented<T extends string | number>({ options, value, onChange,
             role="radio"
             aria-checked={selected}
             onClick={() => choose(option.value)}
-            className={`min-h-9 rounded-lg px-2 text-[15px] font-semibold transition ${selected ? 'bg-surface text-ink shadow-[0_1px_3px_rgb(42_31_26/0.12)] dark:bg-[#4a3830]' : 'text-muted'}`}
+            className={`${tapArea} min-h-9 rounded-lg px-2 text-[15px] font-semibold transition ${selected ?'bg-surface text-ink shadow-[0_1px_3px_rgb(42_31_26/0.12)] dark:bg-[#4a3830]' : 'text-muted'}`}
           >
             {option.label}
           </button>

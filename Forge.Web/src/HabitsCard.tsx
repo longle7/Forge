@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { checkHabit, getHabits, randomId, saveHabit, type Habit } from './api'
-import { Card, Notice, SectionTitle } from './components'
+import { Card, Notice, SectionTitle, tapArea } from './components'
 import { localDate } from './dates'
 import { countOn, EVERY_DAY, habitStreak, SUGGESTIONS, today as todayOf } from './habits'
 import { Icon } from './icons'
@@ -51,7 +51,7 @@ export function HabitsCard() {
           <p className="text-[15px] text-muted">Small things, checked off each day. Pick one to start:</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {SUGGESTIONS.slice(0, 4).map((s) => (
-              <button key={s.name} onClick={() => start(s)} className="min-h-9 rounded-full bg-coral/12 px-3 text-[15px] text-coral-ink active:opacity-70">
+              <button key={s.name} onClick={() => start(s)} className={`${tapArea} min-h-9 rounded-full bg-coral/12 px-3 text-[15px] text-coral-ink active:opacity-70`}>
                 {s.emoji} {s.name}
               </button>
             ))}

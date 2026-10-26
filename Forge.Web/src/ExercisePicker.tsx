@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { addExercise, MUSCLE_GROUPS, type Exercise } from './api'
-import { Notice, SearchInput, Sheet, tintedButton } from './components'
+import { Notice, SearchInput, Sheet, tapArea, tintedButton } from './components'
 import { haptic } from './notify'
 import { useAction } from './usePolling'
 
@@ -34,13 +34,14 @@ export function ExercisePicker({ exercises, recent = [], onPick, onClose }: {
   return (
     <Sheet title="Add Exercise" full onClose={onClose}>
       <SearchInput value={query} onChange={setQuery} placeholder="Search exercises" onSubmit={() => matches[0] && onPick(matches[0])} />
-      <div role="group" aria-label="Muscle group" className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
+      {/* py-1 makes room for the chips' tap areas, which a scrolling row would cut off. */}
+      <div role="group" aria-label="Muscle group" className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none]">
         {[undefined, ...MUSCLE_GROUPS].map((g) => (
           <button
             key={g ?? 'All'}
             onClick={() => setGroup(g)}
             aria-pressed={group === g}
-            className={`min-h-9 shrink-0 rounded-full px-3.5 text-[15px] font-medium ${group === g ? 'bg-coral/15 text-coral-ink' : 'bg-surface text-muted'}`}
+            className={`${tapArea} min-h-9 shrink-0 rounded-full px-3.5 text-[15px] font-medium ${group === g ? 'bg-coral/15 text-coral-ink' : 'bg-surface text-muted'}`}
           >
             {g ?? 'All'}
           </button>

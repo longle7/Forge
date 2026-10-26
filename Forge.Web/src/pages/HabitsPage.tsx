@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { deleteHabit, getHabits, randomId, saveHabit, type Habit, type HabitInput } from '../api'
-import { dangerButton, field, Group, Notice, Page, plainButton, Sheet, Status, Stepper, tintedButton } from '../components'
+import { dangerButton, field, Group, Notice, Page, plainButton, Sheet, Status, Stepper, tapArea, tintedButton } from '../components'
 import { addDays, DAY_NAMES, localDate } from '../dates'
 import { completion, daysLabel, EVERY_DAY, habitStreak, SUGGESTIONS } from '../habits'
 import { Icon } from '../icons'
@@ -90,7 +90,7 @@ function HabitSheet({ id, habit, isNew, onSaved, onClose }: { id: string; habit:
       {isNew && !form.name && (
         <div className="flex flex-wrap gap-2">
           {SUGGESTIONS.map((s) => (
-            <button key={s.name} onClick={() => set(s)} className="min-h-9 rounded-full bg-surface px-3 text-[15px] text-coral-ink active:opacity-70">
+            <button key={s.name} onClick={() => set(s)} className={`${tapArea} min-h-9 rounded-full bg-surface px-3 text-[15px] text-coral-ink active:opacity-70`}>
               {s.emoji} {s.name}
             </button>
           ))}

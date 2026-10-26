@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { MEALS, type Meal, type Micros, type Nutrition } from './api'
-import { dangerButton, field, Notice, plainButton, Segmented, Sheet } from './components'
+import { dangerButton, field, Notice, plainButton, Segmented, Sheet, tapArea } from './components'
 import { haptic } from './notify'
 import { formatKcal, MICROS } from './nutrition'
 import { useAction } from './usePolling'
@@ -60,7 +60,7 @@ export function FoodSheet({ title, food, initialServings = 1, initialMeal, submi
       </label>
       <div className="flex gap-2">
         {QUICK_SERVINGS.map((n) => (
-          <button key={n} type="button" onClick={() => setServings(String(n))} className={`min-h-9 flex-1 rounded-full text-[15px] font-semibold ${amount === n ? 'bg-coral/15 text-coral-ink' : 'bg-surface text-muted'}`}>
+          <button key={n} type="button" onClick={() => setServings(String(n))} className={`${tapArea} min-h-9 flex-1 rounded-full text-[15px] font-semibold ${amount === n ? 'bg-coral/15 text-coral-ink' : 'bg-surface text-muted'}`}>
             {n}
           </button>
         ))}

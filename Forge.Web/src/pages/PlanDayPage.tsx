@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { getExercises, getPlan, isCardio, makeRestDay, savePlanDay, type Exercise, type PlanDay, type PlanExercise } from '../api'
-import { Card, dangerButton, field, Notice, NotFound, Page, primaryButton, Status, Stepper, tintedButton } from '../components'
+import { Card, dangerButton, field, Notice, NotFound, Page, primaryButton, Status, Stepper, tapArea, tintedButton } from '../components'
 import { DAY_NAMES } from '../dates'
 import { ExercisePicker } from '../ExercisePicker'
 import { Icon } from '../icons'
@@ -74,7 +74,7 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
       {!name && (
         <div className="flex flex-wrap gap-2">
           {NAME_IDEAS.map((idea) => (
-            <button key={idea} onClick={() => setName(idea)} className="min-h-9 rounded-full bg-surface px-3 text-[15px] text-coral-ink shadow-[0_1px_2px_rgb(42_31_26/0.06)] active:opacity-70">
+            <button key={idea} onClick={() => setName(idea)} className={`${tapArea} min-h-9 rounded-full bg-surface px-3 text-[15px] text-coral-ink shadow-[0_1px_2px_rgb(42_31_26/0.06)] active:opacity-70`}>
               {idea}
             </button>
           ))}
