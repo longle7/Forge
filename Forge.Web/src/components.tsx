@@ -365,6 +365,15 @@ export function PrBadge() {
   )
 }
 
+/** A badge's icon on an amber disc, the PR badge's colors. Decorative: the badge's title is always beside it. */
+export function BadgeIcon({ icon }: { icon: IconName }) {
+  return (
+    <span className="grid size-11 shrink-0 place-items-center rounded-full bg-amber/20 text-amber-ink">
+      <Icon name={icon} className="size-6" />
+    </span>
+  )
+}
+
 /** A finished workout in a list (Home, Workouts, History): its name, "day · length · totals", and PR when it set any. */
 export function WorkoutRow({ workout, prs }: { workout: Workout; prs: number }) {
   const summary = [formatDay(workout.startedAt), formatDuration(workoutLength(workout)), workoutTotals(workout)].filter(Boolean).join(' · ')
