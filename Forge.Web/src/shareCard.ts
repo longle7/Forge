@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core'
 import { Directory, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
 import type { HeartRatePoint, Workout } from './api'
-import { formatDay, formatDuration, formatMiles, formatTime, formatWeight, groupSets, isCardioSet, plural, volume, workoutLength } from './workouts'
+import { formatDay, formatDuration, formatMiles, formatTime, formatWeight, isCardioSet, isWarmup, plural, volume, workoutLength } from './workouts'
 
 // A finished workout as an image to post or send: 1080 × 1350 (4:5, the tallest a photo shows in Instagram's feed),
 // drawn on a canvas in the app's light Sunrise colors (index.css) whatever mode the phone is in.
@@ -71,7 +71,7 @@ type Stat = { label: string; value: string }
  */
 export function cardStats(workout: Workout): Stat[] {
   const miles = workout.sets.reduce((sum, s) => sum + (s.distance ?? 0), 0)
-  const lifts = workout.sets.filter((s) => !isCardioSet(s)).length
+  const lifts = workout.sets.filter((s) => !isCardioSet(s) && !isWarmup(s)).length
   const stats: (Stat | false | null | undefined | 0)[] = [
     { label: 'Time', value: formatDuration(workoutLength(workout)) },
     miles > 0 && { label: 'Distance', value: `${formatMiles(miles)} mi` },
@@ -137,7 +137,7 @@ export async function drawShareCard(workout: Workout, { prCount, names }: { prCo
   text(`${formatDay(workout.startedAt)} · ${formatTime(workout.startedAt)}`.toUpperCase(), PAD, top + 132, 32, 700, COLOR.muted)
   const name = fitText(workout.name, INNER, 104, 64, measure(700))
   text(name.text, PAD, top + 248, name.size, 700, COLOR.ink)
-  const exercises = groupSets(workout.sets).flatMap((g) => names.get(g.exerciseId) ?? [])
+  const exercises = [...new Set(workout.sets.flatMap((s) => names.get(s.exerciseId) ?? []))] // each once, in the order first done
   const fitsLine = (line: string) => measure(500)(line, 40) <= INNER
   const subtitle = exercises.length ? fitList(exercises, fitsLine) : workout.source === 'health' ? 'From Apple Health' : ''
   text(fitText(subtitle, INNER, 40, 40, measure(500)).text, PAD, top + 312, 40, 500, COLOR.muted)

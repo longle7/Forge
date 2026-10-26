@@ -51,6 +51,20 @@ describe('estimatedMax', () => {
   })
 })
 
+describe('warm-ups never count', () => {
+  // Heavier than the real set, so it would win if it counted.
+  const warmup: WorkoutSet = { ...set(SQUAT, 405, 1), kind: 'warmup' }
+  const workouts = [workout(1, [warmup, set(SQUAT, 315, 1)])]
+
+  it.each([
+    { name: 'estimatedMax: not your max', value: () => estimatedMax(workouts, [], SQUAT)?.value, expected: 315 },
+    { name: 'repMaxes: not your best single', value: () => repMaxes(workouts, [], SQUAT)[0].best?.weight, expected: 315 },
+    { name: 'liftedExercises: an exercise with only warm-ups has no estimatedMax, so it isn’t listed', value: () => liftedExercises([workout(1, [warmup])], []), expected: [] },
+  ])('$name', ({ value, expected }) => {
+    expect(value()).toEqual(expected)
+  })
+})
+
 it('percentTable rounds to 5 lb and lists the plates for each side', () => {
   const rows = percentTable(225)
   expect(rows.map((r) => r.percent)).toEqual([95, 90, 85, 80, 75, 70, 65, 60, 55, 50])

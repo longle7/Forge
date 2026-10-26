@@ -6,9 +6,10 @@ import { Card, dangerButton, field, Notice, plainButton, PrBadge, primaryButton,
 import { loadDraft, saveDraft, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
 import { haptic, notifyRestEnd } from '../notify'
+import { activityState, endWorkout, isLive, showWorkout } from '../liveActivity'
 import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
-import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, livePr, oneRepMax, parseDuration, platesPerSide, plural, previousSets, progressionStep, recentExercises } from '../workouts'
+import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, isLift, livePr, oneRepMax, parseDuration, platesPerSide, plural, previousSets, progressionStep, recentExercises } from '../workouts'
 import { estimatedMax } from '../maxes'
 
 /** Rest after a checked-off set: 90 seconds, unless you choose another length for the exercise (kept on this device). */
@@ -91,6 +92,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   const close = (to: string, finished = false) => {
     saveDraft(undefined)
     void notifyRestEnd(undefined)
+    void endWorkout()
     navigate(to, { replace: true, state: finished ? { finished } : undefined })
   }
 
@@ -218,6 +220,13 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   useEffect(() => {
     void notifyRestEnd(draft.restEndsAt)
   }, [draft.restEndsAt])
+  // In the iPhone app, the workout is on the Lock Screen, in the Dynamic Island, and on the Watch too. It's sent only
+  // when what it shows changes (typing a weight doesn't), and comes down once the workout is finished.
+  const liveActivity = isLive(draft) ? JSON.stringify(activityState(draft, names)) : undefined
+  useEffect(() => {
+    if (liveActivity) void showWorkout(JSON.parse(liveActivity))
+    else void endWorkout()
+  }, [liveActivity])
 
   const finishLabel = saving ? 'Saving…' : draft.editing ? 'Save' : 'Finish'
 
@@ -259,7 +268,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
         const done = ex.sets.map((s) => toSet(ex.exerciseId, s))
         const pr = livePr(workouts, ex.exerciseId, done, draft.editing ? draft.id : undefined)
         // The best estimated 1-rep max checked off so far, next to your best before this workout.
-        const bestToday = Math.max(0, ...done.filter((s) => s && s.weight > 0).map((s) => oneRepMax(s!.weight, s!.reps)))
+        const bestToday = Math.max(0, ...done.filter((s) => s && isLift(s)).map((s) => oneRepMax(s!.weight, s!.reps)))
         const bestBefore = bestToday ? estimatedMax(workouts.filter((w) => w.id !== draft.id), tested, ex.exerciseId)?.value : undefined
         return (
           <Card key={`${ex.exerciseId}-${e}`}>

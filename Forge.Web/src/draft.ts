@@ -1,5 +1,5 @@
 import { readJson, write } from './cache'
-import { randomId, type PlanDay, type Workout, type WorkoutInput, type WorkoutSet } from './api'
+import { randomId, type PlanDay, type SetKind, type Workout, type WorkoutInput, type WorkoutSet } from './api'
 import { formatClock, groupSets, isCardioSet, parseDuration } from './workouts'
 
 /**
@@ -19,6 +19,7 @@ export interface Draft {
 
 export interface DraftExercise {
   exerciseId: number
+  superset?: number // exercises done back to back as a superset share this group number
   sets: DraftSet[]
 }
 
@@ -27,6 +28,7 @@ export interface DraftSet {
   reps: string
   distance?: string // cardio: miles
   time?: string // cardio: "27:30", or minutes
+  kind?: SetKind // lifting only; none = a normal set, as in drafts saved before set kinds
   done: boolean // checked off; only these are saved
 }
 
@@ -48,10 +50,11 @@ export const emptyDraft = (now = new Date()): Draft => ({ id: randomId(), name: 
 const draftExercises = (workout: Workout, done: boolean): DraftExercise[] =>
   groupSets(workout.sets).map(({ exerciseId, sets }) => ({
     exerciseId,
+    superset: sets[0].superset ?? undefined,
     sets: sets.map((s) =>
       isCardioSet(s)
         ? { weight: '', reps: '', distance: s.distance ? String(s.distance) : '', time: s.durationSeconds ? formatClock(s.durationSeconds * 1000) : '', done }
-        : { weight: String(s.weight), reps: String(s.reps), done },
+        : { weight: String(s.weight), reps: String(s.reps), kind: s.kind ?? undefined, done },
     ),
   }))
 
@@ -90,15 +93,15 @@ export const editDraft = (workout: Workout): Draft => ({
 })
 
 /**
- * What Finish saves: the checked-off sets, in order, that have reps (an empty weight counts as 0, bodyweight) or, for
- * cardio, a distance or time.
+ * What Finish saves: the checked-off sets, exercise by exercise, that have reps (an empty weight counts as 0, bodyweight)
+ * or, for cardio, a distance or time. Each set carries its exercise's superset.
  */
 export function toWorkout(draft: Draft, finishedAt: string): WorkoutInput {
   return {
     name: draft.name.trim(),
     startedAt: draft.startedAt,
     finishedAt,
-    sets: draft.exercises.flatMap(({ exerciseId, sets }) => sets.flatMap((s) => toSet(exerciseId, s) ?? [])),
+    sets: draft.exercises.flatMap(({ exerciseId, superset, sets }) => sets.flatMap((s) => toSet(exerciseId, s) ?? []).map((set) => ({ ...set, superset }))),
   }
 }
 
@@ -109,5 +112,5 @@ export function toSet(exerciseId: number, s: DraftSet): WorkoutSet | undefined {
   const seconds = parseDuration(s.time ?? '')
   if (distance > 0 || seconds > 0) return { exerciseId, weight: 0, reps: 0, distance: distance > 0 ? distance : null, durationSeconds: seconds > 0 ? seconds : null }
   const reps = Math.round(Number(s.reps))
-  return reps > 0 ? { exerciseId, weight: Number(s.weight) || 0, reps } : undefined
+  return reps > 0 ? { exerciseId, weight: Number(s.weight) || 0, reps, kind: s.kind } : undefined
 }

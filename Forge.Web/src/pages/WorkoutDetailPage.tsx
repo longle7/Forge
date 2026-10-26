@@ -100,8 +100,8 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
         </Card>
       )}
 
-      {groupSets(workout.sets).map((group) => (
-        <Card key={group.exerciseId}>
+      {groupSets(workout.sets).map((group, g) => (
+        <Card key={g}>
           <Link to={`/workouts/exercises/${group.exerciseId}`} className="font-semibold text-coral-ink">
             {names.get(group.exerciseId) ?? 'Exercise'}
           </Link>

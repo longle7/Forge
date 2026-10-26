@@ -1,7 +1,7 @@
 import type { DayTotals, PlanDay, Workout } from './api'
 import { addDays, localDate, parseDate, weekday, workoutDay } from './dates'
 import { planFor } from './plan'
-import { oneRepMax } from './workouts'
+import { isLift, oneRepMax } from './workouts'
 
 /** The day the plan started counting: when its first weekday was planned. Undefined with no plan. */
 export const planStart = (plan: PlanDay[]) => (plan.length ? localDate(new Date(Math.min(...plan.map((p) => Date.parse(p.createdAt))))) : undefined)
@@ -66,7 +66,7 @@ export function weekStatuses(plan: PlanDay[], workouts: Workout[], today: string
 export function topLifts(workouts: Workout[], count = 3): number[] {
   const seen = new Map<number, number>()
   for (const workout of workouts) {
-    for (const id of new Set(workout.sets.filter((s) => s.weight > 0).map((s) => s.exerciseId))) seen.set(id, (seen.get(id) ?? 0) + 1)
+    for (const id of new Set(workout.sets.filter(isLift).map((s) => s.exerciseId))) seen.set(id, (seen.get(id) ?? 0) + 1)
   }
   return [...seen].sort((a, b) => b[1] - a[1]).slice(0, count).map(([id]) => id)
 }
@@ -75,7 +75,7 @@ export function topLifts(workouts: Workout[], count = 3): number[] {
 export function strengthSeries(workouts: Workout[], exerciseId: number, from: string): { day: string; value: number }[] {
   return workouts
     .filter((w) => workoutDay(w) >= from)
-    .map((w) => ({ day: workoutDay(w), value: Math.max(0, ...w.sets.filter((s) => s.exerciseId === exerciseId && s.weight > 0).map((s) => oneRepMax(s.weight, s.reps))) }))
+    .map((w) => ({ day: workoutDay(w), value: Math.max(0, ...w.sets.filter((s) => s.exerciseId === exerciseId && isLift(s)).map((s) => oneRepMax(s.weight, s.reps))) }))
     .filter((p) => p.value > 0)
     .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0))
 }
@@ -86,8 +86,11 @@ export type Bucket = 'day' | 'week' | 'month'
  * Calories per day, or averaged per week or month (over the days something was logged), from `from` through `to`.
  * A period with nothing logged has no value: an empty bar, not a zero.
  */
-export function calorieBars(days: DayTotals[], from: string, to: string, bucket: Bucket): { start: string; value: number | undefined }[] {
-  const byDay = new Map(days.map((d) => [d.date, d.calories]))
+export const calorieBars = (days: DayTotals[], from: string, to: string, bucket: Bucket) => averageBars(days.map((d) => ({ date: d.date, value: d.calories })), from, to, bucket)
+
+/** A value per day, or averaged per week or month over the days that have one; a period with none has no value. */
+export function averageBars(days: { date: string; value: number }[], from: string, to: string, bucket: Bucket): { start: string; value: number | undefined }[] {
+  const byDay = new Map(days.map((d) => [d.date, d.value]))
   const bars: { start: string; values: number[] }[] = []
   for (let day = from; day <= to; day = addDays(day, 1)) {
     const key = bucket === 'day' ? day : bucket === 'week' ? addDays(day, -((weekday(day) + 6) % 7)) : `${day.slice(0, 7)}-01`

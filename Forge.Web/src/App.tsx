@@ -5,6 +5,7 @@ import { ErrorBoundary, NotFound } from './components'
 import { loadDraft } from './draft'
 import { syncHealth } from './health'
 import { Icon, type IconName } from './icons'
+import { endWorkout, isLive } from './liveActivity'
 import { useOnline } from './usePolling'
 import AddFoodPage from './pages/AddFoodPage'
 import CaloriesPage from './pages/CaloriesPage'
@@ -43,6 +44,11 @@ export default function App() {
     sync()
     document.addEventListener('visibilitychange', sync)
     return () => document.removeEventListener('visibilitychange', sync)
+  }, [])
+
+  // A Live Activity left up when no workout is going (the app closed before it could end it) comes down at launch.
+  useEffect(() => {
+    if (!isLive(loadDraft())) void endWorkout()
   }, [])
 
   return (
