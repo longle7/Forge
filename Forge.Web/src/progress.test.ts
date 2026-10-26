@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { PlanDay, Workout, WorkoutSet } from './api'
-import { adherence, calorieBars, niceTicks, plannedDays, strengthSeries, streak, topLifts, weekStatuses } from './progress'
+import type { Exercise, PlanDay, Workout, WorkoutSet } from './api'
+import { adherence, calorieBars, muscleSets, niceTicks, plannedDays, strengthSeries, streak, topLifts, weekStatuses } from './progress'
 
 it('niceTicks spans the values with round steps', () => {
   expect(niceTicks(181.6, 186.2)).toEqual([180, 182, 184, 186, 188])
@@ -88,6 +88,33 @@ describe('warm-ups never count', () => {
     { name: 'strengthSeries: not the day’s best', value: () => strengthSeries([trainedOn('2026-10-01', [warmup, { exerciseId: 1, weight: 135, reps: 1 }])], 1, '2026-09-28').map((p) => p.value), expected: [135] },
   ])('$name', ({ value, expected }) => {
     expect(value()).toEqual(expected)
+  })
+})
+
+describe('working sets a week for each muscle group', () => {
+  const exercises: Exercise[] = [
+    { id: 1, name: 'Bench Press (Barbell)', muscleGroup: 'Chest', isCustom: false },
+    { id: 14, name: 'Squat (Barbell)', muscleGroup: 'Legs', isCustom: false },
+    { id: 36, name: 'Running', muscleGroup: 'Cardio', isCustom: false },
+  ]
+  const bench: WorkoutSet = { exerciseId: 1, weight: 135, reps: 8 }
+  const squat: WorkoutSet = { exerciseId: 14, weight: 185, reps: 5 }
+  const warmup: WorkoutSet = { ...bench, weight: 95, kind: 'warmup' }
+  const run: WorkoutSet = { exerciseId: 36, weight: 0, reps: 0, distance: 3.1, durationSeconds: 1800 }
+  // From Monday 9/28, with a workout the day before.
+  const workouts = [
+    trainedOn('2026-09-27', [bench, bench, bench, bench, bench, bench]),
+    trainedOn('2026-09-28', [warmup, bench, bench, bench, bench, squat, squat]),
+    trainedOn('2026-10-08', [warmup, bench, bench, run]),
+    trainedOn('2026-10-12', [bench, bench, bench, bench, bench, bench]),
+  ]
+
+  it.each([
+    { name: 'two weeks, leaving out warm-ups, cardio, and the days either side', from: '2026-09-28', to: '2026-10-11', weeklySets: 'Chest 3, Back 0, Legs 1, Shoulders 0, Arms 0, Core 0' },
+    { name: 'three weeks, rounded to whole sets', from: '2026-09-28', to: '2026-10-18', weeklySets: 'Chest 4, Back 0, Legs 1, Shoulders 0, Arms 0, Core 0' },
+    { name: 'a week without workouts', from: '2026-10-13', to: '2026-10-19', weeklySets: 'Chest 0, Back 0, Legs 0, Shoulders 0, Arms 0, Core 0' },
+  ])('muscleSets: $name', ({ from, to, weeklySets }) => {
+    expect(muscleSets(workouts, exercises, from, to).map((g) => `${g.group} ${g.weeklySets}`).join(', ')).toBe(weeklySets)
   })
 })
 

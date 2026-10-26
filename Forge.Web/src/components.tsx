@@ -196,6 +196,19 @@ export function MacroBar({ label, value, goal, color, unit = 'g', limit = false 
   )
 }
 
+/** A row of a bar list: the label, a bar filled to `share` (0 to 1), and the value ("Z2 Easy", the bar, "12m"). */
+export function BarRow({ label, share, color, value }: { label: ReactNode; share: number; color: string; value: string }) {
+  return (
+    <li className="flex items-center gap-3">
+      <span className="w-28 shrink-0">{label}</span>
+      <div className="h-2 flex-1 overflow-hidden rounded-full bg-fill">
+        <div className="h-full rounded-full" style={{ width: `${share * 100}%`, background: color }} />
+      </div>
+      <span className="w-14 shrink-0 text-right text-muted tabular-nums">{value}</span>
+    </li>
+  )
+}
+
 /** − value + buttons, like iOS's stepper. */
 export function Stepper({ value, onChange, min, max, label }: { value: number; onChange: (value: number) => void; min: number; max: number; label: string }) {
   const button = 'grid size-9 place-items-center rounded-lg bg-fill text-[20px] leading-none text-coral-ink active:opacity-60 disabled:opacity-30'

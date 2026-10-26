@@ -1,7 +1,7 @@
-import type { DayTotals, PlanDay, Workout } from './api'
+import { MUSCLE_GROUPS, type DayTotals, type Exercise, type PlanDay, type Workout } from './api'
 import { addDays, localDate, parseDate, weekday, workoutDay } from './dates'
 import { planFor } from './plan'
-import { isLift, oneRepMax } from './workouts'
+import { isLift, isWarmup, oneRepMax } from './workouts'
 
 /** The day the plan started counting: when its first weekday was planned. Undefined with no plan. */
 export const planStart = (plan: PlanDay[]) => (plan.length ? localDate(new Date(Math.min(...plan.map((p) => Date.parse(p.createdAt))))) : undefined)
@@ -83,6 +83,25 @@ export function strengthSeries(workouts: Workout[], exerciseId: number, from: st
     .map((w) => ({ day: workoutDay(w), value: Math.max(0, ...w.sets.filter((s) => s.exerciseId === exerciseId && isLift(s)).map((s) => oneRepMax(s.weight, s.reps))) }))
     .filter((p) => p.value > 0)
     .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0))
+}
+
+/** The muscle groups on the body: all but Cardio and Other. */
+const BODY_GROUPS = MUSCLE_GROUPS.filter((group) => group !== 'Cardio' && group !== 'Other')
+
+/**
+ * Working sets a week for each muscle group on the body, in MUSCLE_GROUPS order: the sets from `from` through `to`,
+ * warm-ups aside, averaged over those weeks and rounded (48 chest sets in 4 weeks is 12 a week).
+ */
+export function muscleSets(workouts: Workout[], exercises: Exercise[], from: string, to: string): { group: string; weeklySets: number }[] {
+  const groupOf = new Map(exercises.map((e) => [e.id, e.muscleGroup]))
+  const workingSets = workouts
+    .filter((w) => workoutDay(w) >= from && workoutDay(w) <= to)
+    .flatMap((w) => w.sets)
+    .filter((s) => !isWarmup(s))
+  let days = 0 // counted a day at a time, so a daylight saving change can't cut one short
+  for (let day = from; day <= to; day = addDays(day, 1)) days++
+  const weeks = days / 7
+  return BODY_GROUPS.map((group) => ({ group, weeklySets: Math.round(workingSets.filter((s) => groupOf.get(s.exerciseId) === group).length / weeks) }))
 }
 
 export type Bucket = 'day' | 'week' | 'month'

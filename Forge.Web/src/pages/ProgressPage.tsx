@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, type DayTotals, type Habit, type PlanDay, type Profile, type WeighIn, type Workout } from '../api'
+import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, type DayTotals, type Exercise, type Habit, type PlanDay, type Profile, type WeighIn, type Workout } from '../api'
+import { BodyMap } from '../BodyMap'
 import { completion, habitStreak } from '../habits'
 import { BarChart, ChartTable, LineChart, Sparkline } from '../charts'
 import { RING } from '../colors'
-import { Card, Page, plainButton, Segmented, Status } from '../components'
+import { BarRow, Card, Page, plainButton, Segmented, Status } from '../components'
 import { addDays, dayLabel, localDate, monthStart, parseDate, workoutDay } from '../dates'
 import { Icon } from '../icons'
 import { calorieAdherence, formatKcal, goalEta, plannedTrend, weightTrend } from '../nutrition'
-import { adherence, calorieBars, plannedDays, shortDate, strengthSeries, streak, topLifts, weekStatuses, type Bucket, type DayStatus } from '../progress'
+import { adherence, calorieBars, muscleSets, plannedDays, shortDate, strengthSeries, streak, topLifts, weekStatuses, type Bucket, type DayStatus } from '../progress'
 import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
 import { formatSet, formatWeight, personalRecords, plural } from '../workouts'
@@ -49,6 +50,7 @@ export default function ProgressPage() {
       <HabitsCard habits={(habits.data ?? []).filter((h) => !h.archived)} from={from} today={today} period={period} />
       <CaloriesCard days={food.data ?? []} profile={profile.data ?? undefined} plan={plan.data} from={from} today={today} period={period} bucket={range.bucket} />
       <StrengthCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
+      <MusclesCard workouts={workouts.data ?? []} exercises={exercises.data ?? []} from={from} today={today} period={period} />
       <RecordsCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
 
       <Card>
@@ -371,6 +373,31 @@ function StrengthCard({ workouts, from, names, period }: { workouts: Workout[]; 
           )
         })}
       </ul>
+    </Card>
+  )
+}
+
+/** Working sets a week for each muscle group over the range: shaded on the body against the guide, then as bars. */
+function MusclesCard({ workouts, exercises, from, today, period }: { workouts: Workout[]; exercises: Exercise[]; from: string; today: string; period: string }) {
+  const groups = muscleSets(workouts, exercises, from, today)
+  // The bars run to 20 sets a week, the top of the guide, unless a group goes past it.
+  const scale = Math.max(20, ...groups.map((g) => g.weeklySets))
+  return (
+    <Card>
+      <CardTitle icon="person" title="Muscles" detail={`working sets a week, ${period}`} />
+      {groups.some((g) => g.weeklySets > 0) ? (
+        <>
+          <BodyMap groups={groups} />
+          <ul className="mt-4 space-y-2 text-[15px]">
+            {groups.map(({ group, weeklySets }) => (
+              <BarRow key={group} label={<span className="font-semibold">{group}</span>} share={weeklySets / scale} color={RING.move} value={String(weeklySets)} />
+            ))}
+          </ul>
+          <ChartTable caption={`Working sets a week, ${period}`} rows={groups.map(({ group, weeklySets }) => [group, `${plural(weeklySets, 'set')} a week`])} />
+        </>
+      ) : (
+        <p className="mt-1 text-[15px] text-muted">Log strength workouts to see the sets each muscle group gets.</p>
+      )}
     </Card>
   )
 }

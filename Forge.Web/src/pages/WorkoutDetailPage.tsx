@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { deleteWorkout, getExercises, getProfile, getWorkouts, type Workout } from '../api'
 import { ChartTable, HeartRateChart } from '../charts'
-import { Card, dangerButton, Notice, NotFound, Page, PrBadge, Status, tintedButton } from '../components'
+import { BarRow, Card, dangerButton, Notice, NotFound, Page, PrBadge, Status, tintedButton } from '../components'
 import { workoutDay } from '../dates'
 import { editDraft, loadDraft, repeatDraft, saveDraft, type Draft } from '../draft'
 import { maxHeartRate, timeInZones, ZONES } from '../heartRate'
@@ -167,15 +167,17 @@ function HeartRateCard({ workout }: { workout: Workout }) {
           <p className="mt-3 text-[13px] text-muted">Time in each zone, from your estimated max of {max} bpm</p>
           <ul className="mt-2 space-y-2 text-[15px]">
             {ZONES.map((zone, i) => (
-              <li key={zone.name} className="flex items-center gap-3">
-                <span className="w-28 shrink-0">
-                  <span className="font-semibold">{zone.name}</span> <span className="text-muted">{zone.label}</span>
-                </span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-fill">
-                  <div className="h-full rounded-full" style={{ width: `${(zones[i] / recorded) * 100}%`, background: zone.color }} />
-                </div>
-                <span className="w-14 shrink-0 text-right text-muted tabular-nums">{zones[i] ? formatDuration(zones[i] * 1000) : '0m'}</span>
-              </li>
+              <BarRow
+                key={zone.name}
+                label={
+                  <>
+                    <span className="font-semibold">{zone.name}</span> <span className="text-muted">{zone.label}</span>
+                  </>
+                }
+                share={zones[i] / recorded}
+                color={zone.color}
+                value={zones[i] ? formatDuration(zones[i] * 1000) : '0m'}
+              />
             ))}
           </ul>
         </>
