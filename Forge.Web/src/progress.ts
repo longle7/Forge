@@ -86,8 +86,11 @@ export type Bucket = 'day' | 'week' | 'month'
  * Calories per day, or averaged per week or month (over the days something was logged), from `from` through `to`.
  * A period with nothing logged has no value: an empty bar, not a zero.
  */
-export function calorieBars(days: DayTotals[], from: string, to: string, bucket: Bucket): { start: string; value: number | undefined }[] {
-  const byDay = new Map(days.map((d) => [d.date, d.calories]))
+export const calorieBars = (days: DayTotals[], from: string, to: string, bucket: Bucket) => averageBars(days.map((d) => ({ date: d.date, value: d.calories })), from, to, bucket)
+
+/** A value per day, or averaged per week or month over the days that have one; a period with none has no value. */
+export function averageBars(days: { date: string; value: number }[], from: string, to: string, bucket: Bucket): { start: string; value: number | undefined }[] {
+  const byDay = new Map(days.map((d) => [d.date, d.value]))
   const bars: { start: string; values: number[] }[] = []
   for (let day = from; day <= to; day = addDays(day, 1)) {
     const key = bucket === 'day' ? day : bucket === 'week' ? addDays(day, -((weekday(day) + 6) % 7)) : `${day.slice(0, 7)}-01`

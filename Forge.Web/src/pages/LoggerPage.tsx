@@ -6,7 +6,8 @@ import { Card, dangerButton, field, Notice, plainButton, primaryButton, Sheet, S
 import { leaveSuperset, loadDraft, replaceExercise, restsAfter, saveDraft, supersetWithNext, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
 import { ExerciseMenu, SetMenu, type ExerciseAction } from '../LoggerMenus'
-import { notifyRestEnd } from '../notify'
+import { haptic, notifyRestEnd } from '../notify'
+import { activityState, endWorkout, isLive, showWorkout } from '../liveActivity'
 import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
 import {
@@ -122,6 +123,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   const close = (to: string, finished = false) => {
     saveDraft(undefined)
     void notifyRestEnd(undefined)
+    void endWorkout()
     navigate(to, { replace: true, state: finished ? { finished } : undefined })
   }
 
@@ -147,6 +149,15 @@ function Logger({ draft, update, workouts, exercises, tested }: {
     write(REST_KEY, JSON.stringify(next))
   }
 
+  // In the iPhone app you feel a set checked off: a tap, or a stronger buzz when it's a new PR.
+  const checkOff = (e: number, s: number, change: Partial<DraftSet>, rest?: Pick<Draft, 'restEndsAt' | 'restTotal'>) => {
+    const list = withSet(e, s, { ...change, done: true })
+    const { exerciseId, sets } = list[e]
+    const pr = livePr(workouts, exerciseId, sets.map((set) => toSet(exerciseId, set)), draft.editing ? draft.id : undefined)
+    void haptic(pr === s ? 'success' : 'tap')
+    setExercises(list, rest)
+  }
+
   // Checking off a set fills empty fields from last time (like Strong), with the weight raised when you hit every rep
   // last time, and starts the rest timer (in a superset, after each round). Cardio has no rest timer, and fills in last
   // time's only when both are empty.
@@ -162,7 +173,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
       const time = last ? (last.durationSeconds ? formatClock(last.durationSeconds * 1000) : '') : (set.time ?? '')
       if (!(Number(distance) > 0) && !(parseDuration(time) > 0)) return setMessage('Enter a distance or time first, then check it off.')
       setMessage(undefined)
-      return setExercises(withSet(e, s, { distance, time, done: true }))
+      return checkOff(e, s, { distance, time })
     }
     const reps = set.reps || (hint ? String(hint.last.reps) : '')
     if (!(Number(reps) > 0)) return setMessage('Enter the reps first, then check the set off.')
@@ -170,7 +181,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
     const weight = set.weight || (hint ? String(hint.weight) : '')
     const rest = restFor(ex.exerciseId)
     const rests = !draft.editing && rest > 0 && restsAfter(draft.exercises, e)
-    setExercises(withSet(e, s, { weight, reps, done: true }), rests ? { restEndsAt: restEndsAt(rest), restTotal: rest } : undefined)
+    checkOff(e, s, { weight, reps }, rests ? { restEndsAt: restEndsAt(rest), restTotal: rest } : undefined)
   }
 
   const addSet = (e: number) => {
@@ -271,13 +282,13 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   const doneSets = draft.exercises.reduce((n, ex) => n + ex.sets.filter((s) => s.done).length, 0)
 
   const restLeft = draft.restEndsAt ? Math.ceil((draft.restEndsAt - now.getTime()) / 1000) : 0
-  // When the rest is up: a chime, and a buzz on phones that allow it (iPhone Safari doesn't). Then the timer goes away.
+  // When the rest is up: a chime, and in the iPhone app a buzz. Then the timer goes away.
   // Coming back long after (the page was closed or in the background) only clears it.
   const restOver = !!draft.restEndsAt && restLeft <= 0
   const endRest = useEffectEvent(() => {
     if (Date.now() - (draft.restEndsAt ?? 0) < 5000) {
       chime()
-      navigator.vibrate?.([200, 100, 200])
+      void haptic('warning')
     }
     update({ ...draft, restEndsAt: undefined, restTotal: undefined })
   })
@@ -288,6 +299,13 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   useEffect(() => {
     void notifyRestEnd(draft.restEndsAt)
   }, [draft.restEndsAt])
+  // In the iPhone app, the workout is on the Lock Screen, in the Dynamic Island, and on the Watch too. It's sent only
+  // when what it shows changes (typing a weight doesn't), and comes down once the workout is finished.
+  const liveActivity = isLive(draft) ? JSON.stringify(activityState(draft, names)) : undefined
+  useEffect(() => {
+    if (liveActivity) void showWorkout(JSON.parse(liveActivity))
+    else void endWorkout()
+  }, [liveActivity])
 
   // One exercise's card, and the Undo for a set deleted from it. `superset`: the exercises done with it as a superset,
   // itself included (only itself when it isn't in one).
@@ -424,7 +442,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   return (
     <>
       {/* Like an iOS nav bar: Back keeps the workout going (it stays on this phone); Finish saves it. */}
-      <div className="sticky top-0 z-10 -mx-4 flex items-center justify-between bg-canvas/85 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <div className="sticky top-[env(safe-area-inset-top)] z-10 -mx-4 flex items-center justify-between bg-canvas/85 px-2 backdrop-blur-md">
         <button onClick={() => navigate('/workouts')} className={plainButton}>
           <Icon name="chevronLeft" className="size-7" />
           Workouts

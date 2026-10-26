@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { addExercise, MUSCLE_GROUPS, type Exercise } from './api'
-import { Notice, SearchInput, Sheet, tintedButton } from './components'
+import { Notice, SearchInput, Sheet, tapArea, tintedButton } from './components'
+import { haptic } from './notify'
 import { useAction } from './usePolling'
 
 /**
  * Choose an exercise, or add a new one by name: for the workout logger and the plan editor. Chips narrow it to a muscle
- * group; `recent` (exercise IDs, most recent first) are listed on top. A full-screen Sheet, titled `title` (the logger's
- * Replace says so).
+ * group, and pick the group of a new one; `recent` (exercise IDs, most recent first) are listed on top. A full-screen
+ * Sheet, titled `title` (the logger's Replace says so).
  */
 export function ExercisePicker({ title = 'Add Exercise', exercises, recent = [], onPick, onClose }: {
   title?: string
@@ -22,35 +23,40 @@ export function ExercisePicker({ title = 'Add Exercise', exercises, recent = [],
   const q = query.trim()
   const matches = exercises.filter((e) => e.name.toLowerCase().includes(q.toLowerCase()) && (!group || e.muscleGroup === group))
   const recentShown = q || group ? [] : recent.map((id) => exercises.find((e) => e.id === id)).filter((e) => e !== undefined)
-  const exact = exercises.some((e) => e.name.toLowerCase() === q.toLowerCase())
+  const isNew = !!q && !exercises.some((e) => e.name.toLowerCase() === q.toLowerCase())
 
-  const add = async () => {
+  const add = async (muscleGroup: string) => {
     await run(async () => {
-      onPick(await addExercise(q, group ?? 'Other'))
+      const exercise = await addExercise(q, muscleGroup)
+      void haptic('success')
+      onPick(exercise)
     })
   }
 
   return (
     <Sheet title={title} full onClose={onClose}>
       <SearchInput value={query} onChange={setQuery} placeholder="Search exercises" onSubmit={() => matches[0] && onPick(matches[0])} />
-      <div role="group" aria-label="Muscle group" className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
+      {/* py-1 makes room for the chips' tap areas, which a scrolling row would cut off. */}
+      <div role="group" aria-label="Muscle group" className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none]">
         {[undefined, ...MUSCLE_GROUPS].map((g) => (
           <button
             key={g ?? 'All'}
             onClick={() => setGroup(g)}
             aria-pressed={group === g}
-            className={`min-h-9 shrink-0 rounded-full px-3.5 text-[15px] font-medium ${group === g ? 'bg-coral/15 text-coral-ink' : 'bg-surface text-muted'}`}
+            className={`${tapArea} min-h-9 shrink-0 rounded-full px-3.5 text-[15px] font-medium ${group === g ? 'bg-coral/15 text-coral-ink' : 'bg-surface text-muted'}`}
           >
             {g ?? 'All'}
           </button>
         ))}
       </div>
-      {q && !exact && (
-        <button onClick={add} disabled={adding} className={`w-full ${tintedButton}`}>
-          {adding ? 'Adding…' : `Add “${q}” as a new exercise`}
+      {/* A new exercise goes in the muscle group you pick with the chips above. */}
+      {isNew && group && (
+        <button onClick={() => add(group)} disabled={adding} className={`w-full ${tintedButton}`}>
+          {adding ? 'Adding…' : `Add “${q}” to ${group}`}
         </button>
       )}
-      {error && <Notice>{error}</Notice>}
+      {isNew && !group && <p className="px-1 text-[15px] text-muted">To add “{q}” as a new exercise, pick its muscle group above.</p>}
+      {error && <Notice tone="error">{error}</Notice>}
       {recentShown.length > 0 && (
         <>
           <h3 className="px-1 pt-1 text-[13px] font-semibold text-muted uppercase">Recent</h3>

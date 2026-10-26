@@ -26,7 +26,7 @@ export default function WorkoutDetailPage() {
   if (!workout) {
     return (
       <Page title="" back={BACK}>
-        <Status loading={!workouts.error} error={failure(workouts)} />
+        <Status loading={!workouts.error} error={failure(workouts)} onRetry={workouts.reload} />
       </Page>
     )
   }
@@ -117,6 +117,7 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
               Repeat
             </button>
             <button onClick={() => open(editDraft(workout))} className={tintedButton}>
+              <Icon name="pencil" className="size-5" />
               Edit
             </button>
           </>

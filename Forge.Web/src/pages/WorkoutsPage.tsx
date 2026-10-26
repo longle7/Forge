@@ -1,12 +1,12 @@
 import { Link, useNavigate } from 'react-router'
 import { getExercises, getPlan, getWorkouts, isCardio } from '../api'
-import { Card, Group, Page, plainButton, PrBadge, primaryButton, Row, SectionTitle, Status, tintedButton } from '../components'
+import { Card, Group, Page, plainButton, primaryButton, Row, SectionTitle, Status, tintedButton, WorkoutRow } from '../components'
 import { addDays, DAY_NAMES, localDate, WEEK, weekday } from '../dates'
 import { emptyDraft, loadDraft, planDraft, repeatDraft, saveDraft, type Draft } from '../draft'
 import { Icon } from '../icons'
 import { planFor, workedOut } from '../plan'
 import { failure, useNow, usePolling } from '../usePolling'
-import { formatDay, formatDuration, formatTime, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
+import { formatDay, formatTime, personalRecords, plural } from '../workouts'
 
 /** The Workouts tab: today's workout, this week's plan, recent history, the exercise list, and your maxes. */
 export default function WorkoutsPage() {
@@ -40,17 +40,12 @@ export default function WorkoutsPage() {
       </Group>
 
       <SectionTitle title="History" link={workouts.data?.length ? { to: '/workouts/history', label: 'See All' } : undefined} />
-      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={2} />
+      <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={2} onRetry={workouts.reload} />
       {workouts.data?.length === 0 && <p className="px-1 text-muted">Finished workouts show up here.</p>}
       {recent.length > 0 && (
         <Group>
           {recent.map((w) => (
-            <Row key={w.id} to={`/workouts/history/${w.id}`} detail={(records.get(w.id)?.size ?? 0) > 0 ? <PrBadge /> : undefined}>
-              <span className="block font-medium">{w.name}</span>
-              <span className="block text-[15px] text-muted">
-                {[formatDay(w.startedAt), formatDuration(workoutLength(w)), workoutTotals(w)].filter(Boolean).join(' · ')}
-              </span>
-            </Row>
+            <WorkoutRow key={w.id} workout={w} prs={records.get(w.id)?.size ?? 0} />
           ))}
         </Group>
       )}
@@ -84,6 +79,9 @@ export function TodayWorkoutCard({ quiet = false }: { quiet?: boolean }) {
   const last = workouts.data?.[0]
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
   const cardio = new Set(exercises.data?.filter(isCardio).map((e) => e.id))
+  // First visit, before the plan and workouts load: hold the card's place rather than offer the wrong workout. If
+  // they can't load, the card still offers a workout to start.
+  const loading = (plan.data === undefined && !plan.error) || (workouts.data === undefined && !workouts.error)
 
   const start = (next: Draft) => {
     saveDraft(next)
@@ -107,6 +105,8 @@ export function TodayWorkoutCard({ quiet = false }: { quiet?: boolean }) {
       </Card>
     )
   }
+
+  if (loading) return <Status loading rows={1} />
 
   if (planned && done) {
     return (

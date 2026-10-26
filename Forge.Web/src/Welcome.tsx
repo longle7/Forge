@@ -100,7 +100,7 @@ export default function Welcome() {
             {signingIn ? 'Signing In…' : 'Sign in with Apple'}
           </button>
         )}
-        {error && <Notice>{error}</Notice>}
+        {error && <Notice tone="error">{error}</Notice>}
       </div>
     </dialog>
   )

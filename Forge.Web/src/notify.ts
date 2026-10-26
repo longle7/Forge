@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core'
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { LocalNotifications } from '@capacitor/local-notifications'
 
 const REST_ID = 1
@@ -17,5 +18,19 @@ export async function notifyRestEnd(at: number | undefined) {
     await LocalNotifications.schedule({ notifications: [{ id: REST_ID, title: 'Rest is up', body: 'Time for your next set.', schedule: { at: new Date(at) } }] })
   } catch {
     // no notification: the timer on screen still counts down
+  }
+}
+
+/**
+ * In the iPhone app: a touch you can feel. `tap` for a light one (a set checked off, a switch), `success` when
+ * something is done (a save, a PR), `warning` when it needs you (rest is up). On the website it does nothing.
+ */
+export async function haptic(kind: 'tap' | 'success' | 'warning') {
+  if (!Capacitor.isNativePlatform()) return
+  try {
+    if (kind === 'tap') await Haptics.impact({ style: ImpactStyle.Light })
+    else await Haptics.notification({ type: kind === 'success' ? NotificationType.Success : NotificationType.Warning })
+  } catch {
+    // no haptics on this phone: nothing depends on them
   }
 }
