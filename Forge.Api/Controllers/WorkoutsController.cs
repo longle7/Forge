@@ -84,7 +84,8 @@ namespace Forge.Api.Controllers
             workout.StartedAtUtc = request.StartedAt.UtcDateTime;
             workout.FinishedAtUtc = request.FinishedAt.UtcDateTime;
             workout.Sets.Clear(); // the old sets are deleted (orphans of a required relationship)
-            // Each set keeps only what its kind uses: weight and reps, or a cardio distance and time.
+            // Each set keeps only what it uses: a lifting set its weight, reps, and kind; a cardio set its distance and
+            // time. Either can be in a superset.
             workout.Sets.AddRange(request.Sets.Select((s, i) => cardio.Contains(s.ExerciseId)
                 ? new WorkoutSet
                 {
@@ -92,6 +93,7 @@ namespace Forge.Api.Controllers
                     Position = i,
                     Distance = s.Distance > 0 ? s.Distance : null,
                     DurationSeconds = s.DurationSeconds > 0 ? s.DurationSeconds : null,
+                    Superset = s.Superset,
                 }
                 : new WorkoutSet
                 {
@@ -99,6 +101,8 @@ namespace Forge.Api.Controllers
                     Position = i,
                     Weight = s.Weight,
                     Reps = s.Reps,
+                    Kind = s.Kind,
+                    Superset = s.Superset,
                 }));
             await _db.SaveChangesAsync();
 
@@ -137,8 +141,8 @@ namespace Forge.Api.Controllers
             return deleted == 0 ? NotFound() : NoContent();
         }
 
-        // Checks what the attributes on the request can't: the sets' exercises, what each set needs for its kind, and
-        // the times. Returns the IDs of the cardio exercises, or adds errors to ModelState and returns null when invalid.
+        // Checks what the attributes on the request can't: the sets' exercises, what each lifting or cardio set needs,
+        // and the times. Returns the IDs of the cardio exercises, or adds errors to ModelState and returns null when invalid.
         private async Task<HashSet<int>?> ValidateAsync(WorkoutRequest request, string userId)
         {
             if (request.Sets.Count == 0 && request.Source != Health) // the Watch records no sets for strength training
@@ -203,7 +207,9 @@ namespace Forge.Api.Controllers
         [Range(0, 2000)] decimal Weight,
         [Range(0, 1000)] int Reps,
         [Range(0, 1000)] decimal? Distance = null,
-        [Range(0, 86_400)] int? DurationSeconds = null);
+        [Range(0, 86_400)] int? DurationSeconds = null,
+        [AllowedValues("warmup", "drop", "failure", null)] string? Kind = null,
+        [Range(1, 1000)] int? Superset = null);
 
     public record WorkoutResponse(
         Guid Id,
@@ -224,7 +230,7 @@ namespace Forge.Api.Controllers
             w.Name,
             DateTime.SpecifyKind(w.StartedAtUtc, DateTimeKind.Utc),
             DateTime.SpecifyKind(w.FinishedAtUtc, DateTimeKind.Utc),
-            w.Sets.OrderBy(s => s.Position).Select(s => new WorkoutSetResponse(s.ExerciseId, s.Weight, s.Reps, s.Distance, s.DurationSeconds)),
+            w.Sets.OrderBy(s => s.Position).Select(s => new WorkoutSetResponse(s.ExerciseId, s.Weight, s.Reps, s.Distance, s.DurationSeconds, s.Kind, s.Superset)),
             w.Source,
             w.Activity,
             w.ActiveCalories,
@@ -233,5 +239,5 @@ namespace Forge.Api.Controllers
             (w.HeartRate ?? []).Select(p => new HeartRatePointDto(p.S, p.Bpm))); // null for workouts saved before heart rate
     }
 
-    public record WorkoutSetResponse(int ExerciseId, decimal Weight, int Reps, decimal? Distance, int? DurationSeconds);
+    public record WorkoutSetResponse(int ExerciseId, decimal Weight, int Reps, decimal? Distance, int? DurationSeconds, string? Kind = null, int? Superset = null);
 }

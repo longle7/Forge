@@ -1,6 +1,6 @@
 import type { TestedMax, Workout } from './api'
 import { workoutDay } from './dates'
-import { isCardioSet, oneRepMax, platesPerSide } from './workouts'
+import { isLift, oneRepMax, platesPerSide } from './workouts'
 
 /** The lifts in a powerlifting total, by their built-in IDs (BuiltInExercises.cs). */
 export const BIG_THREE = [
@@ -20,11 +20,12 @@ interface Lift {
   tested: boolean
 }
 
-// Every weighted lift of one exercise, logged or tested. Bodyweight and cardio sets have no weight to go on.
+// Every weighted lift of one exercise, logged or tested. Bodyweight and cardio sets have no weight to go on, and
+// warm-ups don't count.
 function lifts(workouts: Workout[], tested: TestedMax[], exerciseId: number): Lift[] {
   const logged = workouts.flatMap((w) =>
     w.sets
-      .filter((s) => s.exerciseId === exerciseId && s.weight > 0 && s.reps > 0 && !isCardioSet(s))
+      .filter((s) => s.exerciseId === exerciseId && isLift(s))
       .map((s) => ({ weight: s.weight, reps: s.reps, date: workoutDay(w), tested: false })),
   )
   return [...logged, ...tested.filter((m) => m.exerciseId === exerciseId).map((m) => ({ weight: m.weight, reps: m.reps, date: m.date, tested: true }))]
@@ -61,13 +62,13 @@ export function percentTable(max: number): { percent: number; weight: number; pl
   })
 }
 
-/** The exercises you have a weighted set or a tested max for, most recently lifted first. */
+/** The exercises you have a lift or a tested max for, most recently lifted first: each one has an estimatedMax. */
 export function liftedExercises(workouts: Workout[], tested: TestedMax[]): number[] {
   const latest = new Map<number, string>()
   const see = (id: number, date: string) => {
     if ((latest.get(id) ?? '') < date) latest.set(id, date)
   }
-  for (const w of workouts) for (const s of w.sets) if (s.weight > 0 && !isCardioSet(s)) see(s.exerciseId, workoutDay(w))
+  for (const w of workouts) for (const s of w.sets) if (isLift(s)) see(s.exerciseId, workoutDay(w))
   for (const m of tested) see(m.exerciseId, m.date)
   return [...latest].sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0)).map(([id]) => id)
 }

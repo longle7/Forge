@@ -74,3 +74,7 @@ jobs:
           plutil -p "$RUNNER_TEMP/build/Build/Products/Release-iphoneos/App.app/Info.plist" | grep -E 'CFBundleIdentifier|NSCameraUsageDescription'
           # Apple rejects a HealthKit app without its permission text, so fail here instead.
           plutil -p "$RUNNER_TEMP/build/Build/Products/Release-iphoneos/App.app/Info.plist" | grep NSHealthShareUsageDescription
+          # The Live Activity extension must be built and embedded in the app.
+          app="$RUNNER_TEMP/build/Build/Products/Release-iphoneos/App.app"
+          plutil -p "$app/PlugIns/LiveActivity.appex/Info.plist" | grep -E 'NSExtensionPointIdentifier|CFBundleIdentifier'
+          plutil -p "$app/Info.plist" | grep NSSupportsLiveActivities
