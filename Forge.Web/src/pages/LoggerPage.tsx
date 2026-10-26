@@ -5,6 +5,7 @@ import { readJson, write } from '../cache'
 import { Card, dangerButton, field, Notice, plainButton, primaryButton, Sheet, SupersetGroup, tintedButton } from '../components'
 import { leaveSuperset, loadDraft, replaceExercise, restsAfter, saveDraft, supersetWithNext, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
+import { equipmentOf } from '../lifts'
 import { ExerciseMenu, SetMenu, type ExerciseAction } from '../LoggerMenus'
 import { haptic, notifyRestEnd } from '../notify'
 import { activityState, endWorkout, isLive, showWorkout } from '../liveActivity'
@@ -354,8 +355,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
                   ))}
                 </select>
               </label>
-              {/* ponytail: shown for exercises with "Barbell" in the name, so a custom barbell lift needs it there. */}
-              {/barbell/i.test(name) && (
+              {equipmentOf(name) === 'barbell' && (
                 <button onClick={() => openPlates(ex)} className={chip}>
                   <Icon name="plates" className="size-4 text-muted" />
                   Plates
