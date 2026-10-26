@@ -129,6 +129,7 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
               Repeat
             </button>
             <button onClick={() => open(editDraft(workout))} className={tintedButton}>
+              <Icon name="pencil" className="size-5" />
               Edit
             </button>
           </>

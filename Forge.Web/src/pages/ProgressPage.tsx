@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, type DayTotals, type Habit, type PlanDay, type Profile, type WeighIn, type Workout } from '../api'
+import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, isNative, type DayTotals, type Habit, type PlanDay, type Profile, type WeighIn, type Workout } from '../api'
 import { completion, habitStreak } from '../habits'
 import { BarChart, ChartTable, LineChart, Sparkline } from '../charts'
 import { RING } from '../colors'
@@ -50,10 +50,13 @@ export default function ProgressPage() {
       <StrengthCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
       <RecordsCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
 
-      <Card>
-        <CardTitle icon="hourglass" title="Screen time" />
-        <p className="mt-1 text-[15px] text-muted">With the Forge iPhone app, this shows how much time Time Out saved you each week.</p>
-      </Card>
+      {/* Points the website to the iPhone app; inside the app it would point at itself. */}
+      {!isNative && (
+        <Card>
+          <CardTitle icon="hourglass" title="Screen time" />
+          <p className="mt-1 text-[15px] text-muted">With the Forge iPhone app, this shows how much time Time Out saved you each week.</p>
+        </Card>
+      )}
     </Page>
   )
 }

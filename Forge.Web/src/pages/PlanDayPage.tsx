@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { getExercises, getPlan, isCardio, makeRestDay, savePlanDay, type Exercise, type PlanDay, type PlanExercise } from '../api'
-import { Card, dangerButton, field, Notice, NotFound, Page, primaryButton, Status, Stepper, tapArea, tintedButton } from '../components'
+import { Card, dangerButton, field, Notice, NotFound, Page, plainButton, primaryButton, Status, Stepper, tapArea, tintedButton } from '../components'
 import { DAY_NAMES } from '../dates'
 import { ExercisePicker } from '../ExercisePicker'
 import { Icon } from '../icons'
@@ -124,7 +124,8 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
       <button onClick={save} disabled={saving} className={primaryButton}>
         {saving ? 'Saving…' : `Save ${DAY_NAMES[day]}`}
       </button>
-      <button onClick={rest} className={dangerButton}>
+      {/* Red only when a plan would go; keeping a rest day loses nothing. */}
+      <button onClick={rest} className={existing ? dangerButton : `w-full justify-center ${plainButton}`}>
         {existing ? 'Make It a Rest Day' : 'Keep It a Rest Day'}
       </button>
 

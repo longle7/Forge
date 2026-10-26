@@ -6,7 +6,8 @@ import { useAction } from './usePolling'
 
 /**
  * Choose an exercise, or add a new one by name: for the workout logger and the plan editor. Chips narrow it to a muscle
- * group; `recent` (exercise IDs, most recent first) are listed on top. A full-screen Sheet.
+ * group, and pick the group of a new one; `recent` (exercise IDs, most recent first) are listed on top. A full-screen
+ * Sheet.
  */
 export function ExercisePicker({ exercises, recent = [], onPick, onClose }: {
   exercises: Exercise[]
@@ -21,11 +22,11 @@ export function ExercisePicker({ exercises, recent = [], onPick, onClose }: {
   const q = query.trim()
   const matches = exercises.filter((e) => e.name.toLowerCase().includes(q.toLowerCase()) && (!group || e.muscleGroup === group))
   const recentShown = q || group ? [] : recent.map((id) => exercises.find((e) => e.id === id)).filter((e) => e !== undefined)
-  const exact = exercises.some((e) => e.name.toLowerCase() === q.toLowerCase())
+  const isNew = !!q && !exercises.some((e) => e.name.toLowerCase() === q.toLowerCase())
 
-  const add = async () => {
+  const add = async (muscleGroup: string) => {
     await run(async () => {
-      const exercise = await addExercise(q, group ?? 'Other')
+      const exercise = await addExercise(q, muscleGroup)
       void haptic('success')
       onPick(exercise)
     })
@@ -47,11 +48,13 @@ export function ExercisePicker({ exercises, recent = [], onPick, onClose }: {
           </button>
         ))}
       </div>
-      {q && !exact && (
-        <button onClick={add} disabled={adding} className={`w-full ${tintedButton}`}>
-          {adding ? 'Adding…' : `Add “${q}” as a new exercise`}
+      {/* A new exercise goes in the muscle group you pick with the chips above. */}
+      {isNew && group && (
+        <button onClick={() => add(group)} disabled={adding} className={`w-full ${tintedButton}`}>
+          {adding ? 'Adding…' : `Add “${q}” to ${group}`}
         </button>
       )}
+      {isNew && !group && <p className="px-1 text-[15px] text-muted">To add “{q}” as a new exercise, pick its muscle group above.</p>}
       {error && <Notice tone="error">{error}</Notice>}
       {recentShown.length > 0 && (
         <>

@@ -58,10 +58,7 @@ export function TestedMaxSheet({ exerciseId, max, today, onSaved, onClose }: {
         </label>
         <div className="flex items-center justify-between">
           <span className="text-[15px] text-muted">Reps</span>
-          <div className="flex items-center gap-3">
-            <span className="w-6 text-center font-semibold tabular-nums">{reps}</span>
-            <Stepper value={reps} onChange={setReps} min={1} max={10} label="reps" />
-          </div>
+          <Stepper value={reps} onChange={setReps} min={1} max={10} label="reps" />
         </div>
         <label className="block">
           <span className="text-[15px] text-muted">Day</span>

@@ -204,7 +204,7 @@ function Review({ kind, initial, date, meal, onLogged, onClose }: { kind: Kind; 
         {saving ? 'Logging…' : `Add to ${mealLabel} · ${formatKcal(total)} kcal`}
       </button>
       <button onClick={onClose} className={`w-full justify-center ${plainButton}`}>
-        Retake
+        Cancel
       </button>
     </Sheet>
   )
