@@ -6,7 +6,8 @@ namespace Forge.Api.Data
     /// The exercises everyone starts with, seeded by the InitialCreate migration (ForgeDbContext uses HasData).
     /// Custom exercises take the IDs after these, so add new built-ins in a migration with plain INSERTs (no fixed
     /// IDs), not by appending here with new IDs that someone's own exercise may already have. The cardio built-ins came
-    /// that way (the AddCardio migration).
+    /// that way (the AddCardio migration), and so did the bigger lift library (AddLiftLibrary). The web app knows each
+    /// built-in's muscles, equipment and drawing by its name (Forge.Web/src/lifts.ts), so a new one needs an entry there.
     /// </summary>
     public static class BuiltInExercises
     {
