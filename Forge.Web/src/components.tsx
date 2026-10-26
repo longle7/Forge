@@ -239,8 +239,15 @@ export function BarRow({ label, share, color, value }: { label: ReactNode; share
   )
 }
 
-/** − value + buttons, like iOS's stepper. */
-export function Stepper({ value, onChange, min, max, label }: { value: number; onChange: (value: number) => void; min: number; max: number; label: string }) {
+/** − value + buttons, like iOS's stepper. `text` shows in place of the value ("8, 8, 6": sets with different reps). */
+export function Stepper({ value, text, onChange, min, max, label }: {
+  value: number
+  text?: string
+  onChange: (value: number) => void
+  min: number
+  max: number
+  label: string
+}) {
   const button = `${tapArea} grid size-9 place-items-center rounded-lg bg-fill text-[20px] leading-none text-coral-ink active:opacity-60 disabled:opacity-30`
   return (
     <div role="group" aria-label={label} className="flex items-center gap-1">
@@ -248,7 +255,7 @@ export function Stepper({ value, onChange, min, max, label }: { value: number; o
         −
       </button>
       <span className="min-w-8 text-center font-semibold tabular-nums" aria-live="polite">
-        {value}
+        {text ?? value}
       </span>
       <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} aria-label={`More ${label}`} className={button}>
         +

@@ -128,6 +128,15 @@ export function setLabels(sets: Pick<WorkoutSet, 'kind'>[]): string[] {
   return sets.map((set) => (set.kind ? SET_KINDS[set.kind].letter : String(++normalSets)))
 }
 
+/** The sets that aren't normal ones, counted: "+2 warm-ups, 1 drop set", or "" when there are none. */
+export function setKindsSummary(sets: Pick<WorkoutSet, 'kind'>[]): string {
+  const counted = (Object.keys(SET_KINDS) as SetKind[])
+    .map((kind) => ({ kind, count: sets.filter((s) => s.kind === kind).length }))
+    .filter(({ count }) => count > 0)
+    .map(({ kind, count }) => plural(count, SET_KINDS[kind].name.toLowerCase()))
+  return counted.length ? `+${counted.join(', ')}` : ''
+}
+
 /**
  * Exercises as they're done: the neighbours that share a superset number together, every other exercise on its own. A
  * number only counts when a neighbour shares it, so moving or removing an exercise needs no cleanup. `superset` reads

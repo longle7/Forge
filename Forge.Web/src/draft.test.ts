@@ -1,6 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import type { Routine, Workout } from './api'
-import { editDraft, emptyDraft, leaveSuperset, repeatDraft, replaceExercise, restsAfter, routineDraft, supersetWithNext, toWorkout, workoutName, type Draft, type DraftExercise } from './draft'
+import type { Routine, Workout, WorkoutSet } from './api'
+import {
+  builderToPlanExercises,
+  builderToRoutineSets,
+  builderToSets,
+  editDraft,
+  emptyDraft,
+  hasEmptySet,
+  leaveSuperset,
+  planExercisesToBuilder,
+  planExerciseToBuilder,
+  repeatDraft,
+  replaceExercise,
+  restsAfter,
+  routineDraft,
+  routineToBuilder,
+  separateFromNext,
+  supersetWithNext,
+  toWorkout,
+  withSetCount,
+  withNormalSets,
+  workoutName,
+  type Draft,
+  type DraftExercise,
+} from './draft'
 
 const RUNNING = 36
 
@@ -164,6 +187,15 @@ describe('supersets', () => {
     expect(numbers(leaveSuperset(exercises(1, 1, 1), 2))).toEqual([1, 1, undefined])
   })
 
+  it.each([
+    { name: 'a pair becomes two exercises on their own', list: exercises(1, 1), index: 0, expected: [1, 2] },
+    { name: 'the rest of the superset goes on together', list: exercises(1, 1, 1), index: 0, expected: [1, 2, 2] },
+    { name: 'splits in the middle', list: exercises(1, 1, 1, 1), index: 1, expected: [1, 1, 2, 2] },
+    { name: 'leaves the next superset alone', list: exercises(1, 1, 3, 3), index: 0, expected: [1, 4, 3, 3] },
+  ])('separateFromNext $name', ({ list, index, expected }) => {
+    expect(numbers(separateFromNext(list, index))).toEqual(expected)
+  })
+
   const withSets = (superset: number | undefined, ...done: boolean[]): DraftExercise => ({ exerciseId: 1, superset, sets: done.map((d) => ({ weight: '', reps: '8', done: d })) })
 
   it.each([
@@ -184,4 +216,64 @@ it.each([
 ])('replaceExercise $name', ({ cardio, sets }) => {
   const bench: DraftExercise = { exerciseId: 1, superset: 2, sets: [{ weight: '95', reps: '10', kind: 'warmup', done: true }, { weight: '135', reps: '8', done: false }] }
   expect(replaceExercise(bench, 7, cardio)).toEqual({ exerciseId: 7, superset: 2, sets })
+})
+
+describe('the workout builder', () => {
+  const W = { weight: '95', reps: '10', kind: 'warmup' as const, done: false }
+  const D = { weight: '115', reps: '10', kind: 'drop' as const, done: false }
+  const normal = (reps: string) => ({ weight: '135', reps, done: false })
+  const run = (distance: number | null, durationSeconds: number | null): WorkoutSet => ({ exerciseId: RUNNING, weight: 0, reps: 0, distance, durationSeconds })
+
+  it('turns a plan day into the builder’s exercises and back', () => {
+    const plan = [
+      { exerciseId: 1, sets: 3, reps: 8 },
+      { exerciseId: RUNNING, sets: 1, reps: 1 },
+    ]
+    const exercises = planExercisesToBuilder(plan, new Set([RUNNING]))
+
+    expect(exercises).toEqual([
+      { exerciseId: 1, sets: Array(3).fill({ weight: '', reps: '8', done: false }) },
+      { exerciseId: RUNNING, sets: [{ weight: '', reps: '', distance: '', time: '', done: false }] },
+    ])
+    expect(builderToPlanExercises(exercises)).toEqual(plan)
+  })
+
+  // The API's nulls (a normal set, no superset) are left out, as editDraft's test shows: the same to the API.
+  it.each([
+    { name: 'warm-ups, a superset, and a drop set', sets: toWorkout(editDraft(saved), saved.finishedAt).sets },
+    { name: 'sets with different reps', sets: [8, 8, 6].map((reps): WorkoutSet => ({ exerciseId: 1, weight: 135, reps })) },
+    { name: 'cardio with a distance, a time, or both, in a superset', sets: [run(3.1, null), run(null, 1620), { ...run(3.1, 1620), superset: 2 }, { exerciseId: 8, weight: 0, reps: 20, superset: 2 }] },
+  ])('a routine with $name comes back from the builder as it was', ({ sets }) => {
+    expect(builderToRoutineSets(routineToBuilder({ sets }))).toEqual(sets)
+  })
+
+  it('a cardio exercise added to a routine saves a 1-minute stand-in, since the API wants a distance or time', () => {
+    expect(builderToRoutineSets([planExerciseToBuilder({ exerciseId: RUNNING, sets: 1, reps: 1 }, true)])).toEqual([run(null, 60)])
+  })
+
+  it('builderToSets saves every set of a past workout, done; a cardio exercise needs a distance or time', () => {
+    const bench = withNormalSets(planExerciseToBuilder({ exerciseId: 1, sets: 2, reps: 8 }, false), { weight: '135' })
+    const running = planExerciseToBuilder({ exerciseId: RUNNING, sets: 1, reps: 1 }, true)
+    const ran = withNormalSets(running, { distance: '3.1', time: '27:00' })
+
+    expect(hasEmptySet([bench, running])).toBe(true)
+    expect(hasEmptySet([bench, ran])).toBe(false)
+    expect(builderToSets([bench, ran])).toEqual([
+      { exerciseId: 1, weight: 135, reps: 8 },
+      { exerciseId: 1, weight: 135, reps: 8 },
+      run(3.1, 1620),
+    ])
+  })
+
+  it.each([
+    { name: 'adds copies of the last normal set after it', sets: [W, normal('8'), normal('6'), D], count: 4, expected: [W, normal('8'), normal('6'), normal('6'), normal('6'), D] },
+    { name: 'takes the last normal sets off', sets: [W, normal('8'), normal('6'), D], count: 1, expected: [W, normal('8'), D] },
+    { name: 'with only warm-ups, adds a normal copy of the last one', sets: [W, W], count: 1, expected: [W, W, { ...W, kind: undefined }] },
+  ])('withSetCount $name, other kinds of sets staying as they are', ({ sets, count, expected }) => {
+    expect(withSetCount({ exerciseId: 1, sets }, count).sets).toEqual(expected)
+  })
+
+  it('withNormalSets changes only the normal sets', () => {
+    expect(withNormalSets({ exerciseId: 1, sets: [W, normal('8'), normal('6'), D] }, { reps: '5' }).sets).toEqual([W, normal('5'), normal('5'), D])
+  })
 })
