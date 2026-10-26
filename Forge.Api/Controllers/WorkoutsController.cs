@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Forge.Api.Data;
 using Forge.Api.Domain;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 
 namespace Forge.Api.Controllers
@@ -141,8 +142,8 @@ namespace Forge.Api.Controllers
             return deleted == 0 ? NotFound() : NoContent();
         }
 
-        // Checks what the attributes on the request can't: the sets' exercises, what each lifting or cardio set needs,
-        // and the times. Returns the IDs of the cardio exercises, or adds errors to ModelState and returns null when invalid.
+        // Checks what the attributes on the request can't: the sets (see CheckSetsAsync) and the times. Returns the IDs of
+        // the cardio exercises, or adds errors to ModelState and returns null when invalid.
         private async Task<HashSet<int>?> ValidateAsync(WorkoutRequest request, string userId)
         {
             if (request.Sets.Count == 0 && request.Source != Health) // the Watch records no sets for strength training
@@ -154,18 +155,7 @@ namespace Forge.Api.Controllers
                 ModelState.AddModelError(nameof(request.Sets), $"A workout can have up to {MaxSets} sets.");
             }
 
-            var exerciseIds = request.Sets.Select(s => s.ExerciseId).Distinct().ToList();
-            var known = await _db.Exercises
-                .Where(e => exerciseIds.Contains(e.Id) && (e.UserId == null || e.UserId == userId))
-                .ToDictionaryAsync(e => e.Id, e => e.MuscleGroup == ExercisesController.Cardio);
-            if (known.Count != exerciseIds.Count)
-            {
-                ModelState.AddModelError(nameof(request.Sets), "A set has an unknown exercise.");
-            }
-            else if (request.Sets.Any(s => known[s.ExerciseId] ? !(s.Distance > 0 || s.DurationSeconds > 0) : s.Reps < 1))
-            {
-                ModelState.AddModelError(nameof(request.Sets), "Each set needs its reps, or for cardio a distance or time.");
-            }
+            var cardio = await CheckSetsAsync(_db, ModelState, request.Sets, userId);
 
             if (request.FinishedAt < request.StartedAt)
             {
@@ -176,7 +166,27 @@ namespace Forge.Api.Controllers
                 ModelState.AddModelError(nameof(request.FinishedAt), "A workout can last up to 24 hours.");
             }
 
-            return ModelState.IsValid ? [.. known.Where(e => e.Value).Select(e => e.Key)] : null;
+            return ModelState.IsValid ? cardio : null;
+        }
+
+        // The checks a workout's and a routine's sets share: every exercise is built in or yours, a lifting set has its
+        // reps, and a cardio set a distance or time. Adds an error to `modelState` for the first that fails. Returns the IDs
+        // of the cardio exercises, which keep a distance and time instead of weight and reps.
+        internal static async Task<HashSet<int>> CheckSetsAsync(ForgeDbContext db, ModelStateDictionary modelState, IReadOnlyCollection<WorkoutSetRequest> sets, string userId)
+        {
+            var exerciseIds = sets.Select(s => s.ExerciseId).Distinct().ToList();
+            var known = await db.Exercises
+                .Where(e => exerciseIds.Contains(e.Id) && (e.UserId == null || e.UserId == userId))
+                .ToDictionaryAsync(e => e.Id, e => e.MuscleGroup == ExercisesController.Cardio);
+            if (known.Count != exerciseIds.Count)
+            {
+                modelState.AddModelError(nameof(WorkoutRequest.Sets), "A set has an unknown exercise.");
+            }
+            else if (sets.Any(s => known[s.ExerciseId] ? !(s.Distance > 0 || s.DurationSeconds > 0) : s.Reps < 1))
+            {
+                modelState.AddModelError(nameof(WorkoutRequest.Sets), "Each set needs its reps, or for cardio a distance or time.");
+            }
+            return [.. known.Where(e => e.Value).Select(e => e.Key)];
         }
     }
 

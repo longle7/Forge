@@ -36,6 +36,7 @@ namespace Forge.Api.Controllers
             {
                 await using var transaction = await _db.Database.BeginTransactionAsync();
                 await _db.Workouts.Where(w => w.UserId == userId).ExecuteDeleteAsync(); // their sets go with them
+                await _db.Routines.Where(r => r.UserId == userId).ExecuteDeleteAsync();
                 await _db.PlanDays.Where(d => d.UserId == userId).ExecuteDeleteAsync(); // and their exercises
                 await _db.TestedMaxes.Where(m => m.UserId == userId).ExecuteDeleteAsync(); // before your exercises they point at
                 await _db.Exercises.Where(e => e.UserId == userId).ExecuteDeleteAsync();

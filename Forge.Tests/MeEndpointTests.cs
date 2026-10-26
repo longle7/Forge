@@ -26,6 +26,7 @@ public class MeEndpointTests : IDisposable
         var exercise = await (await client.PostAsJsonAsync("/exercises", new ExerciseRequest("Zercher Squat", "Legs"))).Content.ReadFromJsonAsync<ExerciseResponse>();
         var start = DateTimeOffset.UtcNow.AddHours(-1);
         await client.PutAsJsonAsync($"/workouts/{Guid.NewGuid()}", new WorkoutRequest("Legs", start, start.AddMinutes(40), [new(exercise!.Id, 135, 5)]));
+        await client.PutAsJsonAsync($"/routines/{Guid.NewGuid()}", new RoutineRequest("Legs", [new(exercise.Id, 135, 5)]));
         await client.PutAsJsonAsync("/plan/1", new { name = "Leg Day", exercises = new[] { new { exerciseId = exercise.Id, sets = 3, reps = 5 } } });
         await client.PutAsJsonAsync("/profile", new ProfileDto("male", 1994, 70, 185, "light", "lose", 1, 2150, 167, 190, 72));
         await client.PutAsJsonAsync("/weigh-ins/2026-10-10", new { weight = 185 });
@@ -46,7 +47,8 @@ public class MeEndpointTests : IDisposable
             + db.Exercises.Count(e => e.UserId == userId) + db.FoodEntries.Count(f => f.UserId == userId)
             + db.SavedMeals.Count(m => m.UserId == userId) + db.WeighIns.Count(w => w.UserId == userId)
             + db.Habits.Count(h => h.UserId == userId) + db.UserProfiles.Count(p => p.UserId == userId)
-            + db.TestedMaxes.Count(m => m.UserId == userId) + db.ActiveEnergy.Count(a => a.UserId == userId);
+            + db.TestedMaxes.Count(m => m.UserId == userId) + db.ActiveEnergy.Count(a => a.UserId == userId)
+            + db.Routines.Count(r => r.UserId == userId);
     }
 
     [Fact]
@@ -61,12 +63,12 @@ public class MeEndpointTests : IDisposable
             db.ScanUsage.Add(new ScanUsage { UserId = "alice", Day = new DateOnly(2026, 10, 10), Count = 2 });
             db.SaveChanges();
         }
-        Assert.Equal(10, RowsOf("alice")); // one in each table, so the fill really did fill
+        Assert.Equal(11, RowsOf("alice")); // one in each table, so the fill really did fill
 
         Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync("/me")).StatusCode);
 
         Assert.Equal(0, RowsOf("alice"));
-        Assert.Equal(10, RowsOf("bob"));
+        Assert.Equal(11, RowsOf("bob"));
         using var after = TestDb.Open();
         Assert.False(after.ScanUsage.Any(u => u.UserId == "alice"));
         Assert.False(after.WorkoutSets.Any(s => s.Exercise!.UserId == "alice"));
