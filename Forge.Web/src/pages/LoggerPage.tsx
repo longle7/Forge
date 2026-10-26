@@ -1,14 +1,38 @@
-import { useEffect, useEffectEvent, useState } from 'react'
+import { Fragment, useEffect, useEffectEvent, useState, type ReactNode } from 'react'
 import { Navigate, useNavigate } from 'react-router'
-import { ApiError, getExercises, getMaxes, getWorkouts, isCardio, saveWorkout, type Exercise, type TestedMax, type Workout } from '../api'
+import { ApiError, getExercises, getMaxes, getWorkouts, isCardio, saveWorkout, type Exercise, type TestedMax, type Workout, type WorkoutSet } from '../api'
 import { readJson, write } from '../cache'
-import { Card, dangerButton, field, Notice, plainButton, PrBadge, primaryButton, Sheet, tintedButton } from '../components'
-import { loadDraft, saveDraft, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
+import { Card, dangerButton, field, Notice, plainButton, primaryButton, Sheet, SupersetGroup, tintedButton } from '../components'
+import { leaveSuperset, loadDraft, replaceExercise, restsAfter, saveDraft, supersetWithNext, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
+import { ExerciseMenu, SetMenu, type ExerciseAction } from '../LoggerMenus'
 import { notifyRestEnd } from '../notify'
 import { Icon } from '../icons'
 import { useNow, usePolling, useTitle } from '../usePolling'
-import { BAR, formatCardio, formatClock, formatDay, formatMiles, formatWeight, isLift, livePr, oneRepMax, parseDuration, platesPerSide, plural, previousSets, progressionStep, recentExercises } from '../workouts'
+import {
+  BAR,
+  formatCardio,
+  formatClock,
+  formatDay,
+  formatMiles,
+  formatWeight,
+  groupSupersets,
+  isCardioSet,
+  isLift,
+  isWarmup,
+  livePr,
+  move,
+  oneRepMax,
+  parseDuration,
+  platesPerSide,
+  plural,
+  previousFor,
+  previousSets,
+  progressionStep,
+  recentExercises,
+  SET_KINDS,
+  setLabels,
+} from '../workouts'
 import { estimatedMax } from '../maxes'
 
 /** Rest after a checked-off set: 90 seconds, unless you choose another length for the exercise (kept on this device). */
@@ -48,6 +72,12 @@ function chime() {
 
 const chip = 'flex min-h-9 items-center gap-1.5 rounded-full bg-fill px-3 text-[15px] font-medium active:opacity-70'
 
+/** How long a deleted set can be brought back with Undo. */
+const UNDO_SECONDS = 8
+
+/** A set in short, as in the Previous column: "135 × 8", "12 reps", or for cardio "3.1 mi". */
+const shortSet = (set: WorkoutSet) => (isCardioSet(set) ? formatCardio(set) : set.weight > 0 ? `${formatWeight(set.weight)} × ${set.reps}` : `${set.reps} reps`)
+
 /** The workout in progress (/workouts/active). Started from Home or the Workouts tab, which put it on this phone. */
 export default function LoggerPage() {
   const [draft, setDraft] = useState(loadDraft)
@@ -74,7 +104,8 @@ function Logger({ draft, update, workouts, exercises, tested }: {
 }) {
   const navigate = useNavigate()
   const now = useNow()
-  const [picking, setPicking] = useState(false)
+  const [picker, setPicker] = useState<{ replacing?: number }>() // open for Add Exercise, or to replace that exercise
+  const [deleted, setDeleted] = useState<{ exercise: number; index: number; set: DraftSet }>() // for Undo, for a few seconds
   const [added, setAdded] = useState<Exercise[]>([]) // made in the picker, before the list reloads
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string>()
@@ -101,9 +132,14 @@ function Logger({ draft, update, workouts, exercises, tested }: {
     draft.exercises.map((ex, i) => (i !== e ? ex : { ...ex, sets: ex.sets.map((set, j) => (j !== s ? set : { ...set, ...change })) }))
 
   const previous = (exerciseId: number) => previousSets(workouts, exerciseId, draft.editing ? draft.id : undefined)
-  // Weight to add this time: 5 lb (10 for legs) when you hit every target rep last time.
+  // Weight to add this time: 5 lb (10 for legs) when you hit every target rep last time. Warm-ups have no targets.
   const stepFor = (ex: DraftExercise) =>
-    cardio.has(ex.exerciseId) ? 0 : progressionStep(previous(ex.exerciseId), ex.sets.map((s) => Number(s.reps)), legs.has(ex.exerciseId))
+    cardio.has(ex.exerciseId) ? 0 : progressionStep(previous(ex.exerciseId), ex.sets.filter((s) => !isWarmup(s)).map((s) => Number(s.reps)), legs.has(ex.exerciseId))
+  // What last time says for set `s`: its set then, and the weight to try now, raised by the step unless it's a warm-up.
+  const hintFor = (ex: DraftExercise, s: number) => {
+    const last = previousFor(previous(ex.exerciseId), ex.sets, s)
+    return last && { last, weight: last.weight + (isWarmup(ex.sets[s]) ? 0 : stepFor(ex)) }
+  }
   const restFor = (exerciseId: number) => rests[exerciseId] ?? REST_SECONDS
   const changeRest = (exerciseId: number, seconds: number) => {
     const next = { ...rests, [exerciseId]: seconds }
@@ -112,43 +148,86 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   }
 
   // Checking off a set fills empty fields from last time (like Strong), with the weight raised when you hit every rep
-  // last time, and starts the rest timer. Cardio has no rest timer, and fills in last time's only when both are empty.
+  // last time, and starts the rest timer (in a superset, after each round). Cardio has no rest timer, and fills in last
+  // time's only when both are empty.
   const toggleDone = (e: number, s: number) => {
     const ex = draft.exercises[e]
     const set = ex.sets[s]
     if (set.done) return setExercises(withSet(e, s, { done: false }))
     wakeAudio()
-    const prev = previous(ex.exerciseId)
-    const hint = prev[s] ?? prev.at(-1)
+    const hint = hintFor(ex, s)
     if (cardio.has(ex.exerciseId)) {
-      const last = !set.distance && !set.time ? hint : undefined
+      const last = !set.distance && !set.time ? hint?.last : undefined
       const distance = last ? (last.distance ? String(last.distance) : '') : (set.distance ?? '')
       const time = last ? (last.durationSeconds ? formatClock(last.durationSeconds * 1000) : '') : (set.time ?? '')
       if (!(Number(distance) > 0) && !(parseDuration(time) > 0)) return setMessage('Enter a distance or time first, then check it off.')
       setMessage(undefined)
       return setExercises(withSet(e, s, { distance, time, done: true }))
     }
-    const reps = set.reps || (hint ? String(hint.reps) : '')
+    const reps = set.reps || (hint ? String(hint.last.reps) : '')
     if (!(Number(reps) > 0)) return setMessage('Enter the reps first, then check the set off.')
     setMessage(undefined)
-    const weight = set.weight || (hint ? String(hint.weight + stepFor(ex)) : '')
+    const weight = set.weight || (hint ? String(hint.weight) : '')
     const rest = restFor(ex.exerciseId)
-    setExercises(withSet(e, s, { weight, reps, done: true }), draft.editing || !rest ? undefined : { restEndsAt: restEndsAt(rest), restTotal: rest })
+    const rests = !draft.editing && rest > 0 && restsAfter(draft.exercises, e)
+    setExercises(withSet(e, s, { weight, reps, done: true }), rests ? { restEndsAt: restEndsAt(rest), restTotal: rest } : undefined)
   }
 
   const addSet = (e: number) => {
     const last = draft.exercises[e].sets.at(-1)
     setExercises(draft.exercises.map((ex, i) => (i !== e ? ex : { ...ex, sets: [...ex.sets, last ? { ...last, done: false } : { weight: '', reps: '', done: false }] })))
   }
-  const removeSet = (e: number) => setExercises(draft.exercises.map((ex, i) => (i !== e ? ex : { ...ex, sets: ex.sets.slice(0, -1) })))
-  const removeExercise = (e: number) => {
-    if (draft.exercises[e].sets.some((s) => s.done) && !confirm(`Remove ${names.get(draft.exercises[e].exerciseId) ?? 'this exercise'} and its sets?`)) return
-    setExercises(draft.exercises.filter((_, i) => i !== e))
+  // Any set can go, and comes back where it was with Undo.
+  const deleteSet = (e: number, s: number) => {
+    setDeleted({ exercise: e, index: s, set: draft.exercises[e].sets[s] })
+    setExercises(draft.exercises.map((ex, i) => (i !== e ? ex : { ...ex, sets: ex.sets.filter((_, j) => j !== s) })))
+  }
+  const undoDelete = ({ exercise, index, set }: NonNullable<typeof deleted>) => {
+    setDeleted(undefined)
+    setExercises(draft.exercises.map((ex, i) => (i !== exercise ? ex : { ...ex, sets: [...ex.sets.slice(0, index), set, ...ex.sets.slice(index)] })))
+  }
+  useEffect(() => {
+    if (!deleted) return
+    const timer = setTimeout(() => setDeleted(undefined), UNDO_SECONDS * 1000)
+    return () => clearTimeout(timer)
+  }, [deleted])
+
+  // Removing or replacing an exercise loses its checked-off sets, so then it asks first. True when it may go ahead.
+  const confirmLosingSets = (e: number, question: string) => !draft.exercises[e].sets.some((s) => s.done) || confirm(question)
+  const chooseForExercise = (e: number, action: ExerciseAction) => {
+    const name = names.get(draft.exercises[e].exerciseId) ?? 'this exercise'
+    // The exercises are about to change places or sets, so Undo could put a deleted set back in the wrong one.
+    setDeleted(undefined)
+    switch (action) {
+      case 'up':
+      case 'down':
+        return setExercises(move(draft.exercises, e, action === 'up' ? -1 : 1))
+      case 'replace':
+        if (confirmLosingSets(e, `Replace ${name}? Its checked-off sets are cleared.`)) setPicker({ replacing: e })
+        return
+      case 'superset':
+        return setExercises(supersetWithNext(draft.exercises, e))
+      case 'leave':
+        return setExercises(leaveSuperset(draft.exercises, e))
+      case 'remove':
+        if (confirmLosingSets(e, `Remove ${name} and its sets?`)) setExercises(draft.exercises.filter((_, i) => i !== e))
+    }
   }
   const pick = (exercise: Exercise) => {
-    setPicking(false)
+    const replacing = picker?.replacing
+    setPicker(undefined)
     if (!names.has(exercise.id)) setAdded((list) => [...list, exercise])
-    setExercises([...draft.exercises, { exerciseId: exercise.id, sets: [{ weight: '', reps: '', done: false }] }])
+    setExercises(
+      replacing === undefined
+        ? [...draft.exercises, { exerciseId: exercise.id, sets: [{ weight: '', reps: '', done: false }] }]
+        : draft.exercises.map((ex, i) => (i === replacing ? replaceExercise(ex, exercise.id, isCardio(exercise)) : ex)),
+    )
+  }
+  // The plate calculator starts at the next set's weight: typed in, or the one to try from last time.
+  const openPlates = (ex: DraftExercise) => {
+    const next = Math.max(0, ex.sets.findIndex((set) => !set.done))
+    const weight = ex.sets[next] && (ex.sets[next].weight || hintFor(ex, next)?.weight)
+    setPlateWeight(weight ? String(weight) : '')
   }
 
   const finish = async () => {
@@ -210,6 +289,136 @@ function Logger({ draft, update, workouts, exercises, tested }: {
     void notifyRestEnd(draft.restEndsAt)
   }, [draft.restEndsAt])
 
+  // One exercise's card, and the Undo for a set deleted from it. `superset`: the exercises done with it as a superset,
+  // itself included (only itself when it isn't in one).
+  const exerciseCard = (e: number, superset: number[]) => {
+    const ex = draft.exercises[e]
+    const name = names.get(ex.exerciseId) ?? 'Exercise'
+    const isCardioExercise = cardio.has(ex.exerciseId)
+    const step = stepFor(ex)
+    const rest = restFor(ex.exerciseId)
+    const done = ex.sets.map((s) => toSet(ex.exerciseId, s))
+    const pr = livePr(workouts, ex.exerciseId, done, draft.editing ? draft.id : undefined)
+    // The best estimated 1-rep max checked off so far, next to your best before this workout.
+    const bestToday = Math.max(0, ...done.filter((s) => s && isLift(s)).map((s) => oneRepMax(s!.weight, s!.reps)))
+    const bestBefore = bestToday ? estimatedMax(workouts.filter((w) => w.id !== draft.id), tested, ex.exerciseId)?.value : undefined
+    const labels = setLabels(ex.sets)
+    const summary = done.flatMap((set) => (set ? `${set.kind ? `${SET_KINDS[set.kind].letter} ` : ''}${shortSet(set)}` : [])).join(' · ')
+    const menu = (
+      <ExerciseMenu
+        name={name}
+        canMoveUp={e > 0}
+        canMoveDown={e < draft.exercises.length - 1}
+        canSupersetWithNext={e < draft.exercises.length - 1 && !superset.includes(e + 1)}
+        inSuperset={superset.length > 1}
+        onChoose={(action) => chooseForExercise(e, action)}
+      />
+    )
+    return (
+      <Fragment key={`${ex.exerciseId}-${e}`}>
+        <ExerciseCard name={name} allDone={ex.sets.length > 0 && ex.sets.every((s) => s.done)} summary={summary} menu={menu}>
+          {!isCardioExercise && (
+            <div className="mt-1 flex flex-wrap gap-2">
+              {/* The phone's own picker under a chip: a tap anywhere on the chip opens it. */}
+              <label className={`relative ${chip} focus-within:ring-2 focus-within:ring-coral`}>
+                <Icon name="clock" className="size-4 text-muted" />
+                {rest ? `Rest ${formatClock(rest * 1000)}` : 'No rest timer'}
+                <select
+                  value={rest}
+                  onChange={(event) => changeRest(ex.exerciseId, Number(event.target.value))}
+                  aria-label={`Rest after each set of ${name}`}
+                  className="absolute inset-0 opacity-0"
+                >
+                  {REST_CHOICES.map((seconds) => (
+                    <option key={seconds} value={seconds}>
+                      {seconds ? `Rest ${formatClock(seconds * 1000)}` : 'No rest timer'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {/* ponytail: shown for exercises with "Barbell" in the name, so a custom barbell lift needs it there. */}
+              {/barbell/i.test(name) && (
+                <button onClick={() => openPlates(ex)} className={chip}>
+                  <Icon name="plates" className="size-4 text-muted" />
+                  Plates
+                </button>
+              )}
+            </div>
+          )}
+          {step > 0 && <p className="mt-2 text-[15px] text-green-ink">↑ You hit every rep last time. Try {step} lb more.</p>}
+          <div className="mt-2 grid grid-cols-[2rem_1fr_4.5rem_4rem_2.75rem] items-center gap-x-2 gap-y-1.5 text-center text-[15px]">
+            <span className="text-[13px] font-semibold text-muted">SET</span>
+            <span className="text-[13px] font-semibold text-muted">PREVIOUS</span>
+            <span className="text-[13px] font-semibold text-muted">{isCardioExercise ? 'MI' : 'LB'}</span>
+            <span className="text-[13px] font-semibold text-muted">{isCardioExercise ? 'TIME' : 'REPS'}</span>
+            {/* A real cell: an sr-only element alone is taken out of the grid and would shift every row. */}
+            <span>
+              <span className="sr-only">Done</span>
+            </span>
+            {ex.sets.map((set, s) => {
+              const hint = hintFor(ex, s)
+              const last = hint?.last
+              // What screen readers call the set: a kind's name stands in for its letter.
+              const setName = set.kind ? SET_KINDS[set.kind].name : `Set ${labels[s]}`
+              const change = (patch: Partial<DraftSet>) => setExercises(withSet(e, s, patch))
+              const label = (
+                <SetMenu
+                  label={labels[s]}
+                  name={setName}
+                  kind={set.kind}
+                  pr={s === pr}
+                  cardio={isCardioExercise}
+                  onKind={(kind) => change({ kind })}
+                  onDelete={() => deleteSet(e, s)}
+                />
+              )
+              return (
+                <SetRow
+                  key={s}
+                  name={setName}
+                  label={label}
+                  done={set.done}
+                  previous={last && shortSet(last)}
+                  fields={
+                    isCardioExercise
+                      ? [
+                          { label: `${setName} distance in miles`, value: set.distance ?? '', placeholder: last?.distance ? formatMiles(last.distance) : undefined, mode: 'decimal', onChange: (distance) => change({ distance }) },
+                          { label: `${setName} time, in minutes or minutes:seconds`, value: set.time ?? '', placeholder: last?.durationSeconds ? formatClock(last.durationSeconds * 1000) : 'min', mode: 'decimal', onChange: (time) => change({ time }) },
+                        ]
+                      : [
+                          { label: `${setName} weight in pounds`, value: set.weight, placeholder: hint && `${hint.weight > hint.last.weight ? '↑' : ''}${formatWeight(hint.weight)}`, mode: 'decimal', onChange: (weight) => change({ weight }) },
+                          { label: `${setName} reps`, value: set.reps, placeholder: last && String(last.reps), mode: 'numeric', onChange: (reps) => change({ reps }) },
+                        ]
+                  }
+                  onToggle={() => toggleDone(e, s)}
+                />
+              )
+            })}
+          </div>
+          {bestToday > 0 && (
+            <p className="mt-2 text-[13px] text-muted tabular-nums">
+              Est. 1-rep max today {formatWeight(Math.round(bestToday))} lb{bestBefore ? ` · best ${formatWeight(Math.round(bestBefore))} lb` : ''}
+            </p>
+          )}
+          <button onClick={() => addSet(e)} className={`mt-2 ${plainButton}`}>
+            <Icon name="plus" className="size-5" />
+            Add Set
+          </button>
+        </ExerciseCard>
+        {deleted?.exercise === e && (
+          <Notice>
+            <span className="flex items-center justify-between gap-3">
+              Deleted a set of {name}.
+              <button onClick={() => undoDelete(deleted)} className={`-my-3 font-semibold ${plainButton}`}>
+                Undo
+              </button>
+            </span>
+          </Notice>
+        )}
+      </Fragment>
+    )
+  }
+
   const finishLabel = saving ? 'Saving…' : draft.editing ? 'Save' : 'Finish'
 
   return (
@@ -241,124 +450,11 @@ function Logger({ draft, update, workouts, exercises, tested }: {
 
       {draft.exercises.length === 0 && <p className="text-muted">Add your first exercise to get going.</p>}
 
-      {draft.exercises.map((ex, e) => {
-        const prev = previous(ex.exerciseId)
-        const name = names.get(ex.exerciseId) ?? 'Exercise'
-        const isCardioExercise = cardio.has(ex.exerciseId)
-        const step = stepFor(ex)
-        const rest = restFor(ex.exerciseId)
-        const done = ex.sets.map((s) => toSet(ex.exerciseId, s))
-        const pr = livePr(workouts, ex.exerciseId, done, draft.editing ? draft.id : undefined)
-        // The best estimated 1-rep max checked off so far, next to your best before this workout.
-        const bestToday = Math.max(0, ...done.filter((s) => s && isLift(s)).map((s) => oneRepMax(s!.weight, s!.reps)))
-        const bestBefore = bestToday ? estimatedMax(workouts.filter((w) => w.id !== draft.id), tested, ex.exerciseId)?.value : undefined
-        return (
-          <Card key={`${ex.exerciseId}-${e}`}>
-            <div className="flex items-start justify-between gap-2">
-              <h2 className="flex items-center gap-1.5 pt-2.5 font-semibold text-coral-ink">
-                {name}
-                {ex.sets.length > 0 && ex.sets.every((s) => s.done) && (
-                  <>
-                    <Icon name="check" className="size-5 shrink-0 stroke-[3] text-green-ink" />
-                    <span className="sr-only">, all sets done</span>
-                  </>
-                )}
-              </h2>
-              <button onClick={() => removeExercise(e)} className={`-mr-1 text-[15px] ${plainButton}`}>
-                Remove
-              </button>
-            </div>
-            {!isCardioExercise && (
-              <div className="mt-1 flex flex-wrap gap-2">
-                {/* The phone's own picker under a chip: a tap anywhere on the chip opens it. */}
-                <label className={`relative ${chip} focus-within:ring-2 focus-within:ring-coral`}>
-                  <Icon name="clock" className="size-4 text-muted" />
-                  {rest ? `Rest ${formatClock(rest * 1000)}` : 'No rest timer'}
-                  <select
-                    value={rest}
-                    onChange={(event) => changeRest(ex.exerciseId, Number(event.target.value))}
-                    aria-label={`Rest after each set of ${name}`}
-                    className="absolute inset-0 opacity-0"
-                  >
-                    {REST_CHOICES.map((seconds) => (
-                      <option key={seconds} value={seconds}>
-                        {seconds ? `Rest ${formatClock(seconds * 1000)}` : 'No rest timer'}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {/* ponytail: shown for exercises with "Barbell" in the name, so a custom barbell lift needs it there. */}
-                {/barbell/i.test(name) && (
-                  <button
-                    onClick={() => {
-                      const next = Math.max(0, ex.sets.findIndex((x) => !x.done))
-                      const hint = prev[next] ?? prev.at(-1)
-                      setPlateWeight(ex.sets[next]?.weight || (hint ? String(hint.weight + step) : ''))
-                    }}
-                    className={chip}
-                  >
-                    <Icon name="plates" className="size-4 text-muted" />
-                    Plates
-                  </button>
-                )}
-              </div>
-            )}
-            {step > 0 && <p className="mt-2 text-[15px] text-green-ink">↑ You hit every rep last time. Try {step} lb more.</p>}
-            <div className="mt-2 grid grid-cols-[2rem_1fr_4.5rem_4rem_2.75rem] items-center gap-x-2 gap-y-1.5 text-center text-[15px]">
-              <span className="text-[13px] font-semibold text-muted">SET</span>
-              <span className="text-[13px] font-semibold text-muted">PREVIOUS</span>
-              <span className="text-[13px] font-semibold text-muted">{isCardioExercise ? 'MI' : 'LB'}</span>
-              <span className="text-[13px] font-semibold text-muted">{isCardioExercise ? 'TIME' : 'REPS'}</span>
-              {/* A real cell: an sr-only element alone is taken out of the grid and would shift every row. */}
-              <span>
-                <span className="sr-only">Done</span>
-              </span>
-              {ex.sets.map((set, s) => {
-                const hint = prev[s] ?? prev.at(-1)
-                const n = s + 1
-                const change = (patch: Partial<DraftSet>) => setExercises(withSet(e, s, patch))
-                return (
-                  <SetRow
-                    key={s}
-                    number={n}
-                    done={set.done}
-                    pr={s === pr}
-                    previous={hint && (isCardioExercise ? formatCardio(hint) : hint.weight > 0 ? `${formatWeight(hint.weight)} × ${hint.reps}` : `${hint.reps} reps`)}
-                    fields={
-                      isCardioExercise
-                        ? [
-                            { label: `Set ${n} distance in miles`, value: set.distance ?? '', placeholder: hint?.distance ? formatMiles(hint.distance) : undefined, mode: 'decimal', onChange: (distance) => change({ distance }) },
-                            { label: `Set ${n} time, in minutes or minutes:seconds`, value: set.time ?? '', placeholder: hint?.durationSeconds ? formatClock(hint.durationSeconds * 1000) : 'min', mode: 'decimal', onChange: (time) => change({ time }) },
-                          ]
-                        : [
-                            { label: `Set ${n} weight in pounds`, value: set.weight, placeholder: hint && `${step ? '↑' : ''}${formatWeight(hint.weight + step)}`, mode: 'decimal', onChange: (weight) => change({ weight }) },
-                            { label: `Set ${n} reps`, value: set.reps, placeholder: hint && String(hint.reps), mode: 'numeric', onChange: (reps) => change({ reps }) },
-                          ]
-                    }
-                    onToggle={() => toggleDone(e, s)}
-                  />
-                )
-              })}
-            </div>
-            {bestToday > 0 && (
-              <p className="mt-2 text-[13px] text-muted tabular-nums">
-                Est. 1-rep max today {formatWeight(Math.round(bestToday))} lb{bestBefore ? ` · best ${formatWeight(Math.round(bestBefore))} lb` : ''}
-              </p>
-            )}
-            <div className="mt-2 flex justify-between">
-              <button onClick={() => addSet(e)} className={plainButton}>
-                <Icon name="plus" className="size-5" />
-                Add Set
-              </button>
-              <button onClick={() => removeSet(e)} disabled={ex.sets.length <= 1} className={`text-[15px] ${plainButton}`}>
-                Remove Set
-              </button>
-            </div>
-          </Card>
-        )
-      })}
+      {groupSupersets([...draft.exercises.keys()], (e) => draft.exercises[e].superset).map((superset) =>
+        superset.length > 1 ? <SupersetGroup key={`superset-${superset[0]}`}>{superset.map((e) => exerciseCard(e, superset))}</SupersetGroup> : exerciseCard(superset[0], superset),
+      )}
 
-      <button onClick={() => setPicking(true)} className={`w-full ${tintedButton}`}>
+      <button onClick={() => setPicker({})} className={`w-full ${tintedButton}`}>
         <Icon name="plus" className="size-5" />
         Add Exercise
       </button>
@@ -374,7 +470,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
 
       {restLeft > 0 && (
         <>
-          <div className="h-16" aria-hidden />
+          <div className="h-20" aria-hidden />
           <RestTimer
             seconds={restLeft}
             total={draft.restTotal ?? REST_SECONDS}
@@ -384,9 +480,51 @@ function Logger({ draft, update, workouts, exercises, tested }: {
         </>
       )}
 
-      {picking && <ExercisePicker exercises={all} recent={recentExercises(workouts)} onPick={pick} onClose={() => setPicking(false)} />}
+      {picker && (
+        <ExercisePicker
+          title={picker.replacing === undefined ? 'Add Exercise' : 'Replace Exercise'}
+          exercises={all}
+          recent={recentExercises(workouts)}
+          onPick={pick}
+          onClose={() => setPicker(undefined)}
+        />
+      )}
       {plateWeight !== undefined && <PlateSheet initial={plateWeight} onClose={() => setPlateWeight(undefined)} />}
     </>
+  )
+}
+
+/**
+ * An exercise's card: its name and ⋯ menu over its sets. Once every set is checked off it folds to a one-line `summary`
+ * of them, which opens it again on a tap; adding a set opens it too, since then not every set is checked off.
+ */
+function ExerciseCard({ name, allDone, summary, menu, children }: { name: string; allDone: boolean; summary: string; menu: ReactNode; children: ReactNode }) {
+  const [opened, setOpened] = useState(false)
+  const folded = allDone && !opened
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="flex items-center gap-1.5 pt-2.5 font-semibold text-coral-ink">
+          {name}
+          {allDone && (
+            <>
+              <Icon name="check" className="size-5 shrink-0 stroke-[3] text-green-ink" />
+              <span className="sr-only">, all sets done</span>
+            </>
+          )}
+        </h2>
+        {menu}
+      </div>
+      {folded ? (
+        <button onClick={() => setOpened(true)} aria-expanded={false} className="flex min-h-11 w-full items-center gap-1 text-left text-[15px] text-muted">
+          <span className="min-w-0 flex-1 truncate">{summary}</span>
+          <span className="sr-only">, show sets</span>
+          <Icon name="chevronRight" className="size-5 rotate-90 text-muted/60" />
+        </button>
+      ) : (
+        children
+      )}
+    </Card>
   )
 }
 
@@ -399,10 +537,10 @@ interface SetField {
   onChange: (value: string) => void
 }
 
-function SetRow({ number, done, pr, previous, fields, onToggle }: {
-  number: number
+function SetRow({ name, label, done, previous, fields, onToggle }: {
+  name: string // what screen readers call the set: "Set 2", "Warm-up"
+  label: ReactNode // the first cell: the set's label and its menu
   done: boolean
-  pr: boolean // beats every earlier workout: the badge stands in for the set number
   previous: string | undefined
   fields: SetField[]
   onToggle: () => void
@@ -410,14 +548,7 @@ function SetRow({ number, done, pr, previous, fields, onToggle }: {
   const input = `${field} px-1 text-center ${done ? 'bg-green/15' : ''}`
   return (
     <>
-      {pr ? (
-        <span>
-          <span className="sr-only">{number} </span>
-          <PrBadge />
-        </span>
-      ) : (
-        <span className="font-semibold">{number}</span>
-      )}
+      {label}
       <span className="truncate text-muted">{previous ?? '–'}</span>
       {fields.map((f) => (
         <input key={f.label} value={f.value} onChange={(e) => f.onChange(e.target.value)} inputMode={f.mode} placeholder={f.placeholder} aria-label={f.label} className={input} />
@@ -426,7 +557,7 @@ function SetRow({ number, done, pr, previous, fields, onToggle }: {
         onClick={onToggle}
         role="checkbox"
         aria-checked={done}
-        aria-label={`Set ${number} done`}
+        aria-label={`${name} done`}
         className={`grid size-11 place-items-center rounded-xl transition ${done ? 'bg-green-strong text-white' : 'bg-fill text-muted'}`}
       >
         <Icon name="check" className="size-5 stroke-[3]" />
@@ -440,10 +571,10 @@ function RestTimer({ seconds, total, onAdjust, onSkip }: { seconds: number; tota
   const button = 'min-h-11 rounded-xl bg-coral/12 px-3 text-[15px] font-semibold text-coral-ink active:opacity-70'
   return (
     <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 border-t border-line bg-surface/95 backdrop-blur-md">
-      {/* How much rest is left, as a thin Sunrise bar along the top. */}
-      <div className="h-0.5 bg-linear-to-r from-coral to-pink transition-[width] duration-1000 ease-linear" style={{ width: `${Math.min(100, (seconds / total) * 100)}%` }} />
-      <div className="mx-auto flex max-w-xl items-center justify-between gap-2 px-4 py-2">
-        <p role="timer" aria-live="off" className="text-[20px] font-semibold tabular-nums">
+      {/* How much rest is left, as a Sunrise bar along the top, thick enough to read at a glance from the bench. */}
+      <div className="h-1.5 bg-linear-to-r from-coral to-pink motion-safe:transition-[width] motion-safe:duration-1000 motion-safe:ease-linear" style={{ width: `${Math.min(100, (seconds / total) * 100)}%` }} />
+      <div className="mx-auto flex max-w-xl items-center justify-between gap-2 px-4 py-2.5">
+        <p role="timer" aria-live="off" className="text-[28px] leading-tight font-bold tabular-nums">
           Rest {formatClock(seconds * 1000)}
         </p>
         <div className="flex gap-2">
