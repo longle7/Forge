@@ -74,16 +74,25 @@ function NavBar({ back }: { back: { to: string; label: string } }) {
   )
 }
 
-/** A white card on the cream canvas. With `to`, the whole card is a link. */
-export function Card({ children, to, className = '' }: { children: ReactNode; to?: string; className?: string }) {
+/** A white card on the cream canvas. With `to`, the whole card is a link; with `onClick`, a button. */
+export function Card({ children, to, onClick, className = '' }: { children: ReactNode; to?: string; onClick?: () => void; className?: string }) {
   const style = `block rounded-2xl bg-surface p-4 shadow-[0_1px_2px_rgb(42_31_26/0.06)] ${className}`
-  return to ? (
-    <Link to={to} className={`${style} transition active:scale-[0.99]`}>
-      {children}
-    </Link>
-  ) : (
-    <div className={style}>{children}</div>
-  )
+  const pressable = `${style} transition active:scale-[0.99]`
+  if (to) {
+    return (
+      <Link to={to} className={pressable}>
+        {children}
+      </Link>
+    )
+  }
+  if (onClick) {
+    return (
+      <button onClick={onClick} className={`${pressable} w-full text-left`}>
+        {children}
+      </button>
+    )
+  }
+  return <div className={style}>{children}</div>
 }
 
 /** A bold section title between cards ("This Week"), with an optional link at its right ("See All"). */

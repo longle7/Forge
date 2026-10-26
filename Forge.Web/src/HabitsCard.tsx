@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { checkHabit, getHabits, randomId, saveHabit, type Habit } from './api'
-import { Card, Notice, SectionTitle, tapArea } from './components'
+import { Card, Notice, SectionTitle, Status, tapArea } from './components'
 import { localDate } from './dates'
 import { countOn, EVERY_DAY, habitStreak, SUGGESTIONS, today as todayOf } from './habits'
 import { Icon } from './icons'
@@ -41,7 +41,8 @@ export function HabitsCard() {
     }
   }
 
-  if (!habits.data) return null
+  // First visit, before habits load: hold the card's place. Offline with nothing remembered, it stays hidden.
+  if (!habits.data) return <Status loading={!habits.error} rows={1} />
   return (
     <>
       <SectionTitle title="Habits" link={{ to: '/habits', label: habits.data.length ? 'Edit' : 'Add' }} />

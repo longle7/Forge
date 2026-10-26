@@ -79,6 +79,9 @@ export function TodayWorkoutCard({ quiet = false }: { quiet?: boolean }) {
   const last = workouts.data?.[0]
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
   const cardio = new Set(exercises.data?.filter(isCardio).map((e) => e.id))
+  // First visit, before the plan and workouts load: hold the card's place rather than offer the wrong workout. If
+  // they can't load, the card still offers a workout to start.
+  const loading = (plan.data === undefined && !plan.error) || (workouts.data === undefined && !workouts.error)
 
   const start = (next: Draft) => {
     saveDraft(next)
@@ -102,6 +105,8 @@ export function TodayWorkoutCard({ quiet = false }: { quiet?: boolean }) {
       </Card>
     )
   }
+
+  if (loading) return <Status loading rows={1} />
 
   if (planned && done) {
     return (

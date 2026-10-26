@@ -122,15 +122,14 @@ export default function HomePage() {
             </>
           )}
         </Card>
-        <Card>
+        {/* The whole tile logs your weight; the + only says so. */}
+        <Card onClick={() => setWeighing(true)}>
           <div className="flex items-start justify-between">
             <p className="text-[13px] font-semibold text-muted uppercase">Weight</p>
-            <button onClick={() => setWeighing(true)} aria-label="Log weight" className="-mt-2 -mr-2 grid size-10 place-items-center rounded-full text-coral-ink active:bg-fill">
-              <Icon name="plus" className="size-5" />
-            </button>
+            <Icon name="plus" className="size-5 text-coral-ink" />
           </div>
-          <p className="text-[28px] leading-tight font-bold">{latestWeighIn ? formatWeight(latestWeighIn.weight) : '–'}</p>
-          <p className="text-[15px] text-muted">{latestWeighIn ? `lb · ${dayLabel(latestWeighIn.date, today)}` : 'Tap + to log'}</p>
+          <p className="mt-3 text-[28px] leading-tight font-bold">{latestWeighIn ? formatWeight(latestWeighIn.weight) : '–'}</p>
+          <p className="text-[15px] text-muted">{latestWeighIn ? `lb · ${dayLabel(latestWeighIn.date, today)}` : 'Tap to log'}</p>
           {change !== undefined && (
             <p className="text-[13px] text-muted">
               {change > 0 ? '+' : change < 0 ? '−' : '±'}
