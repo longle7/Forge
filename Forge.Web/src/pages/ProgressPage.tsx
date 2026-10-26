@@ -138,7 +138,7 @@ function WeightCard({ weighIns: all, from, profile, today, period, onSaved }: { 
   )
 }
 
-const DOT_LABELS: Record<DayStatus, string> = {
+export const DOT_LABELS: Record<DayStatus, string> = {
   done: 'trained',
   missed: 'missed',
   planned: 'planned',
@@ -148,7 +148,7 @@ const DOT_LABELS: Record<DayStatus, string> = {
 }
 
 /** One day of the plan grid. Never color alone: done has a check, missed is an open ring, rest a dash. */
-function DayDot({ status }: { status: DayStatus }) {
+export function DayDot({ status }: { status: DayStatus }) {
   const base = 'grid size-7 place-items-center rounded-full'
   if (status === 'done' || status === 'extra')
     return (

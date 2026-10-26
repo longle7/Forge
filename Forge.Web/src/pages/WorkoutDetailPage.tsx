@@ -1,19 +1,22 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
-import { deleteWorkout, getExercises, getProfile, getWorkouts, type Workout } from '../api'
+import { deleteWorkout, getExercises, getProfile, getRoutines, getWorkouts, randomId, saveRoutine, type Routine, type Workout } from '../api'
 import { ChartTable, HeartRateChart } from '../charts'
-import { Card, dangerButton, Notice, NotFound, Page, PrBadge, Status, tintedButton } from '../components'
+import { Card, dangerButton, field, Notice, NotFound, Page, PrBadge, primaryButton, Sheet, Status, tintedButton } from '../components'
 import { workoutDay } from '../dates'
-import { editDraft, loadDraft, repeatDraft, saveDraft, type Draft } from '../draft'
+import { editDraft, repeatDraft, useStartWorkout, type Draft } from '../draft'
 import { maxHeartRate, timeInZones, ZONES } from '../heartRate'
 import { Icon } from '../icons'
 import { drawShareCard, shareImage } from '../shareCard'
 import { failure, useAction, usePolling, useSettled } from '../usePolling'
-import { formatClock, formatDay, formatDuration, formatSet, formatTime, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
+import { exerciseNames, formatClock, formatDay, formatDuration, formatSet, formatTime, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
 
 const BACK = { to: '/workouts/history', label: 'History' }
 
-/** One finished workout: its sets and PRs, and Repeat, Edit, Share, and Delete. Straight from Finish, a word of congrats. */
+/**
+ * One finished workout: its sets and PRs, and Repeat, Edit, Save as Routine, Share, and Delete. Straight from Finish, a
+ * word of congrats, and for a workout started from a routine, a way to update the routine with today's sets.
+ */
 export default function WorkoutDetailPage() {
   const { id } = useParams()
   const workouts = usePolling(getWorkouts, '/workouts')
@@ -35,21 +38,30 @@ export default function WorkoutDetailPage() {
 
 function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] }) {
   const navigate = useNavigate()
-  const finished = (useLocation().state as { finished?: boolean } | null)?.finished
+  const { finished, routineId } = (useLocation().state as { finished?: boolean; routineId?: string } | null) ?? {}
   const exercises = usePolling(getExercises, '/exercises')
+  const routines = usePolling(getRoutines, '/routines')
   const [message, setMessage] = useState<string>()
   const [deleting, setDeleting] = useState(false)
+  const [naming, setNaming] = useState(false) // the Save as Routine sheet is open
+  const [routineUpdated, setRoutineUpdated] = useState(false)
   const sharing = useAction()
+  const updating = useAction()
+  const startWorkout = useStartWorkout()
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
   // groupSets keeps the same set objects, so PRs are looked up by object.
   const prs = personalRecords(workouts).get(workout.id) ?? new Set()
+  const routine = routines.data?.find((r) => r.id === routineId) // the one this workout was started from, if any
 
-  // Repeat and Edit both open a workout in the logger, which holds one workout at a time.
-  const open = (draft: Draft) => {
-    if (loadDraft()) return setMessage('Finish or discard the workout in progress first.')
-    saveDraft(draft)
-    navigate('/workouts/active')
-  }
+  // Repeat and Edit both open a workout in the logger.
+  const open = (draft: Draft) => setMessage(startWorkout(draft))
+
+  const updateRoutine = (target: Routine) =>
+    updating.run(async () => {
+      await saveRoutine(target.id, { name: target.name, sets: workout.sets })
+      setRoutineUpdated(true)
+      setMessage(`Updated ${target.name} with today's sets.`)
+    })
 
   const remove = async () => {
     if (!confirm(`Delete ${workout.name} from ${formatDay(workout.startedAt)}? This can't be undone.`)) return
@@ -74,7 +86,7 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
       {sharing.busy ? 'Preparing…' : 'Share'}
     </button>
   )
-  const notice = message ?? sharing.error
+  const notice = message ?? sharing.error ?? updating.error
 
   return (
     <Page title={workout.name} back={BACK}>
@@ -97,6 +109,12 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
             </span>
           </div>
           {shareButton('mt-3 w-full')}
+          {routine && !routineUpdated && (
+            <button onClick={() => updateRoutine(routine)} disabled={updating.busy} className={`mt-2 w-full ${tintedButton}`}>
+              <Icon name="repeat" className="size-5" />
+              {updating.busy ? 'Updating…' : `Update "${routine.name}"`}
+            </button>
+          )}
         </Card>
       )}
 
@@ -131,14 +149,64 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
             <button onClick={() => open(editDraft(workout))} className={tintedButton}>
               Edit
             </button>
+            <button onClick={() => setNaming(true)} className={tintedButton}>
+              Save as Routine
+            </button>
           </>
         )}
-        {shareButton('col-span-2')}
+        {shareButton(workout.sets.length > 0 ? '' : 'col-span-2')}
       </div>
       <button onClick={remove} disabled={deleting} className={dangerButton}>
         {deleting ? 'Deleting…' : 'Delete Workout'}
       </button>
+
+      {naming && (
+        <SaveRoutineSheet
+          workout={workout}
+          names={names}
+          onSaved={(name) => {
+            setNaming(false)
+            setMessage(`Saved ${name}. Start it from Workouts → Routines.`)
+          }}
+          onClose={() => setNaming(false)}
+        />
+      )}
     </Page>
+  )
+}
+
+/** Saves a workout's exercises and sets under a name, to start again in one tap from Workouts → Routines. */
+function SaveRoutineSheet({ workout, names, onSaved, onClose }: { workout: Workout; names: Map<number, string>; onSaved: (name: string) => void; onClose: () => void }) {
+  const [name, setName] = useState(workout.name.slice(0, 50)) // a workout's name can be longer than a routine's
+  const { busy: saving, error, setError, run } = useAction()
+
+  const save = async () => {
+    if (!name.trim()) return setError('Give it a name, like Push A.')
+    await run(async () => {
+      await saveRoutine(randomId(), { name: name.trim(), sets: workout.sets })
+      onSaved(name.trim())
+    })
+  }
+
+  return (
+    <Sheet title="Save as Routine" onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          void save()
+        }}
+        className="space-y-3"
+      >
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, like Push A" aria-label="Routine name" maxLength={50} className={field} />
+        <p className="text-[15px] text-muted">
+          {exerciseNames(workout.sets, names).join(', ')} · {plural(workout.sets.length, 'set')}
+        </p>
+        {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
+        <button disabled={saving} className={primaryButton}>
+          {saving ? 'Saving…' : 'Save Routine'}
+        </button>
+      </form>
+    </Sheet>
   )
 }
 
