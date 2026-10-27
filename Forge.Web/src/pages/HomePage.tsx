@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { weeklyStreak } from '../achievements'
 import { activityPath, foodLogPath, getActivity, getExercises, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts } from '../api'
 import { Card, Group, Page, primaryButton, Rings, SectionTitle, Status, WorkoutRow } from '../components'
 import { dayLabel, localDate, workoutDay } from '../dates'
@@ -48,10 +49,12 @@ export default function HomePage() {
   const prs = last ? (personalRecords(workouts.data!).get(last.id)?.size ?? 0) : 0
 
   const moveDetail = planName ? `${planName}${done ? ' done' : ' to do'}` : restDay ? 'Rest day' : done ? 'Workout done' : 'No workout yet'
+  // The plan sets each week's goal, so the streak waits for it.
+  const streakWeeks = workouts.data && plan.data ? weeklyStreak(workouts.data, plan.data, today) : 0
   const unlock = goals ? unlockGoals(goals, day) : []
   const met = unlock.filter((g) => g.met).length
   const rings = [
-    { label: 'Move', value: done || restDay ? 1 : 0, color: RING.move, detail: moveDetail, to: '/workouts' },
+    { label: 'Move', value: done || restDay ? 1 : 0, color: RING.move, detail: moveDetail, to: '/workouts', streak: streakWeeks >= 2 ? `${streakWeeks}-week streak` : undefined },
     { label: 'Eat', value: budget ? eaten / budget : 0, color: RING.eat, detail: goals ? `${formatKcal(eaten)} of ${formatKcal(budget)} kcal` : 'Set your goals', to: '/calories' },
     {
       label: 'Unlock',
@@ -96,6 +99,8 @@ export default function HomePage() {
                   <span className="flex items-center gap-2 text-[15px] font-semibold">
                     <span className="size-2.5 rounded-full" style={{ background: ring.color }} aria-hidden />
                     {ring.label}
+                    {/* Beside the label, so a long plan name in the detail can't push it out of sight. */}
+                    {ring.streak && <span className="ml-auto text-[13px] text-amber-ink">{ring.streak}</span>}
                   </span>
                   <span className="block truncate pl-[18px] text-[15px] text-muted">{ring.detail}</span>
                 </Link>

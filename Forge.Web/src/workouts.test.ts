@@ -18,6 +18,7 @@ import {
   previousFor,
   previousSets,
   progressionStep,
+  setKindsSummary,
   setLabels,
   setsSummary,
   volume,
@@ -82,6 +83,14 @@ it.each([
   { name: 'reads the API’s null as a normal set', kinds: [null], labels: ['1'] },
 ] as const)('setLabels $name', ({ kinds, labels }) => {
   expect(setLabels(kinds.map((kind) => ({ kind })))).toEqual(labels)
+})
+
+it.each([
+  { kinds: [undefined, null], summary: '' },
+  { kinds: ['drop', 'warmup', undefined, 'warmup'], summary: '+2 warm-ups, 1 drop set' },
+  { kinds: ['failure', undefined, 'failure'], summary: '+2 failures' },
+] as const)('setKindsSummary($kinds) is "$summary"', ({ kinds, summary }) => {
+  expect(setKindsSummary(kinds.map((kind) => ({ kind })))).toBe(summary)
 })
 
 it.each([

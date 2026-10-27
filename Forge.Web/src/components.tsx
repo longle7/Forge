@@ -239,8 +239,15 @@ export function BarRow({ label, share, color, value }: { label: ReactNode; share
   )
 }
 
-/** − value + buttons, like iOS's stepper. */
-export function Stepper({ value, onChange, min, max, label }: { value: number; onChange: (value: number) => void; min: number; max: number; label: string }) {
+/** − value + buttons, like iOS's stepper. `text` shows in place of the value ("8, 8, 6": sets with different reps). */
+export function Stepper({ value, text, onChange, min, max, label }: {
+  value: number
+  text?: string
+  onChange: (value: number) => void
+  min: number
+  max: number
+  label: string
+}) {
   const button = `${tapArea} grid size-9 place-items-center rounded-lg bg-fill text-[20px] leading-none text-coral-ink active:opacity-60 disabled:opacity-30`
   return (
     <div role="group" aria-label={label} className="flex items-center gap-1">
@@ -248,7 +255,7 @@ export function Stepper({ value, onChange, min, max, label }: { value: number; o
         −
       </button>
       <span className="min-w-8 text-center font-semibold tabular-nums" aria-live="polite">
-        {value}
+        {text ?? value}
       </span>
       <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} aria-label={`More ${label}`} className={button}>
         +
@@ -361,6 +368,15 @@ export function PrBadge() {
   return (
     <span className="rounded-full bg-amber/20 px-2 py-0.5 text-xs font-bold text-amber-ink">
       PR<span className="sr-only"> (personal record)</span>
+    </span>
+  )
+}
+
+/** A badge's icon on an amber disc, the PR badge's colors. Decorative: the badge's title is always beside it. */
+export function BadgeIcon({ icon }: { icon: IconName }) {
+  return (
+    <span className="grid size-11 shrink-0 place-items-center rounded-full bg-amber/20 text-amber-ink">
+      <Icon name={icon} className="size-6" />
     </span>
   )
 }

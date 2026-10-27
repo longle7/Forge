@@ -39,7 +39,8 @@ export const isLift = (set: WorkoutSet) => set.weight > 0 && !isCardioSet(set) &
 const score = (set: WorkoutSet) =>
   isCardioSet(set) ? set.distance || (set.durationSeconds ?? 0) / 60 : set.weight > 0 ? oneRepMax(set.weight, set.reps) : set.reps
 
-const byStart = (a: Workout, b: Workout) => Date.parse(a.startedAt) - Date.parse(b.startedAt)
+/** Oldest first, for sort. */
+export const byStart = (a: Workout, b: Workout) => Date.parse(a.startedAt) - Date.parse(b.startedAt)
 
 /**
  * Each workout's PRs (the set objects themselves): for every exercise, the workout's best set when it beats all
@@ -126,6 +127,15 @@ export const SET_KINDS: Record<SetKind, { name: string; letter: string }> = {
 export function setLabels(sets: Pick<WorkoutSet, 'kind'>[]): string[] {
   let normalSets = 0
   return sets.map((set) => (set.kind ? SET_KINDS[set.kind].letter : String(++normalSets)))
+}
+
+/** The sets that aren't normal ones, counted: "+2 warm-ups, 1 drop set", or "" when there are none. */
+export function setKindsSummary(sets: Pick<WorkoutSet, 'kind'>[]): string {
+  const counted = (Object.keys(SET_KINDS) as SetKind[])
+    .map((kind) => ({ kind, count: sets.filter((s) => s.kind === kind).length }))
+    .filter(({ count }) => count > 0)
+    .map(({ kind, count }) => plural(count, SET_KINDS[kind].name.toLowerCase()))
+  return counted.length ? `+${counted.join(', ')}` : ''
 }
 
 /**

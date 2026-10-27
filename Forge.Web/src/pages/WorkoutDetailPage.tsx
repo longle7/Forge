@@ -1,8 +1,9 @@
-import { Fragment, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
-import { deleteWorkout, getExercises, getProfile, getRoutines, getWorkouts, randomId, saveRoutine, type Exercise, type Routine, type Workout, type WorkoutSet } from '../api'
+import { achievementStats, newlyEarned } from '../achievements'
+import { deleteWorkout, getExercises, getPlan, getProfile, getRoutines, getWorkouts, randomId, saveRoutine, type Exercise, type Routine, type Workout, type WorkoutSet } from '../api'
 import { ChartTable, HeartRateChart } from '../charts'
-import { BarRow, Card, dangerButton, field, Notice, NotFound, Page, plainButton, PrBadge, Sheet, Status, SupersetGroup, tintedButton } from '../components'
+import { BadgeIcon, BarRow, Card, dangerButton, field, Notice, NotFound, Page, plainButton, PrBadge, Sheet, Status, SupersetGroup, tintedButton } from '../components'
 import { workoutDay } from '../dates'
 import { editDraft, repeatDraft, useStartWorkout, type Draft } from '../draft'
 import { maxHeartRate, timeInZones, ZONES } from '../heartRate'
@@ -17,7 +18,8 @@ const BACK = { to: '/workouts/history', label: 'History' }
 
 /**
  * One finished workout: its sets and PRs, and Repeat, Edit, Save as Routine, Share, and Delete. Straight from Finish, a
- * word of congrats, and for a workout started from a routine, a way to update the routine with today's sets.
+ * word of congrats, any badges it earned, and for a workout started from a routine, a way to update the routine with
+ * today's sets.
  */
 export default function WorkoutDetailPage() {
   const { id } = useParams()
@@ -111,6 +113,7 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
               </span>
             </span>
           </div>
+          <NewBadges workout={workout} workouts={workouts} />
           {shareButton('mt-3 w-full')}
           {routine && !routineUpdated && (
             <button onClick={() => updateRoutine(routine)} disabled={updating.busy} className={`mt-2 w-full ${tintedButton}`}>
@@ -164,6 +167,35 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
         />
       )}
     </Page>
+  )
+}
+
+/** The badges a just-finished workout earned (your workouts without it, then with it), with a buzz. Nothing when none. */
+function NewBadges({ workout, workouts }: { workout: Workout; workouts: Workout[] }) {
+  const plan = usePolling(getPlan, '/plan')
+  // The plan sets each week's streak goal, so badges wait for it.
+  const badges = plan.data ? newlyEarned(achievementStats(workouts.filter((w) => w.id !== workout.id), plan.data), achievementStats(workouts, plan.data)) : []
+  const earned = badges.length > 0
+  useEffect(() => {
+    if (earned) void haptic('success')
+  }, [earned])
+
+  if (!earned) return null
+  return (
+    <section className="mt-4">
+      <h2 className="text-[13px] font-semibold tracking-wide text-amber-ink uppercase">{badges.length === 1 ? 'New badge' : 'New badges'}</h2>
+      <ul className="mt-2 space-y-2">
+        {badges.map((badge) => (
+          <li key={badge.id} className="flex items-center gap-3">
+            <BadgeIcon icon={badge.icon} />
+            <span>
+              <span className="block font-semibold">{badge.title}</span>
+              <span className="block text-[15px] text-muted">{badge.description}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
