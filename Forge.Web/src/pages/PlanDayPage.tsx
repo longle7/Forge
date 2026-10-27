@@ -6,6 +6,7 @@ import { DAY_NAMES } from '../dates'
 import { ExercisePicker } from '../ExercisePicker'
 import { Icon } from '../icons'
 import { usePolling, useAction } from '../usePolling'
+import { move } from '../workouts'
 
 const BACK = { to: '/workouts', label: 'Workouts' }
 const NAME_IDEAS = ['Push Day', 'Pull Day', 'Leg Day', 'Upper Body', 'Lower Body', 'Full Body']
@@ -38,11 +39,6 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
   const cardio = new Set([...exercises, ...added].filter(isCardio).map((e) => e.id))
 
   const change = (i: number, update: Partial<PlanExercise>) => setItems(items.map((item, j) => (j === i ? { ...item, ...update } : item)))
-  const move = (i: number, by: number) => {
-    const next = [...items]
-    ;[next[i], next[i + by]] = [next[i + by], next[i]]
-    setItems(next)
-  }
   const pick = (exercise: Exercise) => {
     setPicking(false)
     if (!names.has(exercise.id)) setAdded((list) => [...list, exercise])
@@ -88,10 +84,10 @@ function PlanEditor({ day, existing, exercises }: { day: number; existing: PlanD
             <div className="flex items-start justify-between gap-2">
               <p className="pt-2 font-semibold">{label}</p>
               <div className="flex text-muted">
-                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${label} up`} className="grid size-10 place-items-center rounded-lg active:bg-fill disabled:opacity-30">
+                <button onClick={() => setItems(move(items, i, -1))} disabled={i === 0} aria-label={`Move ${label} up`} className="grid size-10 place-items-center rounded-lg active:bg-fill disabled:opacity-30">
                   <Icon name="arrowUp" className="size-5" />
                 </button>
-                <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label={`Move ${label} down`} className="grid size-10 place-items-center rounded-lg active:bg-fill disabled:opacity-30">
+                <button onClick={() => setItems(move(items, i, 1))} disabled={i === items.length - 1} aria-label={`Move ${label} down`} className="grid size-10 place-items-center rounded-lg active:bg-fill disabled:opacity-30">
                   <Icon name="arrowDown" className="size-5" />
                 </button>
                 <button onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label={`Remove ${label}`} className="grid size-10 place-items-center rounded-lg active:bg-fill">

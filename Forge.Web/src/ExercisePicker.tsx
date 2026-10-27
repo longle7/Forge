@@ -7,9 +7,10 @@ import { useAction } from './usePolling'
 /**
  * Choose an exercise, or add a new one by name: for the workout logger and the plan editor. Chips narrow it to a muscle
  * group, and pick the group of a new one; `recent` (exercise IDs, most recent first) are listed on top. A full-screen
- * Sheet.
+ * Sheet, titled `title` (the logger's Replace says so).
  */
-export function ExercisePicker({ exercises, recent = [], onPick, onClose }: {
+export function ExercisePicker({ title = 'Add Exercise', exercises, recent = [], onPick, onClose }: {
+  title?: string
   exercises: Exercise[]
   recent?: number[]
   onPick: (exercise: Exercise) => void
@@ -33,7 +34,7 @@ export function ExercisePicker({ exercises, recent = [], onPick, onClose }: {
   }
 
   return (
-    <Sheet title="Add Exercise" full onClose={onClose}>
+    <Sheet title={title} full onClose={onClose}>
       <SearchInput value={query} onChange={setQuery} placeholder="Search exercises" onSubmit={() => matches[0] && onPick(matches[0])} />
       {/* py-1 makes room for the chips' tap areas, which a scrolling row would cut off. */}
       <div role="group" aria-label="Muscle group" className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none]">

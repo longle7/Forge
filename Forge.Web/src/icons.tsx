@@ -30,6 +30,7 @@ const PATHS = {
   moon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
   bolt: 'M13 2 4 14h7l-1 8 9-12h-7z',
   plates: 'M2 12h20M5 8v8M8 5v14M16 5v14M19 8v8',
+  more: 'M5 12h.01M12 12h.01M19 12h.01',
   share: 'M12 14V3M8 7l4-4 4 4M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2',
   pencil: 'M16 4l4 4L8 20H4v-4zM13 7l4 4',
 } as const

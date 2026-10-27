@@ -1,15 +1,15 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
-import { deleteWorkout, getExercises, getProfile, getWorkouts, type Workout } from '../api'
+import { deleteWorkout, getExercises, getProfile, getWorkouts, type Workout, type WorkoutSet } from '../api'
 import { ChartTable, HeartRateChart } from '../charts'
-import { Card, dangerButton, Notice, NotFound, Page, PrBadge, Status, tintedButton } from '../components'
+import { Card, dangerButton, Notice, NotFound, Page, PrBadge, Status, SupersetGroup, tintedButton } from '../components'
 import { workoutDay } from '../dates'
 import { editDraft, loadDraft, repeatDraft, saveDraft, type Draft } from '../draft'
 import { maxHeartRate, timeInZones, ZONES } from '../heartRate'
 import { Icon } from '../icons'
 import { drawShareCard, shareImage } from '../shareCard'
 import { failure, useAction, usePolling, useSettled } from '../usePolling'
-import { formatClock, formatDay, formatDuration, formatSet, formatTime, groupSets, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
+import { formatClock, formatDay, formatDuration, formatSet, formatTime, groupSets, groupSupersets, personalRecords, plural, SET_KINDS, setLabels, workoutLength, workoutTotals } from '../workouts'
 
 const BACK = { to: '/workouts/history', label: 'History' }
 
@@ -100,22 +100,10 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
         </Card>
       )}
 
-      {groupSets(workout.sets).map((group, g) => (
-        <Card key={g}>
-          <Link to={`/workouts/exercises/${group.exerciseId}`} className="font-semibold text-coral-ink">
-            {names.get(group.exerciseId) ?? 'Exercise'}
-          </Link>
-          <ol className="mt-2 space-y-1.5">
-            {group.sets.map((set, i) => (
-              <li key={i} className="flex items-center gap-3">
-                <span className="w-5 text-[15px] font-semibold text-muted">{i + 1}</span>
-                <span>{formatSet(set)}</span>
-                {prs.has(set) && <PrBadge />}
-              </li>
-            ))}
-          </ol>
-        </Card>
-      ))}
+      {groupSupersets(groupSets(workout.sets), (group) => group.sets[0].superset).map((superset, g) => {
+        const cards = superset.map((group, i) => <ExerciseSets key={i} group={group} name={names.get(group.exerciseId) ?? 'Exercise'} prs={prs} />)
+        return superset.length > 1 ? <SupersetGroup key={g}>{cards}</SupersetGroup> : <Fragment key={g}>{cards}</Fragment>
+      })}
 
       {(!!workout.avgHeartRate || !!workout.heartRate?.length) && <HeartRateCard workout={workout} />}
 
@@ -140,6 +128,37 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
         {deleting ? 'Deleting…' : 'Delete Workout'}
       </button>
     </Page>
+  )
+}
+
+/** One exercise's sets, marked W, D, or F or numbered among the normal sets, with their PRs. */
+function ExerciseSets({ group, name, prs }: { group: { exerciseId: number; sets: WorkoutSet[] }; name: string; prs: Set<WorkoutSet> }) {
+  const labels = setLabels(group.sets)
+  return (
+    <Card>
+      <Link to={`/workouts/exercises/${group.exerciseId}`} className="font-semibold text-coral-ink">
+        {name}
+      </Link>
+      <ol className="mt-2 space-y-1.5">
+        {group.sets.map((set, i) => (
+          <li key={i} className="flex items-center gap-3">
+            <span className="w-5 text-[15px] font-semibold text-muted">
+              {/* A letter alone means little read aloud, so screen readers get the kind's name. */}
+              {set.kind ? (
+                <>
+                  <span aria-hidden>{labels[i]}</span>
+                  <span className="sr-only">{SET_KINDS[set.kind].name}</span>
+                </>
+              ) : (
+                labels[i]
+              )}
+            </span>
+            <span>{formatSet(set)}</span>
+            {prs.has(set) && <PrBadge />}
+          </li>
+        ))}
+      </ol>
+    </Card>
   )
 }
 

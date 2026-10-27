@@ -20,9 +20,12 @@ export const plainButton = 'inline-flex min-h-11 items-center gap-1 px-1 text-co
 /** A destructive action ("Delete workout"). */
 export const dangerButton =
   'flex min-h-12 w-full items-center justify-center rounded-2xl bg-surface text-red-600 active:opacity-60 disabled:opacity-40 dark:text-red-400'
-/** Text and number fields. 16 px or larger text stops iOS Safari from zooming in on focus. */
+/**
+ * Text and number fields. 16 px or larger text stops iOS Safari from zooming in on focus. Placeholders are the full muted
+ * color (4.5:1 on the fill), since in the logger they're last time's numbers, worth reading.
+ */
 export const field =
-  'min-h-11 w-full rounded-xl bg-fill px-3 text-[17px] text-ink outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-coral'
+  'min-h-11 w-full rounded-xl bg-fill px-3 text-[17px] text-ink outline-none placeholder:text-muted focus:ring-2 focus:ring-coral'
 /** For a 36 px chip or button: its tap area reaches 4 px past each edge, to 44 px, while it looks the same. */
 export const tapArea = 'relative before:absolute before:-inset-1'
 
@@ -93,6 +96,16 @@ export function Card({ children, to, onClick, className = '' }: { children: Reac
     )
   }
   return <div className={style}>{children}</div>
+}
+
+/** Exercises done back to back as a superset: their cards as one group, joined by a coral edge under a "Superset" label. */
+export function SupersetGroup({ children }: { children: ReactNode }) {
+  return (
+    <section className="space-y-2 border-l-4 border-coral pl-2">
+      <h2 className="px-1 text-[13px] font-semibold tracking-wide text-coral-ink uppercase">Superset</h2>
+      {children}
+    </section>
+  )
 }
 
 /** A bold section title between cards ("This Week"), with an optional link at its right ("See All"). */
