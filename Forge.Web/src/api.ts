@@ -47,6 +47,7 @@ export interface Profile {
   activity: Activity // outside workouts
   goal: Goal
   pace: number // pounds a week
+  goalWeight?: number | null // pounds; null or missing = none set
   calorieGoal: number
   proteinGoal: number // grams
   carbsGoal: number

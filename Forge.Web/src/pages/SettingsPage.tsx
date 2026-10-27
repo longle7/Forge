@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { appleSignIn, deleteMyData, forgetUserId, getProfile, isCancel, isNative, signOut } from '../api'
+import { DISMISSED_KEY } from '../AdaptiveGoalCard'
 import { forgetRemembered, write } from '../cache'
 import { dangerButton, Group, Notice, Page, Row, tintedButton } from '../components'
 import { saveDraft } from '../draft'
@@ -23,7 +24,7 @@ export default function SettingsPage() {
       await deleteMyData(appleCode)
       forgetRemembered()
       saveDraft(undefined)
-      for (const key of ['forge.rest', 'forge.scanConsent']) write(key, null)
+      for (const key of ['forge.rest', 'forge.scanConsent', DISMISSED_KEY]) write(key, null)
       if (isNative) return signOut() // Welcome takes over; signing in again starts a new, empty account
       forgetUserId()
       setMessage('Your data was deleted. Forge starts fresh on this device.')

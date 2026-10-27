@@ -17,6 +17,7 @@ import {
 } from '../api'
 import { Card, field, FoodRow, Group, MacroBar, Notice, Page, primaryButton, Rings, Sheet, Status, tintedButton } from '../components'
 import { addDays, dayLabel, localDate, workoutDay } from '../dates'
+import { AdaptiveGoalCard } from '../AdaptiveGoalCard'
 import { FoodSheet } from '../FoodSheet'
 import { FAT, RING } from '../colors'
 import { Icon } from '../icons'
@@ -109,6 +110,7 @@ export default function CaloriesPage() {
           </Card>
         )
       )}
+      {goals && date === today && profile.data && <AdaptiveGoalCard profile={profile.data} weighIns={weighIns.data} today={today} onUpdated={profile.reload} />}
 
       {log.data?.length === 0 && !!before.data?.length && (
         <button onClick={() => copy(before.data!)} disabled={copying} className={`w-full ${tintedButton}`}>

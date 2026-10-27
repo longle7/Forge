@@ -132,6 +132,7 @@ export default function HomePage() {
               {formatWeight(Math.abs(change))} lb in a week
             </p>
           )}
+          {latestWeighIn && goals?.goalWeight && <p className="text-[13px] text-muted">{toGo(latestWeighIn.weight, goals.goalWeight)}</p>}
         </Card>
       </div>
 
@@ -170,3 +171,6 @@ function greeting(now: Date): string {
   const hour = now.getHours()
   return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 }
+
+/** "8 lb to go", or "At your goal" within half a pound. */
+const toGo = (weight: number, goal: number) => (Math.abs(goal - weight) < 0.5 ? 'At your goal' : `${formatWeight(Math.round(Math.abs(goal - weight) * 10) / 10)} lb to go`)

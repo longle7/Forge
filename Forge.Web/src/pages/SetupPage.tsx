@@ -35,6 +35,7 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
   const [activity, setActivity] = useState<Activity>(existing?.activity ?? 'light')
   const [goal, setGoal] = useState<Goal>(existing?.goal ?? 'lose')
   const [pace, setPace] = useState(existing?.pace || 1)
+  const [goalWeight, setGoalWeight] = useState(existing?.goalWeight ? String(existing.goalWeight) : '')
   const [restDayAdjust, setRestDayAdjust] = useState(existing?.restDayCalorieAdjust ?? 0)
   // Numbers you adjusted by hand; null means "use the calculated ones". Kept if you'd adjusted them before.
   const [custom, setCustom] = useState<Nutrition | null>(() => (existing && adjusted(existing, year) ? goalsOf(existing) : null))
@@ -46,12 +47,15 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
 
   const save = async () => {
     if (!inputs || !goals) return setMessage('Fill in your details above to work out your goals.')
+    const target = goalWeight.trim() ? Number(goalWeight) : null
+    if (target !== null && !(target >= 50 && target <= 1000)) return setMessage('Enter your goal weight in pounds, or leave it empty.')
     await run(async () => {
       await saveProfile({
         sex,
         birthYear: inputs.birthYear,
         heightIn: inputs.heightIn,
         startWeight: inputs.weight,
+        goalWeight: target === null ? null : Math.round(target * 10) / 10,
         activity,
         goal,
         pace: goal === 'maintain' ? 0 : pace,
@@ -138,6 +142,10 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
               onChange={setPace}
             />
           )}
+          <label className="block">
+            <span className="text-[15px] text-muted">Goal weight (lb, optional)</span>
+            <input value={goalWeight} onChange={(e) => setGoalWeight(e.target.value)} inputMode="decimal" placeholder="175" maxLength={5} className={field} />
+          </label>
         </div>
       </Group>
 
