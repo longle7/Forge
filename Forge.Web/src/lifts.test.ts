@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { expect, it } from 'vitest'
 import { MUSCLE_GROUPS } from './api'
 import { equipmentOf, liftInfo, LIFTS, MUSCLE_GROUP, musclesWorked, nameWithEquipment } from './lifts'
+import { POSES } from './poses'
 
 // Every built-in's name, from the API: BuiltInExercises.cs, and the migrations that INSERT more as SQL rows like
 // (NULL, N'Running', N'Cardio') or (N'Farmer''s Carry (Dumbbell)', N'Core').
@@ -20,7 +21,8 @@ it('has a catalog entry for every built-in, and none for anything else', () => {
   expect(Object.keys(LIFTS).sort()).toEqual([...builtIns].sort())
 })
 
-it.each(Object.entries(LIFTS))('%s: muscles, equipment, and cues', (name, lift) => {
+it.each(Object.entries(LIFTS))('%s: pose, muscles, equipment, and cues', (name, lift) => {
+  expect(POSES).toHaveProperty(lift.pose)
   expect(lift.primary.length).toBeGreaterThan(0)
   for (const muscle of [...lift.primary, ...lift.secondary]) expect(MUSCLE_GROUP).toHaveProperty(muscle)
   expect(lift.equipment).toBe(equipmentOf(name))

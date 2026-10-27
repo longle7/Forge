@@ -41,7 +41,7 @@ export type Pattern =
   | 'carry'
   | 'cardio'
 
-/** A drawing in LiftFigure.tsx's POSES. Variants of a lift share one. */
+/** A drawing in poses.ts, for LiftFigure.tsx. Variants of a lift share one. */
 export type Pose =
   | 'bench'
   | 'overheadPress'
