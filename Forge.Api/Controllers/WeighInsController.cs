@@ -8,7 +8,6 @@ namespace Forge.Api.Controllers
 {
     /// <summary>
     /// Your body weight, at most once a day (weighing in again that day replaces it). Yours alone (the X-User-Id header).
-    /// ponytail: header is trusted as-is, replace with the authenticated user's ID when login exists.
     /// </summary>
     [ApiController]
     [Route("weigh-ins")]
@@ -48,14 +47,6 @@ namespace Forge.Api.Controllers
             weighIn.Weight = request.Weight;
             await _db.SaveChangesAsync();
             return new WeighInResponse(weighIn.Date, weighIn.Weight);
-        }
-
-        // DELETE /weigh-ins/2026-10-10
-        [HttpDelete("{date}")]
-        public async Task<IActionResult> Delete(DateOnly date, [FromHeader(Name = "X-User-Id"), Required, MaxLength(100)] string userId)
-        {
-            var deleted = await _db.WeighIns.Where(w => w.UserId == userId && w.Date == date).ExecuteDeleteAsync();
-            return deleted == 0 ? NotFound() : NoContent();
         }
     }
 

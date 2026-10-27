@@ -27,27 +27,24 @@ namespace Forge.Api.Services
         /// <summary>Foods matching what someone typed. Throws HttpRequestException when USDA can't answer.</summary>
         public async Task<IReadOnlyList<FoodResult>> SearchAsync(string query, CancellationToken cancellationToken)
         {
-            var cacheKey = "usda:" + query.Trim().ToLowerInvariant();
-            if (_cache.TryGetValue(cacheKey, out IReadOnlyList<FoodResult>? cached))
+            // A failed search throws before anything is cached, so the next try asks USDA again.
+            return (await _cache.GetOrCreateAsync<IReadOnlyList<FoodResult>>("usda:" + query.Trim().ToLowerInvariant(), async entry =>
             {
-                return cached!;
-            }
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
+                var url = "https://api.nal.usda.gov/fdc/v1/foods/search"
+                    + $"?api_key={Uri.EscapeDataString(_apiKey)}&query={Uri.EscapeDataString(query.Trim())}"
+                    + "&pageSize=40&dataType=Foundation,SR%20Legacy,Branded";
+                using var response = await _http.GetAsync(url, cancellationToken);
+                response.EnsureSuccessStatusCode();
+                var body = await response.Content.ReadFromJsonAsync<UsdaSearch>(cancellationToken);
 
-            var url = "https://api.nal.usda.gov/fdc/v1/foods/search"
-                + $"?api_key={Uri.EscapeDataString(_apiKey)}&query={Uri.EscapeDataString(query.Trim())}"
-                + "&pageSize=40&dataType=Foundation,SR%20Legacy,Branded";
-            using var response = await _http.GetAsync(url, cancellationToken);
-            response.EnsureSuccessStatusCode();
-            var body = await response.Content.ReadFromJsonAsync<UsdaSearch>(cancellationToken);
-
-            IReadOnlyList<FoodResult> results = (body?.Foods ?? [])
-                .Select(ToResult)
-                .OfType<FoodResult>()
-                .DistinctBy(f => (f.Name, f.Brand, f.Serving))
-                .Take(MaxResults)
-                .ToList();
-            _cache.Set(cacheKey, results, TimeSpan.FromDays(1));
-            return results;
+                return (body?.Foods ?? [])
+                    .Select(ToResult)
+                    .OfType<FoodResult>()
+                    .DistinctBy(f => (f.Name, f.Brand, f.Serving))
+                    .Take(MaxResults)
+                    .ToList();
+            }))!;
         }
 
         // USDA nutrient numbers: 208 energy (kcal), 957/958 energy by Atwater factors (kcal, Foundation foods often only
@@ -98,7 +95,6 @@ namespace Forge.Api.Services
 
         private record UsdaFood(
             string? Description,
-            string? DataType,
             string? BrandOwner,
             string? BrandName,
             decimal? ServingSize,

@@ -13,25 +13,24 @@ import {
   type Meal,
   type SavedMeal,
 } from '../api'
-import { remembered } from '../cache'
-import { Card, field, Group, Page, primaryButton, SearchInput, Segmented, Status } from '../components'
+import { read, remembered, write } from '../cache'
+import { Card, field, FoodRow, Group, Page, primaryButton, SearchInput, Segmented, Status } from '../components'
 import { localDate } from '../dates'
 import { FoodSheet, type FoodChoice } from '../FoodSheet'
 import { Icon } from '../icons'
 import { ScanFlow } from '../ScanFlow'
-import { failure, useNow, usePolling } from '../usePolling'
-import { formatKcal, totals } from '../nutrition'
+import { failure, useNow, usePolling, useAction } from '../usePolling'
+import { servingLabel, totals } from '../nutrition'
 
 type Tab = 'search' | 'recent' | 'meals' | 'quick'
-const TABS: Tab[] = ['search', 'recent', 'meals', 'quick']
+const TABS: { value: Tab; label: string }[] = [
+  { value: 'search', label: 'Search' },
+  { value: 'recent', label: 'Recent' },
+  { value: 'meals', label: 'Meals' },
+  { value: 'quick', label: 'Quick' },
+]
 const TAB_KEY = 'forge.foodTab'
-const lastTab = () => {
-  try {
-    return TABS.find((t) => t === localStorage.getItem(TAB_KEY))
-  } catch {
-    return undefined
-  }
-}
+const lastTab = () => TABS.find((t) => t.value === read(TAB_KEY))?.value
 type Choice = FoodChoice & { servings: number; source: FoodEntry['source'] }
 
 /** Add food to a day's meal (/calories/add?date=…&meal=…): search, a recent food, a saved meal, or your own numbers. */
@@ -46,11 +45,7 @@ export default function AddFoodPage() {
   const [tab, setTab] = useState<Tab>(() => lastTab() ?? (remembered<FoodEntry[]>('/food-log/recent')?.data.length ? 'recent' : 'search'))
   const chooseTab = (next: Tab) => {
     setTab(next)
-    try {
-      localStorage.setItem(TAB_KEY, next)
-    } catch {
-      // blocked storage: it opens on the default next time
-    }
+    write(TAB_KEY, next)
   }
   const [chosen, setChosen] = useState<Choice>()
   const back = date === today ? '/calories' : `/calories?date=${date}`
@@ -69,17 +64,7 @@ export default function AddFoodPage() {
     <Page title="Add Food" back={{ to: back, label: 'Calories' }}>
       <Segmented label="Meal" options={MEALS.map((m) => ({ value: m.id, label: m.label }))} value={meal} onChange={setMeal} />
       <ScanFlow date={date} meal={meal} onLogged={() => navigate(back, { replace: true })} />
-      <Segmented
-        label="How to add"
-        options={[
-          { value: 'search', label: 'Search' },
-          { value: 'recent', label: 'Recent' },
-          { value: 'meals', label: 'Meals' },
-          { value: 'quick', label: 'Quick' },
-        ]}
-        value={tab}
-        onChange={chooseTab}
-      />
+      <Segmented label="How to add" options={TABS} value={tab} onChange={chooseTab} />
 
       {tab === 'search' && <FoodSearch onChoose={(food) => setChosen({ ...food, servings: 1, source: 'search' })} />}
       {tab === 'recent' && <RecentFoods onChoose={(entry) => setChosen({ ...entry, source: entry.source })} />}
@@ -158,7 +143,7 @@ function RecentFoods({ onChoose }: { onChoose: (entry: FoodEntry) => void }) {
       {recent.data && recent.data.length > 0 && (
         <Group>
           {recent.data.map((entry) => (
-            <FoodRow key={entry.id} name={entry.name} detail={entry.servings === 1 ? entry.serving : `${entry.servings} × ${entry.serving}`} calories={entry.calories * entry.servings} onClick={() => onChoose(entry)} />
+            <FoodRow key={entry.id} name={entry.name} detail={servingLabel(entry)} calories={entry.calories * entry.servings} onClick={() => onChoose(entry)} />
           ))}
         </Group>
       )}
@@ -168,19 +153,7 @@ function RecentFoods({ onChoose }: { onChoose: (entry: FoodEntry) => void }) {
 
 function SavedMeals({ onLog }: { onLog: (meal: SavedMeal) => Promise<void> }) {
   const meals = usePolling(getSavedMeals, '/saved-meals')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string>()
-
-  const act = async (work: () => Promise<void>) => {
-    setBusy(true)
-    setError(undefined)
-    try {
-      await work()
-    } catch (e) {
-      setError((e as Error).message)
-    }
-    setBusy(false)
-  }
+  const { busy, error, run: act } = useAction()
   const remove = (meal: SavedMeal) => {
     if (!confirm(`Delete ${meal.name}? Foods you logged from it stay logged.`)) return
     void act(async () => {
@@ -212,35 +185,15 @@ function SavedMeals({ onLog }: { onLog: (meal: SavedMeal) => Promise<void> }) {
   )
 }
 
-function FoodRow({ name, detail, calories, onClick }: { name: string; detail: string; calories: number; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left active:bg-fill">
-      <span className="min-w-0 flex-1">
-        <span className="block">{name}</span>
-        <span className="block truncate text-[15px] text-muted">{detail}</span>
-      </span>
-      <span className="shrink-0 text-muted tabular-nums">{formatKcal(calories)} kcal</span>
-    </button>
-  )
-}
-
 function QuickAdd({ onAdd }: { onAdd: (food: FoodChoice) => Promise<void> }) {
   const [form, setForm] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string>()
+  const { busy: saving, error, setError, run } = useAction()
   const set = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value })
   const number = (text: string) => Number(text) || 0
 
   const add = async () => {
     if (!(number(form.calories) > 0)) return setError('Enter the calories.')
-    setSaving(true)
-    setError(undefined)
-    try {
-      await onAdd({ name: form.name.trim() || 'Quick add', serving: '1 serving', calories: number(form.calories), protein: number(form.protein), carbs: number(form.carbs), fat: number(form.fat) })
-    } catch (e) {
-      setError((e as Error).message)
-      setSaving(false)
-    }
+    await run(() => onAdd({ name: form.name.trim() || 'Quick add', serving: '1 serving', calories: number(form.calories), protein: number(form.protein), carbs: number(form.carbs), fat: number(form.fat) }))
   }
 
   return (

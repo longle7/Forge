@@ -19,18 +19,10 @@ public class WorkoutsEndpointTests : IDisposable
     public WorkoutsEndpointTests()
     {
         TestDb.CreateClean().Dispose();
-        _factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(b => b.UseSetting("ConnectionStrings:DefaultConnection", TestDb.ConnectionString));
+        _factory = TestDb.Factory();
     }
 
     public void Dispose() => _factory.Dispose();
-
-    private HttpClient ClientFor(string userId)
-    {
-        var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add("X-User-Id", userId);
-        return client;
-    }
 
     // Bench 135x8, 135x6, then Squat 185x5, unless other sets are given.
     private static WorkoutRequest Request(params (int ExerciseId, decimal Weight, int Reps)[] sets) =>
@@ -44,7 +36,7 @@ public class WorkoutsEndpointTests : IDisposable
     [Fact]
     public async Task Put_CreatesThenReplaces_AndARetryNeverDuplicates()
     {
-        using var alice = ClientFor("alice");
+        using var alice = _factory.ClientFor("alice");
         var id = Guid.NewGuid();
 
         var created = await alice.PutAsJsonAsync($"/workouts/{id}", Request());
@@ -63,14 +55,14 @@ public class WorkoutsEndpointTests : IDisposable
         var edited = await alice.PutAsJsonAsync($"/workouts/{id}", Request((Squat, 190, 5), (Bench, 137.5m, 8)));
 
         Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
-        var fetched = await alice.GetFromJsonAsync<WorkoutResponse>($"/workouts/{id}");
-        Assert.Equal([(Squat, 190m, 5), (Bench, 137.5m, 8)], fetched!.Sets.Select(s => (s.ExerciseId, s.Weight, s.Reps)));
+        var fetched = Assert.Single(await ListAsync(alice));
+        Assert.Equal([(Squat, 190m, 5), (Bench, 137.5m, 8)], fetched.Sets.Select(s => (s.ExerciseId, s.Weight, s.Reps)));
     }
 
     [Fact]
     public async Task List_IsNewestFirst()
     {
-        using var alice = ClientFor("alice");
+        using var alice = _factory.ClientFor("alice");
         var older = Guid.NewGuid();
         var newer = Guid.NewGuid();
         await alice.PutAsJsonAsync($"/workouts/{older}", Request() with { StartedAt = Start.AddDays(-2), FinishedAt = Start.AddDays(-2).AddHours(1) });
@@ -82,13 +74,12 @@ public class WorkoutsEndpointTests : IDisposable
     [Fact]
     public async Task OtherUsersWorkouts_AreInvisible_AndCantBeOverwritten()
     {
-        using var alice = ClientFor("alice");
-        using var bob = ClientFor("bob");
+        using var alice = _factory.ClientFor("alice");
+        using var bob = _factory.ClientFor("bob");
         var id = Guid.NewGuid();
         await alice.PutAsJsonAsync($"/workouts/{id}", Request());
 
         Assert.Empty(await ListAsync(bob));
-        Assert.Equal(HttpStatusCode.NotFound, (await bob.GetAsync($"/workouts/{id}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await bob.PutAsJsonAsync($"/workouts/{id}", Request((Squat, 500, 1)))).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await bob.DeleteAsync($"/workouts/{id}")).StatusCode);
         Assert.Equal(3, Assert.Single(await ListAsync(alice)).Sets.Count());
@@ -97,8 +88,8 @@ public class WorkoutsEndpointTests : IDisposable
     [Fact]
     public async Task Put_InvalidRequest_Returns400_AndSavesNothing()
     {
-        using var alice = ClientFor("alice");
-        using var bob = ClientFor("bob");
+        using var alice = _factory.ClientFor("alice");
+        using var bob = _factory.ClientFor("bob");
         var bobsExercise = await bob.PostAsJsonAsync("/exercises", new ExerciseRequest("Zercher Squat", "Legs"));
         var bobsExerciseId = (await bobsExercise.Content.ReadFromJsonAsync<ExerciseResponse>())!.Id;
 
@@ -126,7 +117,7 @@ public class WorkoutsEndpointTests : IDisposable
     [Fact]
     public async Task CardioSets_KeepDistanceAndTime_AndStrengthSetsKeepWeightAndReps()
     {
-        using var alice = ClientFor("alice");
+        using var alice = _factory.ClientFor("alice");
         var exercises = await alice.GetFromJsonAsync<List<ExerciseResponse>>("/exercises");
         var running = exercises!.Single(e => e.Name == "Running").Id;
         var elliptical = exercises!.Single(e => e.Name == "Elliptical (Machine)").Id;
@@ -146,7 +137,7 @@ public class WorkoutsEndpointTests : IDisposable
         });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var sets = (await alice.GetFromJsonAsync<WorkoutResponse>($"/workouts/{id}"))!.Sets;
+        var sets = Assert.Single(await ListAsync(alice)).Sets;
         Assert.Equal(
             [(running, 0m, 0, 3.1m, 1620), (elliptical, 0m, 0, null, 1800), (stairs, 0m, 0, null, 600), (Bench, 135m, 8, null, (int?)null)],
             sets.Select(s => (s.ExerciseId, s.Weight, s.Reps, s.Distance, s.DurationSeconds)));
@@ -170,7 +161,7 @@ public class WorkoutsEndpointTests : IDisposable
     [Fact]
     public async Task Put_WithYourOwnExercise_AndNoName_SavesAsWorkout()
     {
-        using var alice = ClientFor("alice");
+        using var alice = _factory.ClientFor("alice");
         var mine = await alice.PostAsJsonAsync("/exercises", new ExerciseRequest("Zercher Squat", "Legs"));
         var mineId = (await mine.Content.ReadFromJsonAsync<ExerciseResponse>())!.Id;
 
@@ -183,7 +174,7 @@ public class WorkoutsEndpointTests : IDisposable
     [Fact]
     public async Task Delete_RemovesTheWorkout()
     {
-        using var alice = ClientFor("alice");
+        using var alice = _factory.ClientFor("alice");
         var id = Guid.NewGuid();
         await alice.PutAsJsonAsync($"/workouts/{id}", Request());
 

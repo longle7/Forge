@@ -3,10 +3,8 @@ import { Link } from 'react-router'
 import { foodLogPath, getFoodLog, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, saveProfile, type Profile } from '../api'
 import { Card, Group, Notice, Page, primaryButton, Status, Stepper, Switch } from '../components'
 import { localDate } from '../dates'
-import { today as habitsToday } from '../habits'
 import { Icon } from '../icons'
-import { planFor, workedOut } from '../plan'
-import { isUnlocked, unlockGoals, type TodaySoFar } from '../timeout'
+import { isUnlocked, todaySoFar, unlockGoals } from '../timeout'
 import { failure, useNow, usePolling } from '../usePolling'
 
 /**
@@ -47,16 +45,7 @@ export default function TimeOutPage() {
   }
 
   const rules = { ...profile.data, ...edits }
-  const planned = planFor(plan.data, today)
-  const day: TodaySoFar = {
-    planName: planned?.name,
-    restDay: !planned && (plan.data?.length ?? 0) > 0,
-    workedOut: workedOut(workouts.data, today),
-    meals: new Set((food.data ?? []).map((e) => e.meal)).size,
-    weighedIn: (weighIns.data ?? []).some((w) => w.date === today),
-    habitsDue: habitsToday(habits.data, today).due.length,
-    habitsDone: habitsToday(habits.data, today).done,
-  }
+  const day = todaySoFar({ plan: plan.data, workouts: workouts.data, food: food.data, weighIns: weighIns.data, habits: habits.data }, today)
   const goals = unlockGoals(rules, day)
   const unlocked = isUnlocked(goals)
 

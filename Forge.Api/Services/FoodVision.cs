@@ -51,51 +51,21 @@ namespace Forge.Api.Services
             + "carbohydrate, and fat. Use realistic portion sizes based on the plate and utensils, and include cooking "
             + "fats and sauces you can see as their own items. If there's no food in the photo, return no items.";
 
-        private static readonly Dictionary<string, JsonElement> LabelSchema = Schema(new
-        {
-            type = "object",
-            properties = new
-            {
-                found = new { type = "boolean" },
-                name = new { type = "string" },
-                serving = new { type = "string" },
-                calories = new { type = "number" },
-                protein = new { type = "number" },
-                carbs = new { type = "number" },
-                fat = new { type = "number" },
-            },
-            required = new[] { "found", "name", "serving", "calories", "protein", "carbs", "fat" },
-            additionalProperties = false,
-        });
+        private static readonly Dictionary<string, JsonElement> LabelSchema = Schema("""
+            {"type": "object", "additionalProperties": false,
+             "required": ["found", "name", "serving", "calories", "protein", "carbs", "fat"],
+             "properties": {"found": {"type": "boolean"}, "name": {"type": "string"}, "serving": {"type": "string"},
+                            "calories": {"type": "number"}, "protein": {"type": "number"}, "carbs": {"type": "number"}, "fat": {"type": "number"}}}
+            """);
 
-        private static readonly Dictionary<string, JsonElement> MealSchema = Schema(new
-        {
-            type = "object",
-            properties = new
-            {
-                items = new
-                {
-                    type = "array",
-                    items = new
-                    {
-                        type = "object",
-                        properties = new
-                        {
-                            name = new { type = "string" },
-                            grams = new { type = "number" },
-                            calories = new { type = "number" },
-                            protein = new { type = "number" },
-                            carbs = new { type = "number" },
-                            fat = new { type = "number" },
-                        },
-                        required = new[] { "name", "grams", "calories", "protein", "carbs", "fat" },
-                        additionalProperties = false,
-                    },
-                },
-            },
-            required = new[] { "items" },
-            additionalProperties = false,
-        });
+        private static readonly Dictionary<string, JsonElement> MealSchema = Schema("""
+            {"type": "object", "additionalProperties": false, "required": ["items"],
+             "properties": {"items": {"type": "array", "items": {
+               "type": "object", "additionalProperties": false,
+               "required": ["name", "grams", "calories", "protein", "carbs", "fat"],
+               "properties": {"name": {"type": "string"}, "grams": {"type": "number"}, "calories": {"type": "number"},
+                              "protein": {"type": "number"}, "carbs": {"type": "number"}, "fat": {"type": "number"}}}}}}
+            """);
 
         private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -169,7 +139,6 @@ namespace Forge.Api.Services
             }
         }
 
-        private static Dictionary<string, JsonElement> Schema(object schema) =>
-            JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(JsonSerializer.Serialize(schema))!;
+        private static Dictionary<string, JsonElement> Schema(string json) => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
     }
 }

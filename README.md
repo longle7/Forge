@@ -42,7 +42,7 @@ Everything except `/health` and `/auth/apple` needs a sign-in token (or, until `
 Requires the .NET 10 SDK, Node 24, and SQL Server on `localhost` (Windows authentication).
 
 ```
-dotnet run --project Forge.Api                    # API at http://localhost:5212 (Swagger at /swagger); creates ForgeDb
+dotnet run --project Forge.Api                    # API at http://localhost:5212; creates ForgeDb
 cd Forge.Web && npm install && npm run dev        # web app at http://localhost:5174, forwards /api/* to the API
 ```
 

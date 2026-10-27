@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { ApiError, getExercises, getWorkouts, isCardio, saveWorkout, type Exercise, type Workout } from '../api'
+import { readJson, write } from '../cache'
 import { Card, dangerButton, field, Notice, plainButton, PrBadge, primaryButton, Sheet, tintedButton } from '../components'
 import { loadDraft, saveDraft, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
@@ -15,13 +16,7 @@ const REST_CHOICES = [0, 30, 60, 90, 120, 180, 300]
 const REST_KEY = 'forge.rest'
 const restEndsAt = (seconds: number) => Date.now() + seconds * 1000
 
-function loadRests(): Record<number, number> {
-  try {
-    return JSON.parse(localStorage.getItem(REST_KEY) ?? '{}') ?? {}
-  } catch {
-    return {} // blocked or corrupted storage
-  }
-}
+const loadRests = () => readJson<Record<number, number>>(REST_KEY) ?? {}
 
 // The chime when a rest is up. Browsers only let a page play sound after a tap, so checking off a set wakes it up.
 let audio: AudioContext | undefined
@@ -110,11 +105,7 @@ function Logger({ draft, update, workouts, exercises }: {
   const changeRest = (exerciseId: number, seconds: number) => {
     const next = { ...rests, [exerciseId]: seconds }
     setRests(next)
-    try {
-      localStorage.setItem(REST_KEY, JSON.stringify(next))
-    } catch {
-      // storage blocked: the choice lasts while the page stays open
-    }
+    write(REST_KEY, JSON.stringify(next))
   }
 
   // Checking off a set fills empty fields from last time (like Strong), with the weight raised when you hit every rep

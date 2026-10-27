@@ -2,22 +2,41 @@
 // something to show when it opens with no signal.
 const PREFIX = 'forge.cache.'
 
-export function remembered<T>(key: string): { data: T; updatedAt: Date } | undefined {
+/** localStorage that never throws: blocked storage reads as nothing stored. */
+export function read(key: string): string | null {
   try {
-    const entry = JSON.parse(localStorage.getItem(PREFIX + key) ?? 'null') as { data: T; at: number } | null
-    return entry ? { data: entry.data, updatedAt: new Date(entry.at) } : undefined
+    return localStorage.getItem(key)
   } catch {
-    return undefined // blocked or corrupted storage: nothing remembered
+    return null
   }
 }
 
-export function remember(key: string, data: unknown) {
-  if (data === undefined) return
+/** Saves `value` (null removes it). Storage full or blocked: skipped, so it lasts only while the page stays open. */
+export function write(key: string, value: string | null) {
   try {
-    localStorage.setItem(PREFIX + key, JSON.stringify({ data, at: Date.now() }))
+    if (value === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, value)
   } catch {
-    // storage full or blocked: the app still works, just without last-known data offline
+    // storage full or blocked
   }
+}
+
+/** `read`, parsed as JSON. Corrupted storage reads as nothing stored. */
+export function readJson<T>(key: string): T | undefined {
+  try {
+    return JSON.parse(read(key) ?? 'null') ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function remembered<T>(key: string): { data: T; updatedAt: Date } | undefined {
+  const entry = readJson<{ data: T; at: number }>(PREFIX + key)
+  return entry ? { data: entry.data, updatedAt: new Date(entry.at) } : undefined
+}
+
+export function remember(key: string, data: unknown) {
+  if (data !== undefined) write(PREFIX + key, JSON.stringify({ data, at: Date.now() }))
 }
 
 /** After signing in or out: what's remembered may belong to another account. */

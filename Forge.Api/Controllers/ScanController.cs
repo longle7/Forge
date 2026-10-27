@@ -13,7 +13,6 @@ namespace Forge.Api.Controllers
     /// multipart form field named "image". The app shows what comes back for you to check and edit before logging it.
     /// Photos go to Claude (IFoodVision) and are never stored. Each scan costs money, so there's a daily cap per user
     /// (Scan:PerUserDaily) and for everyone together (Scan:GlobalDaily).
-    /// ponytail: header is trusted as-is, replace with the authenticated user's ID when login exists.
     /// </summary>
     [ApiController]
     [Route("scan")]

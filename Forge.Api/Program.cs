@@ -103,10 +103,6 @@ builder.Services.AddRateLimiter(options =>
     };
 });
 
-// Swagger: interactive API docs at /swagger (Development only, see below).
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
 var app = builder.Build();
 
 // ---- 2. Startup and the middleware pipeline -----------------------------------------------------------------
@@ -124,12 +120,6 @@ app.UseStatusCodePages();
 using (var scope = app.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<ForgeDbContext>().Database.Migrate();
-}
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
 }
 
 app.UseCors(); // before the limiter, so a 429 carries CORS headers and the app can show its message

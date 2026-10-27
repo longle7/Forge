@@ -126,3 +126,6 @@ const kcal = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 })
 
 /** "1,240" */
 export const formatKcal = (calories: number) => kcal.format(Math.round(calories))
+
+/** "1 cup", or "2 × 1 cup" */
+export const servingLabel = (food: { serving: string; servings: number }) => (food.servings === 1 ? food.serving : `${food.servings} × ${food.serving}`)

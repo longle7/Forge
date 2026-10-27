@@ -9,7 +9,6 @@ namespace Forge.Api.Controllers
     /// <summary>
     /// Your daily habits and their check-offs. Like workouts, a habit's ID is made up by the app and saved with an
     /// idempotent PUT. Yours alone (the X-User-Id header, see WorkoutsController); someone else's habit answers 404.
-    /// ponytail: header is trusted as-is, replace with the authenticated user's ID when login exists.
     /// </summary>
     [ApiController]
     [Route("habits")]
@@ -49,21 +48,11 @@ namespace Forge.Api.Controllers
                 return NotFound(); // someone else's: the same answer as a missing one
             }
 
-            if ((request.Days & 127) == 0)
+            // A new habit, or an archived one coming back, takes one of the active places.
+            var becomingActive = !request.Archived && (habit is null || habit.ArchivedAtUtc is not null);
+            if (becomingActive && await _db.Habits.CountAsync(h => h.UserId == userId && h.ArchivedAtUtc == null) >= MaxActive)
             {
-                ModelState.AddModelError(nameof(request.Days), "Pick at least one day.");
-            }
-            else
-            {
-                // A new habit, or an archived one coming back, takes one of the active places.
-                var becomingActive = !request.Archived && (habit is null || habit.ArchivedAtUtc is not null);
-                if (becomingActive && await _db.Habits.CountAsync(h => h.UserId == userId && h.ArchivedAtUtc == null) >= MaxActive)
-                {
-                    ModelState.AddModelError("", $"You can have up to {MaxActive} habits. Archive one to add another.");
-                }
-            }
-            if (!ModelState.IsValid)
-            {
+                ModelState.AddModelError("", $"You can have up to {MaxActive} habits. Archive one to add another.");
                 return ValidationProblem();
             }
 
@@ -77,7 +66,7 @@ namespace Forge.Api.Controllers
             habit.Name = request.Name.Trim();
             habit.Emoji = request.Emoji?.Trim() ?? string.Empty;
             habit.DailyTarget = request.DailyTarget;
-            habit.Days = request.Days & 127;
+            habit.Days = request.Days;
             habit.ArchivedAtUtc = request.Archived ? habit.ArchivedAtUtc ?? DateTime.UtcNow : null;
             await _db.SaveChangesAsync();
 
@@ -124,7 +113,7 @@ namespace Forge.Api.Controllers
         [Required, MaxLength(50)] string Name,
         [MaxLength(16)] string? Emoji,
         [Range(1, 20)] int DailyTarget,
-        [Range(1, 127)] int Days,
+        [Range(1, 127, ErrorMessage = "Pick at least one day.")] int Days,
         bool Archived = false);
 
     public record HabitCheckRequest([Range(0, 100)] int Count);

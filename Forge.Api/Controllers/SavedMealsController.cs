@@ -9,7 +9,6 @@ namespace Forge.Api.Controllers
     /// <summary>
     /// Meals you eat often: saved from a day's meal, logged again in one tap. Saved with an idempotent PUT, like
     /// workouts. Yours alone (the X-User-Id header, see WorkoutsController).
-    /// ponytail: header is trusted as-is, replace with the authenticated user's ID when login exists.
     /// </summary>
     [ApiController]
     [Route("saved-meals")]

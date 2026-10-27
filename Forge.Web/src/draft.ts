@@ -1,3 +1,4 @@
+import { readJson, write } from './cache'
 import { randomId, type PlanDay, type Workout, type WorkoutInput, type WorkoutSet } from './api'
 import { formatClock, groupSets, isCardioSet, parseDuration } from './workouts'
 
@@ -31,23 +32,10 @@ export interface DraftSet {
 
 const KEY = 'forge.activeWorkout'
 
-export function loadDraft(): Draft | undefined {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) ?? 'null') ?? undefined
-  } catch {
-    return undefined // blocked or corrupted storage
-  }
-}
+export const loadDraft = () => readJson<Draft>(KEY)
 
 /** Keeps the workout in progress on this device; undefined once it's saved or discarded. */
-export function saveDraft(draft: Draft | undefined) {
-  try {
-    if (draft) localStorage.setItem(KEY, JSON.stringify(draft))
-    else localStorage.removeItem(KEY)
-  } catch {
-    // storage blocked: the workout lasts while the page stays open
-  }
-}
+export const saveDraft = (draft: Draft | undefined) => write(KEY, draft ? JSON.stringify(draft) : null)
 
 /** "Morning Workout", "Afternoon Workout", or "Evening Workout", like Strong. */
 export function workoutName(now: Date): string {

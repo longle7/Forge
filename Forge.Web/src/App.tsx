@@ -1,7 +1,7 @@
-import { Suspense, useEffect, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router'
 import { isSignedIn, onSignInChange } from './api'
-import { ErrorBoundary, NotFound, Status } from './components'
+import { ErrorBoundary, NotFound } from './components'
 import { loadDraft } from './draft'
 import { Icon, type IconName } from './icons'
 import { useOnline } from './usePolling'
@@ -58,29 +58,27 @@ function Pages() {
     <ErrorBoundary key={pathname}>
       {/* New for each page (the boundary is keyed by it), so every page change plays the enter animation. */}
       <div className="page-enter space-y-4">
-        <Suspense fallback={<Status loading />}>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/workouts" element={<WorkoutsPage />} />
-            <Route path="/workouts/active" element={<LoggerPage />} />
-            <Route path="/workouts/history" element={<HistoryPage />} />
-            <Route path="/workouts/history/:id" element={<WorkoutDetailPage />} />
-            <Route path="/workouts/exercises" element={<ExercisesPage />} />
-            <Route path="/workouts/exercises/:id" element={<ExercisePage />} />
-            <Route path="/workouts/plan/:day" element={<PlanDayPage />} />
-            <Route path="/calories" element={<CaloriesPage />} />
-            <Route path="/calories/add" element={<AddFoodPage />} />
-            <Route path="/setup" element={<SetupPage />} />
-            <Route path="/habits" element={<HabitsPage />} />
-            <Route path="/timeout" element={<TimeOutPage />} />
-            <Route path="/progress" element={<ProgressPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/support" element={<SupportPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/workouts" element={<WorkoutsPage />} />
+          <Route path="/workouts/active" element={<LoggerPage />} />
+          <Route path="/workouts/history" element={<HistoryPage />} />
+          <Route path="/workouts/history/:id" element={<WorkoutDetailPage />} />
+          <Route path="/workouts/exercises" element={<ExercisesPage />} />
+          <Route path="/workouts/exercises/:id" element={<ExercisePage />} />
+          <Route path="/workouts/plan/:day" element={<PlanDayPage />} />
+          <Route path="/calories" element={<CaloriesPage />} />
+          <Route path="/calories/add" element={<AddFoodPage />} />
+          <Route path="/setup" element={<SetupPage />} />
+          <Route path="/habits" element={<HabitsPage />} />
+          <Route path="/timeout" element={<TimeOutPage />} />
+          <Route path="/progress" element={<ProgressPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/support" element={<SupportPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </div>
     </ErrorBoundary>
   )
