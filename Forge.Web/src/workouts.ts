@@ -39,7 +39,8 @@ export const isLift = (set: WorkoutSet) => set.weight > 0 && !isCardioSet(set) &
 const score = (set: WorkoutSet) =>
   isCardioSet(set) ? set.distance || (set.durationSeconds ?? 0) / 60 : set.weight > 0 ? oneRepMax(set.weight, set.reps) : set.reps
 
-const byStart = (a: Workout, b: Workout) => Date.parse(a.startedAt) - Date.parse(b.startedAt)
+/** Oldest first, for sort. */
+export const byStart = (a: Workout, b: Workout) => Date.parse(a.startedAt) - Date.parse(b.startedAt)
 
 /**
  * Each workout's PRs (the set objects themselves): for every exercise, the workout's best set when it beats all

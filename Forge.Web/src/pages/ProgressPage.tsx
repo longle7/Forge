@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, isNative, type DayTotals, type Exercise, type Habit, type PlanDay, type Profile, type WeighIn, type Workout } from '../api'
+import { achievementStats, BADGES, badgesNewestFirst, nextUp, progressShare, progressText } from '../achievements'
 import { BodyMap } from '../BodyMap'
 import { completion, habitStreak } from '../habits'
 import { BarChart, ChartTable, LineChart, Sparkline } from '../charts'
 import { RING } from '../colors'
-import { BarRow, Card, Page, plainButton, Segmented, Status } from '../components'
+import { BadgeIcon, BarRow, Card, Page, plainButton, Segmented, Status } from '../components'
 import { addDays, dayLabel, localDate, monthStart, parseDate, workoutDay } from '../dates'
 import { Icon } from '../icons'
 import { calorieAdherence, formatKcal, goalEta, plannedTrend, weightTrend } from '../nutrition'
@@ -54,6 +55,8 @@ export default function ProgressPage() {
       <StrengthCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
       <MusclesCard workouts={workouts.data ?? []} exercises={exercises.data ?? []} from={from} today={today} period={period} />
       <RecordsCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
+      {/* The plan sets the weekly streak goal, so badges wait for it. */}
+      {plan.data && <AchievementsCard workouts={workouts.data ?? []} plan={plan.data} />}
 
       {/* Points the website to the iPhone app; inside the app it would point at itself. */}
       {!isNative && (
@@ -420,6 +423,48 @@ function RecordsCard({ workouts, from, names, period }: { workouts: Workout[]; f
           </li>
         ))}
       </ul>
+    </Card>
+  )
+}
+
+/** Every badge earned, newest first, then the few you're closest to, each with how far along you are. */
+function AchievementsCard({ workouts, plan }: { workouts: Workout[]; plan: PlanDay[] }) {
+  const earned = badgesNewestFirst(workouts, plan)
+  const stats = achievementStats(workouts, plan)
+  const next = nextUp(stats)
+  return (
+    <Card>
+      <CardTitle icon="medal" title="Achievements" detail={`${earned.length} of ${BADGES.length} earned`} />
+      {earned.length > 0 ? (
+        <ul className="mt-3 grid grid-cols-3 gap-x-2 gap-y-3">
+          {earned.map((badge) => (
+            <li key={badge.id} className="flex flex-col items-center gap-1.5 text-center text-[13px] leading-tight font-medium">
+              <BadgeIcon icon={badge.icon} />
+              {badge.title}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1 text-[15px] text-muted">Finish a workout to earn your first badge.</p>
+      )}
+      {next.length > 0 && (
+        <>
+          <h3 className="mt-4 text-[13px] font-semibold text-muted uppercase">Next up</h3>
+          <ul className="divide-y divide-line">
+            {next.map((badge) => (
+              <li key={badge.id} className="py-2.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="min-w-0 truncate font-medium">{badge.title}</span>
+                  <span className="shrink-0 text-[13px] text-muted tabular-nums">{progressText(badge, stats)}</span>
+                </div>
+                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-fill">
+                  <div className="h-full rounded-full bg-amber" style={{ width: `${progressShare(badge, stats) * 100}%` }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </Card>
   )
 }
