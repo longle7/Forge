@@ -19,12 +19,28 @@ export interface WorkoutSet {
 }
 
 export interface Workout {
-  id: string // made up by the app when the workout starts (see draft.ts)
+  id: string // made up by the app when the workout starts (see draft.ts); Apple Health's own ID for a Watch workout
   name: string
   startedAt: string // ISO, UTC
   finishedAt: string
-  sets: WorkoutSet[] // in the order they were done
+  sets: WorkoutSet[] // in the order they were done; none for a Watch strength session (the Watch doesn't record sets)
+  source?: 'forge' | 'health' // 'health': brought in from Apple Health (see health.ts)
+  activity?: string | null // Apple Health's kind of workout: 'running', 'strength', …
+  // From Apple Health, for a Watch workout or a Forge one the Watch recorded too.
+  activeCalories?: number | null
+  avgHeartRate?: number | null
+  maxHeartRate?: number | null
+  heartRate?: HeartRatePoint[]
 }
+
+/** Heart rate `s` seconds into a workout, in beats a minute (30-second steps). */
+export interface HeartRatePoint {
+  s: number
+  bpm: number
+}
+
+/** Apple Health's numbers for a workout: see saveWorkoutHealth. */
+export type WorkoutHealth = Pick<Workout, 'activeCalories' | 'avgHeartRate' | 'maxHeartRate' | 'heartRate'>
 
 export type WorkoutInput = Omit<Workout, 'id'>
 
@@ -216,6 +232,9 @@ export const getWorkouts = () => api<Workout[]>('/workouts')
 export const saveWorkout = (id: string, workout: WorkoutInput) =>
   api<Workout>(`/workouts/${id}`, { method: 'PUT', body: JSON.stringify(workout) })
 export const deleteWorkout = (id: string) => api<void>(`/workouts/${id}`, { method: 'DELETE' })
+/** Adds Apple Health's calories and heart rate to a workout you logged in Forge (the Watch recorded it too). */
+export const saveWorkoutHealth = (id: string, health: WorkoutHealth) =>
+  api<Workout>(`/workouts/${id}/health`, { method: 'PUT', body: JSON.stringify(health) })
 
 const put = (body: unknown): RequestInit => ({ method: 'PUT', body: JSON.stringify(body) })
 

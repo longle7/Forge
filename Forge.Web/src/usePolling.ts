@@ -14,6 +14,9 @@ export const shared = <T,>(key: string, fetcher: () => Promise<T>): Promise<T> =
   return entry.request as Promise<T>
 }
 
+/** Dispatch on window to make every page fetch again: `window.dispatchEvent(new Event(REFRESH))`. */
+export const REFRESH = 'forge:refresh'
+
 interface PollState<T> {
   data: T | undefined
   error: Error | undefined
@@ -49,11 +52,14 @@ export function usePolling<T>(fetcher: () => Promise<T>, key: string): PollState
       )
     load(reloads > 0)
     // Back online (e.g. out of the gym's basement): refetch everything, including one-off loads that failed while offline.
+    // REFRESH: something changed the data behind the page's back (an Apple Health sync).
     const onOnline = () => load()
     window.addEventListener('online', onOnline)
+    window.addEventListener(REFRESH, onOnline)
     return () => {
       cancelled = true
       window.removeEventListener('online', onOnline)
+      window.removeEventListener(REFRESH, onOnline)
     }
     // fetcher is recreated every render, so `key` (not fetcher) identifies what is being fetched.
     // eslint-disable-next-line react-hooks/exhaustive-deps

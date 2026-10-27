@@ -145,7 +145,7 @@ export default function HomePage() {
               {prs > 0 && <PrBadge />}
             </div>
             <p className="text-[15px] text-muted">
-              {[formatDay(last.startedAt), formatDuration(workoutLength(last)), plural(groupSets(last.sets).length, 'exercise'), workoutTotals(last)].filter(Boolean).join(' · ')}
+              {[formatDay(last.startedAt), formatDuration(workoutLength(last)), last.sets.length > 0 && plural(groupSets(last.sets).length, 'exercise'), workoutTotals(last)].filter(Boolean).join(' · ')}
             </p>
           </Card>
         </>

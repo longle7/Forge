@@ -660,13 +660,34 @@ namespace Forge.Api.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<decimal?>("ActiveCalories")
+                        .HasPrecision(6, 1)
+                        .HasColumnType("decimal(6,1)");
+
+                    b.Property<string>("Activity")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int?>("AvgHeartRate")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("FinishedAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("MaxHeartRate")
+                        .HasColumnType("int");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("forge");
 
                     b.Property<DateTime>("StartedAtUtc")
                         .HasColumnType("datetime2");
@@ -812,6 +833,34 @@ namespace Forge.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Exercise");
+                });
+
+            modelBuilder.Entity("Forge.Api.Domain.Workout", b =>
+                {
+                    b.OwnsMany("Forge.Api.Domain.HeartRatePoint", "HeartRate", b1 =>
+                        {
+                            b1.Property<Guid>("WorkoutId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAddOrUpdate();
+
+                            b1.Property<int>("Bpm");
+
+                            b1.Property<int>("S");
+
+                            b1.HasKey("WorkoutId", "__synthesizedOrdinal");
+
+                            b1.ToTable("Workouts");
+
+                            b1
+                                .ToJson("HeartRate")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.WithOwner()
+                                .HasForeignKey("WorkoutId");
+                        });
+
+                    b.Navigation("HeartRate");
                 });
 
             modelBuilder.Entity("Forge.Api.Domain.WorkoutSet", b =>

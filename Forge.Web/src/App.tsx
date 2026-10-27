@@ -3,6 +3,7 @@ import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router
 import { isSignedIn, onSignInChange } from './api'
 import { ErrorBoundary, NotFound } from './components'
 import { loadDraft } from './draft'
+import { syncHealth } from './health'
 import { Icon, type IconName } from './icons'
 import { useOnline } from './usePolling'
 import AddFoodPage from './pages/AddFoodPage'
@@ -34,6 +35,16 @@ const TABS: { to: string; label: string; icon: IconName }[] = [
 ]
 
 export default function App() {
+  // Apple Health: bring in new Watch workouts when the app opens or comes back (syncHealth keeps it to every 5 minutes).
+  useEffect(() => {
+    const sync = () => {
+      if (!document.hidden && isSignedIn()) syncHealth().catch(() => {}) // offline or not allowed: next time
+    }
+    sync()
+    document.addEventListener('visibilitychange', sync)
+    return () => document.removeEventListener('visibilitychange', sync)
+  }, [])
+
   return (
     <BrowserRouter>
       <OfflineBanner />
