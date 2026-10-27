@@ -29,6 +29,7 @@ public class MeEndpointTests : IDisposable
         await client.PutAsJsonAsync("/plan/1", new { name = "Leg Day", exercises = new[] { new { exerciseId = exercise.Id, sets = 3, reps = 5 } } });
         await client.PutAsJsonAsync("/profile", new ProfileDto("male", 1994, 70, 185, "light", "lose", 1, 2150, 167, 190, 72));
         await client.PutAsJsonAsync("/weigh-ins/2026-10-10", new { weight = 185 });
+        await client.PutAsJsonAsync("/activity/2026-10-10", new { kcal = 640 });
         await client.PutAsJsonAsync($"/food-log/{Guid.NewGuid()}", new FoodEntryRequest(new DateOnly(2026, 10, 10), "lunch", "Sandwich", null, 1, 400, 20, 40, 12));
         await client.PutAsJsonAsync($"/saved-meals/{Guid.NewGuid()}", new SavedMealRequest("Lunch", [new("Sandwich", null, 1, 400, 20, 40, 12)]));
         var habit = Guid.NewGuid();
@@ -45,7 +46,7 @@ public class MeEndpointTests : IDisposable
             + db.Exercises.Count(e => e.UserId == userId) + db.FoodEntries.Count(f => f.UserId == userId)
             + db.SavedMeals.Count(m => m.UserId == userId) + db.WeighIns.Count(w => w.UserId == userId)
             + db.Habits.Count(h => h.UserId == userId) + db.UserProfiles.Count(p => p.UserId == userId)
-            + db.TestedMaxes.Count(m => m.UserId == userId);
+            + db.TestedMaxes.Count(m => m.UserId == userId) + db.ActiveEnergy.Count(a => a.UserId == userId);
     }
 
     [Fact]
@@ -60,12 +61,12 @@ public class MeEndpointTests : IDisposable
             db.ScanUsage.Add(new ScanUsage { UserId = "alice", Day = new DateOnly(2026, 10, 10), Count = 2 });
             db.SaveChanges();
         }
-        Assert.Equal(9, RowsOf("alice")); // one in each table, so the fill really did fill
+        Assert.Equal(10, RowsOf("alice")); // one in each table, so the fill really did fill
 
         Assert.Equal(HttpStatusCode.NoContent, (await alice.DeleteAsync("/me")).StatusCode);
 
         Assert.Equal(0, RowsOf("alice"));
-        Assert.Equal(9, RowsOf("bob"));
+        Assert.Equal(10, RowsOf("bob"));
         using var after = TestDb.Open();
         Assert.False(after.ScanUsage.Any(u => u.UserId == "alice"));
         Assert.False(after.WorkoutSets.Any(s => s.Exercise!.UserId == "alice"));

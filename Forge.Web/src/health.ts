@@ -1,6 +1,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
-import { getExercises, getWorkouts, saveWorkout, saveWorkoutHealth, type Exercise, type HeartRatePoint, type Workout, type WorkoutHealth, type WorkoutInput } from './api'
+import { getActivity, getExercises, getWorkouts, saveActivity, saveWorkout, saveWorkoutHealth, type Exercise, type HeartRatePoint, type Workout, type WorkoutHealth, type WorkoutInput } from './api'
 import { read, readJson, write } from './cache'
+import { addDays, localDate } from './dates'
 import { REFRESH } from './usePolling'
 
 /** A workout from Apple Health (plugins/health), recorded by the Apple Watch or another app. Times in ms since 1970. */
@@ -133,8 +134,9 @@ let syncing: Promise<number> | undefined
 /**
  * Brings in Apple Health workouts since the last sync (the last 30 days the first time): one that's the same session
  * as a workout you logged in Forge adds its calories and heart rate to it; any other becomes a workout of its own,
- * saved under Apple Health's ID so it's never added twice. Runs when the app opens or comes back (at most every 5
- * minutes) and from Settings → Sync Now (`force`). Resolves to how many workouts came in or got Watch data.
+ * saved under Apple Health's ID so it's never added twice. Then the last week's active calories, for the calorie
+ * budget (see dayBudget). Runs when the app opens or comes back (at most every 5 minutes) and from Settings → Sync Now
+ * (`force`). Resolves to how many workouts came in or got Watch data.
  */
 export function syncHealth(force = false): Promise<number> {
   if (!healthConnected()) return Promise.resolve(0)
@@ -162,7 +164,20 @@ async function sync(): Promise<number> {
   }
   write(SEEN_KEY, JSON.stringify([...seen].slice(-500))) // ponytail: the last 500 is plenty for a day of overlap
   write(SYNCED_KEY, String(startedAt))
-  if (count) window.dispatchEvent(new Event(REFRESH))
+
+  // Active calories for the last week: today's grows all day, and the Watch can hand over a day's calories late. Only
+  // days that changed are saved.
+  const to = localDate(new Date(startedAt))
+  const from = addDays(to, -6)
+  const [days, saved] = await Promise.all([healthActiveEnergy(from, to), getActivity(from, to)])
+  let changed = count > 0
+  for (const day of days) {
+    const kcal = Math.min(10_000, Math.round(day.kcal))
+    if (kcal === 0 || saved.find((s) => s.date === day.date)?.kcal === kcal) continue
+    await saveActivity(day.date, kcal)
+    changed = true
+  }
+  if (changed) window.dispatchEvent(new Event(REFRESH))
   return count
 }
 

@@ -42,6 +42,7 @@ namespace Forge.Api.Controllers
                 await _db.FoodEntries.Where(f => f.UserId == userId).ExecuteDeleteAsync();
                 await _db.SavedMeals.Where(m => m.UserId == userId).ExecuteDeleteAsync();
                 await _db.WeighIns.Where(w => w.UserId == userId).ExecuteDeleteAsync();
+                await _db.ActiveEnergy.Where(a => a.UserId == userId).ExecuteDeleteAsync();
                 await _db.Habits.Where(h => h.UserId == userId).ExecuteDeleteAsync(); // their check-offs go with them
                 await _db.UserProfiles.Where(p => p.UserId == userId).ExecuteDeleteAsync();
                 await _db.ScanUsage.Where(u => u.UserId == userId).ExecuteDeleteAsync();
