@@ -5,12 +5,16 @@ import { forgetRemembered, write } from '../cache'
 import { dangerButton, Group, Notice, Page, Row, tintedButton } from '../components'
 import { saveDraft } from '../draft'
 import { EQUIPMENT_KEY } from '../equipment'
+import { EquipmentSettings } from '../EquipmentSettings'
 import { forgetHealth, healthSupported } from '../health'
 import { HealthSettings } from '../HealthSettings'
 import { formatKcal } from '../nutrition'
 import { usePolling } from '../usePolling'
 
-/** Settings (from the person button on Home): goals, your account, Delete Account, the legal pages, and the version. */
+/**
+ * Settings (from the person button on Home): goals, your equipment, your account, Delete Account, the legal pages, and
+ * the version.
+ */
 export default function SettingsPage() {
   const [message, setMessage] = useState<string>()
   const [deleting, setDeleting] = useState(false)
@@ -45,6 +49,8 @@ export default function SettingsPage() {
           Goals
         </Row>
       </Group>
+
+      <EquipmentSettings />
 
       {healthSupported() && <HealthSettings />}
 
