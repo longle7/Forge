@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { deleteRoutine, getExercises, getPlan, getRoutines, getWorkouts, isCardio, saveRoutine, type PlanDay, type Routine, type Workout } from '../api'
-import { Card, dangerButton, field, Group, Notice, Page, plainButton, primaryButton, SectionTitle, Sheet, Status, tintedButton, WorkoutRow } from '../components'
+import { deleteRoutine, getExercises, getPlan, getRoutines, getWorkouts, isCardio, type PlanDay, type Routine, type Workout } from '../api'
+import { Card, dangerButton, Group, Notice, Page, plainButton, primaryButton, SectionTitle, Sheet, Status, tintedButton, WorkoutRow } from '../components'
 import { addDays, DAY_NAMES, localDate, weekday } from '../dates'
 import { emptyDraft, loadDraft, planDraft, repeatDraft, routineDraft, saveDraft, useStartWorkout, type Draft } from '../draft'
 import { Icon } from '../icons'
@@ -83,7 +83,7 @@ function WeekStrip({ plan, workouts, today }: { plan: PlanDay[]; workouts: Worko
   )
 }
 
-/** Your routines, by name, each with its exercises. A tap opens one to start, rename, or delete. */
+/** Your routines, by name, each with its exercises, and New Routine. A tap opens one to start, edit, or delete. */
 function Routines() {
   const routines = usePolling(getRoutines, '/routines')
   const exercises = usePolling(getExercises, '/exercises')
@@ -93,9 +93,9 @@ function Routines() {
 
   return (
     <section id="routines" className="scroll-mt-4 space-y-4">
-      <SectionTitle title="Routines" />
+      <SectionTitle title="Routines" link={{ to: '/workouts/routines/new', label: 'New Routine' }} />
       <Status loading={routines.data === undefined && !routines.error} error={failure(routines)} rows={1} />
-      {routines.data?.length === 0 && <p className="px-1 text-muted">Save a finished workout as a routine (on its page) to start it again in one tap.</p>}
+      {routines.data?.length === 0 && <p className="px-1 text-muted">Build one with New Routine, or save a finished workout as one (on its page), to start it in one tap.</p>}
       {!!routines.data?.length && (
         <Group>
           {routines.data.map((routine) => (
@@ -114,21 +114,12 @@ function Routines() {
   )
 }
 
-/** A routine's exercises and sets, with Start, Rename, and Delete. */
+/** A routine's exercises and sets, with Start, Edit (its name and exercises), and Delete. */
 function RoutineSheet({ routine, names, onChanged, onClose }: { routine: Routine; names: Map<number, string>; onChanged: () => void; onClose: () => void }) {
   const startWorkout = useStartWorkout()
-  const [newName, setNewName] = useState<string>() // while renaming: the name being typed
   const { busy, error, setError, run } = useAction()
   const exercises = groupSets(routine.sets).map((group) => ({ name: names.get(group.exerciseId) ?? 'Exercise', sets: setsSummary(group.sets) }))
 
-  const rename = async () => {
-    if (!newName?.trim()) return setError('Give it a name, like Push A.')
-    await run(async () => {
-      await saveRoutine(routine.id, { name: newName.trim(), sets: routine.sets })
-      onChanged()
-      setNewName(undefined)
-    })
-  }
   const remove = async () => {
     if (!confirm(`Delete ${routine.name}? Workouts you did from it stay.`)) return
     await run(async () => {
@@ -155,24 +146,10 @@ function RoutineSheet({ routine, names, onChanged, onClose }: { routine: Routine
         <Icon name="play" className="size-5 fill-current" />
         Start {routine.name}
       </button>
-      {newName === undefined ? (
-        <button onClick={() => setNewName(routine.name)} className={`w-full ${tintedButton}`}>
-          Rename
-        </button>
-      ) : (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            void rename()
-          }}
-          className="flex gap-2"
-        >
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} aria-label="Routine name" maxLength={50} className={field} />
-          <button disabled={busy} className={tintedButton}>
-            {busy ? 'Saving…' : 'Save'}
-          </button>
-        </form>
-      )}
+      <Link to={`/workouts/routines/${routine.id}`} className={`w-full ${tintedButton}`}>
+        <Icon name="pencil" className="size-5" />
+        Edit
+      </Link>
       <button onClick={remove} disabled={busy} className={dangerButton}>
         Delete Routine
       </button>
@@ -182,8 +159,8 @@ function RoutineSheet({ routine, names, onChanged, onClose }: { routine: Routine
 
 /**
  * Today's workout, on Home and the Workouts tab: Continue the one in progress; start today's planned workout (or
- * see that it's done, or that it's a rest day); or, with no plan yet, start one (empty, a repeat of the last, or one
- * of your first three routines).
+ * see that it's done, or that it's a rest day, with your first three routines to start anyway); or, with no plan
+ * yet, start one (empty, a repeat of the last, or one of your first three routines).
  * The workout itself opens at /workouts/active.
  */
 export function TodayWorkoutCard({ quiet = false }: { quiet?: boolean }) {
@@ -209,6 +186,18 @@ export function TodayWorkoutCard({ quiet = false }: { quiet?: boolean }) {
     navigate('/workouts/active')
   }
   const eyebrow = (text: string) => <p className="text-[13px] font-semibold tracking-wide text-coral-ink uppercase">{text}</p>
+  const routineButtons = firstRoutines.map((routine) => (
+    <button key={routine.id} onClick={() => start(routineDraft(routine))} className={`mt-2 w-full ${tintedButton}`}>
+      <Icon name="play" className="size-5 fill-current" />
+      Start {routine.name}
+    </button>
+  ))
+  const allRoutines = firstRoutines.length > 0 && (
+    <Link to="/workouts#routines" className={plainButton}>
+      <Icon name="list" className="size-5" />
+      All routines
+    </Link>
+  )
 
   if (draft) {
     return (
@@ -272,9 +261,13 @@ export function TodayWorkoutCard({ quiet = false }: { quiet?: boolean }) {
         <p className="text-[15px] text-muted">
           Recovery is part of the plan.{nextPlan && ` Next up: ${nextPlan.name}, ${DAY_NAMES[weekday(next)]}.`}
         </p>
-        <button onClick={() => start(emptyDraft())} className={`mt-3 -ml-1 ${plainButton}`}>
-          Start a workout anyway
-        </button>
+        {routineButtons}
+        <div className="mt-3 -ml-1 flex flex-wrap gap-x-5">
+          <button onClick={() => start(emptyDraft())} className={plainButton}>
+            Start a workout anyway
+          </button>
+          {allRoutines}
+        </div>
       </Card>
     )
   }
@@ -294,19 +287,9 @@ export function TodayWorkoutCard({ quiet = false }: { quiet?: boolean }) {
           Repeat {last.name}
         </button>
       )}
-      {firstRoutines.map((routine) => (
-        <button key={routine.id} onClick={() => start(routineDraft(routine))} className={`mt-2 w-full ${tintedButton}`}>
-          <Icon name="play" className="size-5 fill-current" />
-          Start {routine.name}
-        </button>
-      ))}
+      {routineButtons}
       <div className="mt-2 -ml-1 flex flex-wrap gap-x-5">
-        {firstRoutines.length > 0 && (
-          <Link to="/workouts#routines" className={plainButton}>
-            <Icon name="list" className="size-5" />
-            All routines
-          </Link>
-        )}
+        {allRoutines}
         <Link to={`/workouts/plan/${weekday(today)}`} className={plainButton}>
           <Icon name="calendar" className="size-5" />
           Plan your week

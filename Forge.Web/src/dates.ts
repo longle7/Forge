@@ -5,6 +5,12 @@ const pad = (n: number) => String(n).padStart(2, '0')
 /** The local day `date` falls on: "2026-10-10". */
 export const localDate = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 
+/** The local time of day `date` falls at, as a time field holds it: "18:05". */
+export const localTime = (date: Date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`
+
+/** The moment a local day and time ("18:05") stand for. Invalid Date when either is empty. */
+export const parseDateTime = (day: string, time: string) => new Date(`${day}T${time}`) // no "Z": local time
+
 /** Local midnight of a "YYYY-MM-DD" day. */
 export function parseDate(day: string): Date {
   const [y, m, d] = day.split('-').map(Number)

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router'
 import { readJson, write } from './cache'
-import { randomId, type PlanDay, type Routine, type SetKind, type Workout, type WorkoutInput, type WorkoutSet } from './api'
+import { randomId, type PlanDay, type PlanExercise, type Routine, type SetKind, type Workout, type WorkoutInput, type WorkoutSet } from './api'
 import { formatClock, groupSets, isCardioSet, parseDuration } from './workouts'
 
 /**
@@ -89,12 +89,7 @@ export const repeatDraft = (workout: Pick<Workout, 'name' | 'sets'>, now = new D
 export const planDraft = (plan: PlanDay, cardio: Set<number>, now = new Date()): Draft => ({
   ...emptyDraft(now),
   name: plan.name,
-  exercises: plan.exercises.map((e) => ({
-    exerciseId: e.exerciseId,
-    sets: cardio.has(e.exerciseId)
-      ? [{ weight: '', reps: '', distance: '', time: '', done: false }]
-      : Array.from({ length: e.sets }, () => ({ weight: '', reps: String(e.reps), done: false })),
-  })),
+  exercises: planExercisesToBuilder(plan.exercises, cardio),
 })
 
 /**
@@ -126,13 +121,11 @@ export const editDraft = (workout: Workout): Draft => ({
  * or, for cardio, a distance or time. Each set carries its exercise's superset.
  */
 export function toWorkout(draft: Draft, finishedAt: string): WorkoutInput {
-  return {
-    name: draft.name.trim(),
-    startedAt: draft.startedAt,
-    finishedAt,
-    sets: draft.exercises.flatMap(({ exerciseId, superset, sets }) => sets.flatMap((s) => toSet(exerciseId, s) ?? []).map((set) => ({ ...set, superset }))),
-  }
+  return { name: draft.name.trim(), startedAt: draft.startedAt, finishedAt, sets: toSets(draft.exercises) }
 }
+
+const toSets = (exercises: DraftExercise[]) =>
+  exercises.flatMap(({ exerciseId, superset, sets }) => sets.flatMap((s) => toSet(exerciseId, s) ?? []).map((set) => ({ ...set, superset })))
 
 /** A checked-off set as it will be saved, or undefined when it isn't done or has nothing in it. */
 export function toSet(exerciseId: number, s: DraftSet): WorkoutSet | undefined {
@@ -171,6 +164,18 @@ export const leaveSuperset = (exercises: DraftExercise[], index: number) =>
   exercises.map((exercise, i) => (i === index ? { ...exercise, superset: undefined } : exercise))
 
 /**
+ * Splits a superset between an exercise and the next one: the exercises after it go on as a superset of their own,
+ * under a new number (one left alone is in none).
+ */
+export function separateFromNext(exercises: DraftExercise[], index: number): DraftExercise[] {
+  const { superset } = exercises[index]
+  const number = Math.max(0, ...exercises.map((e) => e.superset ?? 0)) + 1
+  let last = index + 1
+  while (superset !== undefined && exercises[last + 1]?.superset === superset) last++
+  return exercises.map((exercise, i) => (i > index && i <= last ? { ...exercise, superset: number } : exercise))
+}
+
+/**
  * Whether checking off a set of exercise `index` starts the rest timer: not while a later exercise in its superset
  * still has a set to do, so in a superset you rest after each round.
  */
@@ -190,4 +195,60 @@ export const replaceExercise = (exercise: DraftExercise, exerciseId: number, car
   ...exercise,
   exerciseId,
   sets: exercise.sets.map(({ reps, kind }) => (cardio ? { weight: '', reps: '', done: false } : { weight: '', reps, kind, done: false })),
+})
+
+// The workout builder (WorkoutBuilder) puts a plan day, a routine, or a past workout together as DraftExercises, so the
+// logger's own changes (move, supersetWithNext) work there too. These turn each one into the builder's and back.
+
+/** A plan's exercise as sets to log or build on: `sets` × `reps`, or for cardio one set for a distance and time. */
+export const planExerciseToBuilder = ({ exerciseId, sets, reps }: PlanExercise, cardio: boolean): DraftExercise => ({
+  exerciseId,
+  sets: cardio ? [{ weight: '', reps: '', distance: '', time: '', done: false }] : Array.from({ length: sets }, () => ({ weight: '', reps: String(reps), done: false })),
+})
+
+/** A plan day's exercises; `cardio`: the IDs of the cardio ones. */
+export const planExercisesToBuilder = (exercises: PlanExercise[], cardio: Set<number>) => exercises.map((e) => planExerciseToBuilder(e, cardio.has(e.exerciseId)))
+
+/** What a plan day saves: each exercise's sets × reps (a plan's sets all have the same reps), or 1 × 1 for cardio. */
+export const builderToPlanExercises = (exercises: DraftExercise[]): PlanExercise[] =>
+  exercises.map(({ exerciseId, sets }) => (sets[0].distance === undefined ? { exerciseId, sets: sets.length, reps: Number(sets[0].reps) } : { exerciseId, sets: 1, reps: 1 }))
+
+/** A routine's exercises with all of their sets: values, kinds, and supersets. */
+export const routineToBuilder = (routine: Pick<Routine, 'sets'>) => draftExercises(routine, false)
+
+/** Every set in the builder as it will be saved, all done, as in a past workout. */
+export const builderToSets = (exercises: DraftExercise[]): WorkoutSet[] => toSets(exercises.map((e) => ({ ...e, sets: e.sets.map((s) => ({ ...s, done: true })) })))
+
+/** Whether a set in the builder has nothing to save: a cardio one with no distance or time. */
+export const hasEmptySet = (exercises: DraftExercise[]) => exercises.some((e) => e.sets.some((s) => !toSet(e.exerciseId, { ...s, done: true })))
+
+/**
+ * A routine's sets. Starting a routine leaves cardio values for last time's to fill (routineDraft), so a cardio
+ * exercise added in the builder has none, but the API wants a distance or time on every cardio set.
+ * ponytail: so it gets a made-up 1-minute time; let the API take a routine's cardio sets without values to drop it.
+ */
+export const builderToRoutineSets = (exercises: DraftExercise[]) =>
+  builderToSets(exercises.map((e) => ({ ...e, sets: e.sets.map((s) => (s.distance === '' && !s.time ? { ...s, time: '1' } : s)) })))
+
+/** A normal set: what the builder's steppers count and change. Warm-ups, drop sets, and sets to failure stay as they are. */
+export const isNormalSet = (set: DraftSet) => !set.kind
+
+/** The exercise with `count` normal sets: copies of the last one go in after it, or the last ones come off. */
+export function withSetCount(exercise: DraftExercise, count: number): DraftExercise {
+  const sets = [...exercise.sets]
+  let normal = sets.filter(isNormalSet).length
+  for (; normal > count; normal--) sets.splice(sets.findLastIndex(isNormalSet), 1)
+  for (; normal < count; normal++) {
+    const last = sets.findLastIndex(isNormalSet)
+    // With none yet (only warm-ups, say), the first copies the last set as a normal one.
+    if (last === -1) sets.push({ ...sets[sets.length - 1], kind: undefined })
+    else sets.splice(last + 1, 0, { ...sets[last] })
+  }
+  return { ...exercise, sets }
+}
+
+/** The exercise with `change` (reps, a weight, or a distance or time) made to every normal set. */
+export const withNormalSets = (exercise: DraftExercise, change: Partial<DraftSet>): DraftExercise => ({
+  ...exercise,
+  sets: exercise.sets.map((s) => (isNormalSet(s) ? { ...s, ...change } : s)),
 })
