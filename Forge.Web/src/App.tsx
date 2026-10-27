@@ -16,6 +16,7 @@ import HabitsPage from './pages/HabitsPage'
 import HistoryPage from './pages/HistoryPage'
 import HomePage from './pages/HomePage'
 import LoggerPage from './pages/LoggerPage'
+import LogWorkoutPage from './pages/LogWorkoutPage'
 import PlanDayPage from './pages/PlanDayPage'
 import ProgressPage from './pages/ProgressPage'
 import RoutinePage from './pages/RoutinePage'
@@ -84,6 +85,7 @@ function Pages() {
           <Route path="/workouts" element={<WorkoutsPage />} />
           <Route path="/workouts/active" element={<LoggerPage />} />
           <Route path="/workouts/history" element={<HistoryPage />} />
+          <Route path="/workouts/log" element={<LogWorkoutPage />} />
           <Route path="/workouts/history/:id" element={<WorkoutDetailPage />} />
           <Route path="/workouts/exercises" element={<ExercisesPage />} />
           <Route path="/workouts/maxes" element={<MaxesPage />} />

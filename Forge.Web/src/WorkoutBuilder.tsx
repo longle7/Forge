@@ -156,7 +156,7 @@ function SetsFields({ name, exercise, cardio, weights, onChange }: {
             inputMode="decimal"
             placeholder="Bodyweight"
             aria-label={`${name} weight in pounds`}
-            className={`${field} w-32 text-center`}
+            className={`${field} max-w-32 text-center`}
           />
         </label>
       )}
