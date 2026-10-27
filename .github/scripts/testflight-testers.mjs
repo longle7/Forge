@@ -22,7 +22,7 @@ export function token(keyId, issuerId, privateKey, now = Date.now()) {
 }
 
 // Each call gets a fresh token: processing can outlast one. Failures carry Apple's explanation (never the key).
-function client(keyId, issuerId, privateKey) {
+export function client(keyId, issuerId, privateKey) {
   return async (method, path, body) => {
     const response = await fetch(API + path, {
       method,
