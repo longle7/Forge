@@ -34,12 +34,13 @@ const workout = (id: string, day: number, sets: WorkoutSet[]): Workout => ({
   sets,
 })
 
-it('groupSets keeps each exercise together, in the order it was first done', () => {
-  const groups = groupSets([set(BENCH, 135, 8), set(SQUAT, 185, 5), set(BENCH, 135, 6)])
-  expect(groups.map((g) => [g.exerciseId, g.sets.length])).toEqual([
-    [BENCH, 2],
-    [SQUAT, 1],
-  ])
+it.each([
+  { name: 'keeps a run of one exercise together', sets: [set(BENCH, 135, 8), set(BENCH, 135, 6), set(SQUAT, 185, 5)], groups: [[BENCH, 2], [SQUAT, 1]] },
+  { name: 'gives an exercise done twice a group each time', sets: [set(BENCH, 135, 8), set(SQUAT, 185, 5), set(BENCH, 135, 6)], groups: [[BENCH, 1], [SQUAT, 1], [BENCH, 1]] },
+  { name: 'starts a new group where a superset ends', sets: [{ ...set(SQUAT, 185, 5), superset: 1 }, set(SQUAT, 135, 10)], groups: [[SQUAT, 1], [SQUAT, 1]] },
+  { name: 'reads no superset from the API (null) and from the app (missing) alike', sets: [{ ...set(BENCH, 135, 8), superset: null }, set(BENCH, 135, 6)], groups: [[BENCH, 2]] },
+])('groupSets $name', ({ sets, groups }) => {
+  expect(groupSets(sets).map((g) => [g.exerciseId, g.sets.length])).toEqual(groups)
 })
 
 it('oneRepMax uses Epley, and a single rep is the weight itself', () => {
@@ -150,6 +151,23 @@ describe('progressionStep', () => {
     expect(progressionStep([set(PULL_UP, 0, 10)], [8], false)).toBe(0)
     expect(progressionStep(last, [NaN, 8, 8], false)).toBe(0) // an empty reps field
     expect(progressionStep([], [8], false)).toBe(0)
+  })
+})
+
+describe('warm-ups never count', () => {
+  // Heavier than the real sets, so it would win everywhere if it counted.
+  const warmup: WorkoutSet = { ...set(BENCH, 225, 5), kind: 'warmup' }
+  const lastTime = workout('a', 1, [set(BENCH, 135, 8)])
+
+  it.each([
+    { name: 'personalRecords: not a PR', value: () => personalRecords([lastTime, workout('b', 3, [warmup, set(BENCH, 135, 8)])]).get('b'), expected: new Set() },
+    { name: 'personalRecords: after only warm-ups, the first real set is still the first time', value: () => personalRecords([workout('a', 1, [warmup]), workout('b', 3, [set(BENCH, 135, 8)])]).get('b'), expected: new Set() },
+    { name: 'bestSet: not the best set', value: () => bestSet([workout('b', 3, [warmup]), lastTime], BENCH)?.set, expected: set(BENCH, 135, 8) },
+    { name: 'livePr: not a PR while logging', value: () => livePr([lastTime], BENCH, [warmup]), expected: undefined },
+    { name: 'volume: no pounds', value: () => volume(workout('b', 3, [warmup, set(BENCH, 135, 8)])), expected: 1080 },
+    { name: 'progressionStep: not a target to hit', value: () => progressionStep([warmup, set(BENCH, 135, 8)], [8], false), expected: 5 },
+  ])('$name', ({ value, expected }) => {
+    expect(value()).toEqual(expected)
   })
 })
 

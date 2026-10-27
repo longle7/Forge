@@ -4,15 +4,17 @@ import { editDraft, emptyDraft, repeatDraft, toWorkout, workoutName, type Draft 
 
 const RUNNING = 36
 
+// Bench (a warm-up first) and lateral raises as a superset, then bench again for a drop set.
 const saved: Workout = {
   id: 'w1',
   name: 'Push day',
   startedAt: '2026-10-08T21:00:00.000Z',
   finishedAt: '2026-10-08T22:00:00.000Z',
   sets: [
-    { exerciseId: 1, weight: 135, reps: 8 },
-    { exerciseId: 25, weight: 20, reps: 12 },
-    { exerciseId: 1, weight: 135, reps: 6 },
+    { exerciseId: 1, weight: 95, reps: 10, kind: 'warmup', superset: 1 },
+    { exerciseId: 1, weight: 135, reps: 8, kind: null, superset: 1 },
+    { exerciseId: 25, weight: 20, reps: 12, kind: 'failure', superset: 1 },
+    { exerciseId: 1, weight: 115, reps: 10, kind: 'drop', superset: null },
   ],
 }
 
@@ -26,22 +28,25 @@ it('emptyDraft gets a new ID each time', () => {
   expect(emptyDraft().id).not.toBe(emptyDraft().id)
 })
 
-it('repeatDraft copies the exercises and values with nothing checked off, under a new ID', () => {
+it('repeatDraft copies the exercises, kinds, supersets, and values with nothing checked off, under a new ID', () => {
   const now = new Date(2026, 9, 10, 7)
   const draft = repeatDraft(saved, now)
 
   expect(draft.id).not.toBe(saved.id)
   expect(draft.name).toBe('Push day') // a chosen name carries over
   expect(draft.startedAt).toBe(now.toISOString())
+  // The API's nulls (a normal set, no superset) leave the draft without them.
   expect(draft.exercises).toEqual([
     {
       exerciseId: 1,
+      superset: 1,
       sets: [
+        { weight: '95', reps: '10', kind: 'warmup', done: false },
         { weight: '135', reps: '8', done: false },
-        { weight: '135', reps: '6', done: false },
       ],
     },
-    { exerciseId: 25, sets: [{ weight: '20', reps: '12', done: false }] },
+    { exerciseId: 25, superset: 1, sets: [{ weight: '20', reps: '12', kind: 'failure', done: false }] },
+    { exerciseId: 1, sets: [{ weight: '115', reps: '10', kind: 'drop', done: false }] },
   ])
   expect(repeatDraft({ ...saved, name: 'Evening Workout' }, now).name).toBe('Morning Workout')
 })
@@ -50,11 +55,12 @@ it('editDraft keeps the ID and times, with every set checked off, and saves back
   const draft = editDraft(saved)
 
   expect(draft).toMatchObject({ id: 'w1', editing: true, startedAt: saved.startedAt, finishedAt: saved.finishedAt })
-  // Grouped by exercise, so the order becomes bench, bench, raise.
+  // The same sets in the same order, bench twice. A normal set or no superset is left out, which the API reads as null.
   expect(toWorkout(draft, saved.finishedAt).sets).toEqual([
-    { exerciseId: 1, weight: 135, reps: 8 },
-    { exerciseId: 1, weight: 135, reps: 6 },
-    { exerciseId: 25, weight: 20, reps: 12 },
+    { exerciseId: 1, weight: 95, reps: 10, kind: 'warmup', superset: 1 },
+    { exerciseId: 1, weight: 135, reps: 8, superset: 1 },
+    { exerciseId: 25, weight: 20, reps: 12, kind: 'failure', superset: 1 },
+    { exerciseId: 1, weight: 115, reps: 10, kind: 'drop' },
   ])
 })
 
@@ -94,7 +100,7 @@ it('toWorkout saves cardio as distance and time, and repeating one shows its tim
         exerciseId: RUNNING,
         sets: [
           { weight: '', reps: '', distance: '3.1', time: '27:00', done: true },
-          { weight: '', reps: '', distance: '', time: '10', done: true }, // minutes
+          { weight: '', reps: '', distance: '', time: '10', kind: 'warmup', done: true }, // minutes; cardio has no kinds
           { weight: '', reps: '', distance: '', time: '', done: true }, // nothing to save
           { weight: '', reps: '', distance: '1', time: '', done: false }, // not checked off
         ],
