@@ -4,6 +4,7 @@ import { DISMISSED_KEY } from '../AdaptiveGoalCard'
 import { forgetRemembered, write } from '../cache'
 import { dangerButton, Group, Notice, Page, Row, tintedButton } from '../components'
 import { saveDraft } from '../draft'
+import { EQUIPMENT_KEY } from '../equipment'
 import { forgetHealth, healthSupported } from '../health'
 import { HealthSettings } from '../HealthSettings'
 import { formatKcal } from '../nutrition'
@@ -26,7 +27,7 @@ export default function SettingsPage() {
       await deleteMyData(appleCode)
       forgetRemembered()
       saveDraft(undefined)
-      for (const key of ['forge.rest', 'forge.scanConsent', DISMISSED_KEY]) write(key, null)
+      for (const key of ['forge.rest', 'forge.scanConsent', DISMISSED_KEY, EQUIPMENT_KEY]) write(key, null)
       forgetHealth()
       if (isNative) return signOut() // Welcome takes over; signing in again starts a new, empty account
       forgetUserId()
