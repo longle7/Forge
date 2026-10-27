@@ -49,6 +49,8 @@
 	<string>Forge uses the camera to photograph nutrition labels and meals, so it can read their calories for you.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Forge reads your workouts, heart rate, and active calories from Apple Health to show them with your training and count them in your calorie budget. It reads your resting heart rate and HRV to show how recovered you are, your sleep and steps to show them with your progress, and your weight to log your weigh-ins.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Forge only reads from Apple Health. It never saves or changes anything there.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Forge saves your workout's share image to your photos when you choose Save Image.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
