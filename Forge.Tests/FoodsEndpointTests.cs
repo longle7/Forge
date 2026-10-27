@@ -20,7 +20,9 @@ public class FoodsEndpointTests
             "foodNutrients": [ { "nutrientNumber": "208", "unitName": "KCAL", "value": 59 },
                                { "nutrientNumber": "203", "unitName": "G", "value": 10.3 },
                                { "nutrientNumber": "205", "unitName": "G", "value": 3.6 },
-                               { "nutrientNumber": "204", "unitName": "G", "value": 0.4 } ] },
+                               { "nutrientNumber": "204", "unitName": "G", "value": 0.4 },
+                               { "nutrientNumber": "269", "unitName": "G", "value": 3.2 },
+                               { "nutrientNumber": "307", "unitName": "MG", "value": 36 } ] },
           { "description": "Chicken, breast, boneless, skinless, raw", "dataType": "Foundation",
             "foodNutrients": [ { "nutrientNumber": "268", "unitName": "KJ", "value": 500 },
                                { "nutrientNumber": "957", "unitName": "KCAL", "value": 120 },
@@ -45,7 +47,8 @@ public class FoodsEndpointTests
 
         Assert.Equal(
             [
-                new("Greek Yogurt, Plain", "Fage Usa Dairy Industry", "3/4 cup (170 g)", 100m, 17.5m, 6.1m, 0.7m),
+                // No fiber listed: unknown, not zero.
+                new("Greek Yogurt, Plain", "Fage Usa Dairy Industry", "3/4 cup (170 g)", 100m, 17.5m, 6.1m, 0.7m, null, 5.4m, 61m),
                 new("Chicken, breast, boneless, skinless, raw", null, "100 g", 120m, 22.5m, 0m, 1.9m),
             ],
             foods);

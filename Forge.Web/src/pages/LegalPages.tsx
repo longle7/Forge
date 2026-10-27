@@ -67,9 +67,9 @@ export function PrivacyPage() {
       <Section title="What we collect, and why">
         <ul className="list-disc space-y-2 pl-5">
           <li>
-            <strong>What you log.</strong> Your workouts and weekly plan, the food you log and the meals you save, your
+            <strong>What you log.</strong> Your workouts, maxes, and weekly plan, the food you log and the meals you save, your
             weigh-ins, your habits and check-offs, your Time Out goals, and your goals with what they're worked out from
-            (sex, birth year, height, weight, activity level, and your goal). We store them on our server so Forge can show
+            (sex, birth year, height, weight, activity level, and your goal and goal weight). We store them on our server so Forge can show
             them to you on any iPhone you sign in on. We use them only to run Forge for you, never for advertising.
           </li>
           <li>

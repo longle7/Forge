@@ -8,8 +8,11 @@ import {
   dayGoals,
   exerciseCalories,
   goalEta,
+  microTotals,
+  optionalNumber,
   remaining,
   restingCalories,
+  suggestedMicros,
   totals,
   weekChange,
   weightOn,
@@ -200,4 +203,29 @@ describe('adaptiveCalories', () => {
   it('never suggests less than the safe floor', () => {
     expect(adaptiveCalories(eaten(21, 1000), weighIns, { ...profile, calorieGoal: 1300 }, today)?.suggested).toBe(1500)
   })
+})
+
+it('microTotals multiply by servings, count unknown as 0, and say how many foods had no info', () => {
+  const day = microTotals([
+    { fiber: 4, sugar: 1, sodium: 0, servings: 2 }, // oats
+    { fiber: 3.1, sugar: 14.4, sodium: 1, servings: 1 }, // banana
+    { servings: 1 }, // logged before fiber, sugar, and sodium were tracked
+    { fiber: null, sugar: 5, sodium: null, servings: 1 }, // a label without fiber: still counts as having info
+  ])
+  expect(day.fiber).toBeCloseTo(11.1)
+  expect(day.sugar).toBeCloseTo(21.4)
+  expect(day.sodium).toBe(1)
+  expect(day.unknown).toBe(1)
+})
+
+it('suggestedMicros scale fiber and sugar with calories', () => {
+  expect(suggestedMicros(2000)).toEqual({ fiberGoal: 28, sugarLimit: 50, sodiumLimit: 2300 })
+})
+
+it('optionalNumber keeps an empty field unknown', () => {
+  expect(optionalNumber('')).toBeNull()
+  expect(optionalNumber('  ')).toBeNull()
+  expect(optionalNumber('4.5')).toBe(4.5)
+  expect(optionalNumber('0')).toBe(0)
+  expect(optionalNumber('abc')).toBe(0)
 })

@@ -102,6 +102,9 @@ namespace Forge.Api.Controllers
             entry.Protein = request.Protein;
             entry.Carbs = request.Carbs;
             entry.Fat = request.Fat;
+            entry.Fiber = request.Fiber;
+            entry.Sugar = request.Sugar;
+            entry.Sodium = request.Sodium;
             entry.Source = request.Source ?? "manual";
             await _db.SaveChangesAsync();
 
@@ -128,7 +131,10 @@ namespace Forge.Api.Controllers
         [Range(0, 1000)] decimal Protein,
         [Range(0, 1000)] decimal Carbs,
         [Range(0, 1000)] decimal Fat,
-        [AllowedValues("manual", "search", "label", "photo", null, ErrorMessage = "Source must be manual, search, label, or photo.")] string? Source = null);
+        [AllowedValues("manual", "search", "label", "photo", null, ErrorMessage = "Source must be manual, search, label, or photo.")] string? Source = null,
+        [Range(0, 1000)] decimal? Fiber = null,
+        [Range(0, 1000)] decimal? Sugar = null,
+        [Range(0, 50_000)] decimal? Sodium = null); // milligrams
 
     public record FoodEntryDto(
         Guid Id,
@@ -141,10 +147,13 @@ namespace Forge.Api.Controllers
         decimal Protein,
         decimal Carbs,
         decimal Fat,
-        string Source)
+        string Source,
+        decimal? Fiber,
+        decimal? Sugar,
+        decimal? Sodium)
     {
         public static FoodEntryDto From(FoodEntry f) =>
-            new(f.Id, f.Date, f.Meal, f.Name, f.Serving, f.Servings, f.Calories, f.Protein, f.Carbs, f.Fat, f.Source);
+            new(f.Id, f.Date, f.Meal, f.Name, f.Serving, f.Servings, f.Calories, f.Protein, f.Carbs, f.Fat, f.Source, f.Fiber, f.Sugar, f.Sodium);
     }
 
     public record DayTotals(DateOnly Date, decimal Calories, decimal Protein);

@@ -20,7 +20,7 @@ import { FoodSheet, type FoodChoice } from '../FoodSheet'
 import { Icon } from '../icons'
 import { ScanFlow } from '../ScanFlow'
 import { failure, useNow, usePolling, useAction } from '../usePolling'
-import { servingLabel, totals } from '../nutrition'
+import { MICROS, optionalNumber, servingLabel, totals } from '../nutrition'
 
 type Tab = 'search' | 'recent' | 'meals' | 'quick'
 const TABS: { value: Tab; label: string }[] = [
@@ -51,7 +51,7 @@ export default function AddFoodPage() {
   const back = date === today ? '/calories' : `/calories?date=${date}`
 
   const log = async (food: FoodChoice, servings: number, mealId: Meal, source: FoodEntry['source']) => {
-    await saveFoodEntry(randomId(), { date, meal: mealId, name: food.name, serving: food.serving, servings, calories: food.calories, protein: food.protein, carbs: food.carbs, fat: food.fat, source })
+    await saveFoodEntry(randomId(), { date, meal: mealId, name: food.name, serving: food.serving, servings, calories: food.calories, protein: food.protein, carbs: food.carbs, fat: food.fat, fiber: food.fiber, sugar: food.sugar, sodium: food.sodium, source })
     navigate(back, { replace: true })
   }
   // A saved meal logs each of its foods, in order.
@@ -186,14 +186,14 @@ function SavedMeals({ onLog }: { onLog: (meal: SavedMeal) => Promise<void> }) {
 }
 
 function QuickAdd({ onAdd }: { onAdd: (food: FoodChoice) => Promise<void> }) {
-  const [form, setForm] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' })
+  const [form, setForm] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '', fiber: '', sugar: '', sodium: '' })
   const { busy: saving, error, setError, run } = useAction()
   const set = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value })
   const number = (text: string) => Number(text) || 0
 
   const add = async () => {
     if (!(number(form.calories) > 0)) return setError('Enter the calories.')
-    await run(() => onAdd({ name: form.name.trim() || 'Quick add', serving: '1 serving', calories: number(form.calories), protein: number(form.protein), carbs: number(form.carbs), fat: number(form.fat) }))
+    await run(() => onAdd({ name: form.name.trim() || 'Quick add', serving: '1 serving', calories: number(form.calories), protein: number(form.protein), carbs: number(form.carbs), fat: number(form.fat), fiber: optionalNumber(form.fiber), sugar: optionalNumber(form.sugar), sodium: optionalNumber(form.sodium) }))
   }
 
   return (
@@ -215,6 +215,19 @@ function QuickAdd({ onAdd }: { onAdd: (food: FoodChoice) => Promise<void> }) {
             </label>
           ))}
         </div>
+        <details>
+          <summary className="inline-flex min-h-11 cursor-pointer items-center text-[15px] text-coral-ink">More nutrients</summary>
+          <div className="grid grid-cols-3 gap-2">
+            {MICROS.map((m) => (
+              <label key={m.key} className="block">
+                <span className="text-[15px] text-muted">
+                  {m.label} ({m.unit})
+                </span>
+                <input value={form[m.key]} onChange={set(m.key)} inputMode="decimal" className={field} />
+              </label>
+            ))}
+          </div>
+        </details>
         {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
         <button onClick={add} disabled={saving} className={primaryButton}>
           {saving ? 'Adding…' : 'Add'}

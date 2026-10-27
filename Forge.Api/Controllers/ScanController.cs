@@ -43,7 +43,7 @@ namespace Forge.Api.Controllers
             {
                 var label = await _vision.ReadLabelAsync(jpeg, cancellationToken);
                 return label.Found
-                    ? Ok(new ScannedFood(label.Name.Trim(), string.IsNullOrWhiteSpace(label.Serving) ? "1 serving" : label.Serving.Trim(), Round(label.Calories, 0), Round(label.Protein), Round(label.Carbs), Round(label.Fat)))
+                    ? Ok(new ScannedFood(label.Name.Trim(), string.IsNullOrWhiteSpace(label.Serving) ? "1 serving" : label.Serving.Trim(), Round(label.Calories, 0), Round(label.Protein), Round(label.Carbs), Round(label.Fat), Optional(label.Fiber), Optional(label.Sugar), Optional(label.Sodium, 0)))
                     : Problem(title: "Couldn't find a nutrition label in that photo. Try again with the whole label in view.", statusCode: StatusCodes.Status422UnprocessableEntity);
             });
 
@@ -56,7 +56,7 @@ namespace Forge.Api.Controllers
                 var meal = await _vision.ReadMealAsync(jpeg, cancellationToken);
                 var items = meal.Items
                     .Where(i => !string.IsNullOrWhiteSpace(i.Name) && i.Calories >= 0)
-                    .Select(i => new ScannedFood(i.Name.Trim(), $"{Round(i.Grams, 0)} g", Round(i.Calories, 0), Round(i.Protein), Round(i.Carbs), Round(i.Fat)))
+                    .Select(i => new ScannedFood(i.Name.Trim(), $"{Round(i.Grams, 0)} g", Round(i.Calories, 0), Round(i.Protein), Round(i.Carbs), Round(i.Fat), Optional(i.Fiber), Optional(i.Sugar), Optional(i.Sodium, 0)))
                     .ToList();
                 return items.Count > 0
                     ? Ok(items)
@@ -135,8 +135,10 @@ namespace Forge.Api.Controllers
         }
 
         private static decimal Round(decimal value, int decimals = 1) => Math.Round(Math.Max(0, value), decimals);
+        private static decimal? Optional(decimal? value, int decimals = 1) => value is { } v ? Round(v, decimals) : null;
     }
 
     /// <summary>A food read from a photo, per one serving: ready to check, edit, and log.</summary>
-    public record ScannedFood(string Name, string Serving, decimal Calories, decimal Protein, decimal Carbs, decimal Fat);
+    public record ScannedFood(string Name, string Serving, decimal Calories, decimal Protein, decimal Carbs, decimal Fat,
+        decimal? Fiber = null, decimal? Sugar = null, decimal? Sodium = null);
 }

@@ -30,6 +30,12 @@ namespace Forge.Api.Domain
         public decimal Carbs { get; set; }
         public decimal Fat { get; set; }
 
+        // Grams of fiber and sugar, and milligrams of sodium, per serving: null when unknown (entries from before these
+        // were tracked, or a food that doesn't say), so they aren't counted as zero.
+        public decimal? Fiber { get; set; }
+        public decimal? Sugar { get; set; }
+        public decimal? Sodium { get; set; }
+
         // Where it came from: manual, search, label (photo of a nutrition label), or photo (of the plate).
         public string Source { get; set; } = "manual";
 

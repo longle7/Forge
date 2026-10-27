@@ -57,6 +57,9 @@ namespace Forge.Api.Controllers
             profile.ProteinGoal = request.ProteinGoal;
             profile.CarbsGoal = request.CarbsGoal;
             profile.FatGoal = request.FatGoal;
+            profile.FiberGoal = request.FiberGoal;
+            profile.SugarLimit = request.SugarLimit;
+            profile.SodiumLimit = request.SodiumLimit;
             profile.RestDayCalorieAdjust = request.RestDayCalorieAdjust;
             profile.UnlockAfterWorkout = request.UnlockAfterWorkout;
             profile.UnlockAfterMeals = request.UnlockAfterMeals;
@@ -86,11 +89,15 @@ namespace Forge.Api.Controllers
         bool UnlockAfterWeighIn = false,
         bool UnlockAfterHabits = false,
         [Range(-1000, 0)] int RestDayCalorieAdjust = 0,
-        [Range(50, 1000)] decimal? GoalWeight = null)
+        [Range(50, 1000)] decimal? GoalWeight = null,
+        [Range(1, 150)] int? FiberGoal = null,
+        [Range(1, 500)] int? SugarLimit = null,
+        [Range(100, 10_000)] int? SodiumLimit = null)
     {
         public static ProfileDto From(UserProfile p) => new(
             p.Sex, p.BirthYear, p.HeightIn, p.StartWeight, p.Activity, p.Goal, p.Pace,
             p.CalorieGoal, p.ProteinGoal, p.CarbsGoal, p.FatGoal,
-            p.UnlockAfterWorkout, p.UnlockAfterMeals, p.UnlockAfterWeighIn, p.UnlockAfterHabits, p.RestDayCalorieAdjust, p.GoalWeight);
+            p.UnlockAfterWorkout, p.UnlockAfterMeals, p.UnlockAfterWeighIn, p.UnlockAfterHabits, p.RestDayCalorieAdjust, p.GoalWeight,
+            p.FiberGoal, p.SugarLimit, p.SodiumLimit);
     }
 }

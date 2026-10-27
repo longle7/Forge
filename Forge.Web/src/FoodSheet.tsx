@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { MEALS, type Meal, type Nutrition } from './api'
+import { MEALS, type Meal, type Micros, type Nutrition } from './api'
 import { dangerButton, field, primaryButton, Segmented, Sheet } from './components'
-import { formatKcal } from './nutrition'
+import { formatKcal, MICROS } from './nutrition'
 import { useAction } from './usePolling'
 
-export type FoodChoice = Nutrition & { name: string; brand?: string | null; serving: string }
+export type FoodChoice = Nutrition & Micros & { name: string; brand?: string | null; serving: string }
 
 const QUICK_SERVINGS = [0.5, 1, 1.5, 2]
 
@@ -65,6 +65,13 @@ export function FoodSheet({ title, food, initialServings = 1, initialMeal, submi
           </div>
         ))}
       </div>
+      {MICROS.some((m) => food[m.key] != null) && (
+        <p className="-mt-2 text-center text-[13px] text-muted tabular-nums">
+          {MICROS.filter((m) => food[m.key] != null)
+            .map((m) => `${m.label} ${Math.round(food[m.key]! * (valid ? amount : 0))} ${m.unit}`)
+            .join(' · ')}
+        </p>
+      )}
 
       {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
       <button onClick={() => run(() => onSubmit(amount, meal))} disabled={!valid || busy} className={primaryButton}>

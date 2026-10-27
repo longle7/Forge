@@ -31,7 +31,7 @@ public class ProfileEndpointTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await alice.PutAsJsonAsync("/profile", Profile())).StatusCode);
         Assert.Equal(Profile(), await alice.GetFromJsonAsync<ProfileDto>("/profile"));
 
-        var withRules = Profile() with { Goal = "maintain", Pace = 1, CalorieGoal = 2650, UnlockAfterWorkout = true, UnlockAfterMeals = 2, RestDayCalorieAdjust = -200, GoalWeight = 175.5m };
+        var withRules = Profile() with { Goal = "maintain", Pace = 1, CalorieGoal = 2650, UnlockAfterWorkout = true, UnlockAfterMeals = 2, RestDayCalorieAdjust = -200, GoalWeight = 175.5m, FiberGoal = 30, SugarLimit = 50, SodiumLimit = 2300 };
         await alice.PutAsJsonAsync("/profile", withRules);
         var saved = await alice.GetFromJsonAsync<ProfileDto>("/profile");
         Assert.Equal(withRules with { Pace = 0 }, saved); // maintaining has no pace
@@ -63,6 +63,7 @@ public class ProfileEndpointTests : IDisposable
             Profile() with { RestDayCalorieAdjust = -1500 },
             Profile() with { RestDayCalorieAdjust = 100 }, // rest days can only take calories off
             Profile() with { GoalWeight = 20 },
+            Profile() with { SodiumLimit = 50 },
         ];
 
         foreach (var profile in invalid)
