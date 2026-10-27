@@ -5,8 +5,9 @@ import { ChartTable, LineChart } from '../charts'
 import { RING } from '../colors'
 import { Card, Group, NotFound, Page, plainButton, Row, Status } from '../components'
 import { localDate } from '../dates'
+import { loadEquipment, swapsFor } from '../equipment'
 import { Icon } from '../icons'
-import { LiftFigure } from '../LiftFigure'
+import { LiftFigure, LiftIcon } from '../LiftFigure'
 import { liftInfo, musclesWorked } from '../lifts'
 import { estimatedMax, percentTable, repMaxes } from '../maxes'
 import { LiftMuscles } from '../MuscleFigure'
@@ -16,12 +17,14 @@ import { failure, useNow, usePolling, useSettled } from '../usePolling'
 import { bestSet, formatCardio, formatClock, formatDay, formatSet, formatWeight, oneRepMax, pace } from '../workouts'
 
 const MAX_HISTORY = 20
+const MAX_SWAPS = 4
 const BACK = { to: '/workouts/exercises', label: 'Exercises' }
 const lb = (value: number) => `${formatWeight(Math.round(value))} lb`
 
 /**
- * One exercise: its drawing and the muscles it works, your best set, estimated one-rep max and its trend, rep maxes, a
- * percentage chart, the maxes you tested, and recent sets; for cardio, your longest and best pace.
+ * One exercise: its drawing and the muscles it works, how to do it, lifts to swap for it with your equipment, your best
+ * set, estimated one-rep max and its trend, rep maxes, a percentage chart, the maxes you tested, and recent sets; for
+ * cardio, your longest and best pace.
  */
 export default function ExercisePage() {
   const id = Number(useParams().id)
@@ -60,6 +63,7 @@ export default function ExercisePage() {
   const paces = all.flatMap((w) => w.sets.filter((s) => s.exerciseId === id).map(pace)).filter((p) => p !== undefined)
   const lift = liftInfo(exercise)
   const works = musclesWorked(lift)
+  const swaps = swapsFor(exercise, exercises.data ?? [], loadEquipment()).slice(0, MAX_SWAPS)
 
   return (
     <Page title={exercise.name} back={BACK}>
@@ -74,6 +78,27 @@ export default function ExercisePage() {
         </div>
         {works && <p className="mt-2 text-center text-[15px]">{works}</p>}
       </Card>
+      {lift.cues.length > 0 && (
+        <Group title="How to do it">
+          <ul className="list-disc space-y-1 py-3 pr-4 pl-9">
+            {lift.cues.map((cue) => (
+              <li key={cue}>{cue}</li>
+            ))}
+          </ul>
+        </Group>
+      )}
+      {swaps.length > 0 && (
+        <Group title="Swap for">
+          {swaps.map((swap) => (
+            <Row key={swap.id} to={`/workouts/exercises/${swap.id}`}>
+              <span className="flex items-center gap-3">
+                <LiftIcon exercise={swap} />
+                {swap.name}
+              </span>
+            </Row>
+          ))}
+        </Group>
+      )}
 
       <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={1} onRetry={workouts.reload} />
       {workouts.data && !best && !max && <p className="text-muted">You haven't logged this exercise yet.</p>}
