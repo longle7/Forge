@@ -6,7 +6,10 @@ import { RING } from '../colors'
 import { Card, Group, NotFound, Page, plainButton, Row, Status } from '../components'
 import { localDate } from '../dates'
 import { Icon } from '../icons'
+import { LiftFigure } from '../LiftFigure'
+import { liftInfo, musclesWorked } from '../lifts'
 import { estimatedMax, percentTable, repMaxes } from '../maxes'
+import { LiftMuscles } from '../MuscleFigure'
 import { shortDate, strengthSeries } from '../progress'
 import { TestedMaxSheet } from '../TestedMaxSheet'
 import { failure, useNow, usePolling, useSettled } from '../usePolling'
@@ -17,8 +20,8 @@ const BACK = { to: '/workouts/exercises', label: 'Exercises' }
 const lb = (value: number) => `${formatWeight(Math.round(value))} lb`
 
 /**
- * One exercise: your best set, estimated one-rep max and its trend, rep maxes, a percentage chart, the maxes you
- * tested, and recent sets; for cardio, your longest and best pace.
+ * One exercise: its drawing and the muscles it works, your best set, estimated one-rep max and its trend, rep maxes, a
+ * percentage chart, the maxes you tested, and recent sets; for cardio, your longest and best pace.
  */
 export default function ExercisePage() {
   const id = Number(useParams().id)
@@ -55,6 +58,8 @@ export default function ExercisePage() {
         ...tested.map((m) => ({ day: m.date, value: oneRepMax(m.weight, m.reps), tested: true })),
       ].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0))
   const paces = all.flatMap((w) => w.sets.filter((s) => s.exerciseId === id).map(pace)).filter((p) => p !== undefined)
+  const lift = liftInfo(exercise)
+  const works = musclesWorked(lift)
 
   return (
     <Page title={exercise.name} back={BACK}>
@@ -62,6 +67,13 @@ export default function ExercisePage() {
         {exercise.muscleGroup}
         {exercise.isCustom && ' · added by you'}
       </p>
+      <Card>
+        <div className="flex items-center justify-center gap-6">
+          <LiftFigure pose={lift.pose} equipment={lift.equipment} className="size-30" />
+          <LiftMuscles lift={lift} className="h-30" />
+        </div>
+        {works && <p className="mt-2 text-center text-[15px]">{works}</p>}
+      </Card>
 
       <Status loading={workouts.data === undefined && !workouts.error} error={failure(workouts)} rows={1} onRetry={workouts.reload} />
       {workouts.data && !best && !max && <p className="text-muted">You haven't logged this exercise yet.</p>}

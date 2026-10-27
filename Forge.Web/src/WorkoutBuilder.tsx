@@ -4,6 +4,8 @@ import { Card, field, Stepper, SupersetGroup, Switch, tintedButton } from './com
 import { isNormalSet, planExerciseToBuilder, separateFromNext, supersetWithNext, withSetCount, withNormalSets, type DraftExercise, type DraftSet } from './draft'
 import { ExercisePicker } from './ExercisePicker'
 import { Icon } from './icons'
+import { LiftFigure } from './LiftFigure'
+import { liftInfo } from './lifts'
 import { usePolling } from './usePolling'
 import { groupSupersets, move, recentExercises, setKindsSummary } from './workouts'
 
@@ -26,6 +28,7 @@ export function WorkoutBuilder({ exercises, onChange, weights = false, supersets
   const [picking, setPicking] = useState(false)
   const [added, setAdded] = useState<Exercise[]>([]) // made in the picker, before the list reloads
   const all = [...(known.data ?? []), ...added]
+  const byId = new Map(all.map((e) => [e.id, e]))
   const names = new Map(all.map((e) => [e.id, e.name]))
   const cardio = new Set(all.filter(isCardio).map((e) => e.id))
 
@@ -39,12 +42,16 @@ export function WorkoutBuilder({ exercises, onChange, weights = false, supersets
   const card = (i: number) => {
     const exercise = exercises[i]
     const name = names.get(exercise.exerciseId) ?? 'Exercise'
+    const listed = byId.get(exercise.exerciseId)
+    const lift = listed && liftInfo(listed)
     const next = exercises[i + 1]
     const linked = exercise.superset !== undefined && exercise.superset === next?.superset
     return (
       <Card key={`${exercise.exerciseId}-${i}`}>
-        <div className="flex items-start justify-between gap-2">
-          <p className="pt-2.5 font-semibold">{name}</p>
+        <div className="flex items-start gap-2">
+          {/* Just the figure: with three buttons beside it, the muscle map would squeeze the name. */}
+          {lift && <LiftFigure pose={lift.pose} equipment={lift.equipment} className="size-10 shrink-0 text-ink" />}
+          <p className="min-w-0 flex-1 pt-2.5 font-semibold">{name}</p>
           <div className="flex text-muted">
             <button onClick={() => onChange(move(exercises, i, -1))} disabled={i === 0} aria-label={`Move ${name} up`} className={iconButton}>
               <Icon name="arrowUp" className="size-5" />

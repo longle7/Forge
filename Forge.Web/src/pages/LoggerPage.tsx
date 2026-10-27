@@ -5,6 +5,8 @@ import { readJson, write } from '../cache'
 import { Card, dangerButton, field, Notice, plainButton, primaryButton, Sheet, SupersetGroup, tintedButton } from '../components'
 import { leaveSuperset, loadDraft, replaceExercise, restsAfter, saveDraft, supersetWithNext, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
 import { ExercisePicker } from '../ExercisePicker'
+import { LiftIcon } from '../LiftFigure'
+import { equipmentOf } from '../lifts'
 import { ExerciseMenu, SetMenu, type ExerciseAction } from '../LoggerMenus'
 import { haptic, notifyRestEnd } from '../notify'
 import { activityState, endWorkout, isLive, showWorkout } from '../liveActivity'
@@ -113,6 +115,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   const [rests, setRests] = useState(loadRests)
   const [plateWeight, setPlateWeight] = useState<string>() // the plate calculator is open, starting at this weight
   const all = [...exercises, ...added]
+  const byId = new Map(all.map((e) => [e.id, e]))
   const names = new Map(all.map((e) => [e.id, e.name]))
   const cardio = new Set(all.filter(isCardio).map((e) => e.id))
   const legs = new Set(all.filter((e) => e.muscleGroup === 'Legs').map((e) => e.id))
@@ -334,7 +337,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
     )
     return (
       <Fragment key={`${ex.exerciseId}-${e}`}>
-        <ExerciseCard name={name} allDone={ex.sets.length > 0 && ex.sets.every((s) => s.done)} summary={summary} menu={menu}>
+        <ExerciseCard name={name} exercise={byId.get(ex.exerciseId)} allDone={ex.sets.length > 0 && ex.sets.every((s) => s.done)} summary={summary} menu={menu}>
           {!isCardioExercise && (
             <div className="mt-1 flex flex-wrap gap-2">
               {/* The phone's own picker under a chip: a tap anywhere on the chip opens it. */}
@@ -354,8 +357,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
                   ))}
                 </select>
               </label>
-              {/* ponytail: shown for exercises with "Barbell" in the name, so a custom barbell lift needs it there. */}
-              {/barbell/i.test(name) && (
+              {equipmentOf(name) === 'barbell' && (
                 <button onClick={() => openPlates(ex)} className={chip}>
                   <Icon name="plates" className="size-4 text-muted" />
                   Plates
@@ -513,16 +515,25 @@ function Logger({ draft, update, workouts, exercises, tested }: {
 }
 
 /**
- * An exercise's card: its name and ⋯ menu over its sets. Once every set is checked off it folds to a one-line `summary`
- * of them, which opens it again on a tap; adding a set opens it too, since then not every set is checked off.
+ * An exercise's card: its icon (once the exercise list has loaded), name and ⋯ menu over its sets. Once every set is
+ * checked off it folds to a one-line `summary` of them, which opens it again on a tap; adding a set opens it too, since
+ * then not every set is checked off.
  */
-function ExerciseCard({ name, allDone, summary, menu, children }: { name: string; allDone: boolean; summary: string; menu: ReactNode; children: ReactNode }) {
+function ExerciseCard({ name, exercise, allDone, summary, menu, children }: {
+  name: string
+  exercise: Exercise | undefined
+  allDone: boolean
+  summary: string
+  menu: ReactNode
+  children: ReactNode
+}) {
   const [opened, setOpened] = useState(false)
   const folded = allDone && !opened
   return (
     <Card>
-      <div className="flex items-start justify-between gap-2">
-        <h2 className="flex items-center gap-1.5 pt-2.5 font-semibold text-coral-ink">
+      <div className="flex items-center gap-3">
+        {exercise && <LiftIcon exercise={exercise} />}
+        <h2 className="flex min-w-0 flex-1 items-center gap-1.5 font-semibold text-coral-ink">
           {name}
           {allDone && (
             <>

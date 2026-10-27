@@ -31,10 +31,26 @@ public class ExercisesEndpointTests : IDisposable
 
         var exercises = await ListAsync(alice);
 
-        Assert.Equal(BuiltInExercises.All.Length + 5, exercises.Count); // + the cardio ones from the AddCardio migration
+        // + the cardio ones from the AddCardio migration and the lifts from AddLiftLibrary
+        Assert.Equal(BuiltInExercises.All.Length + 5 + 33, exercises.Count);
+        Assert.Equal(exercises.Count, exercises.Select(e => e.Name).Distinct().Count()); // each once
         Assert.Contains(exercises, e => e.Name == "Bench Press (Barbell)" && e.MuscleGroup == "Chest" && !e.IsCustom);
         Assert.Contains(exercises, e => e.Name == "Running" && e.MuscleGroup == "Cardio" && !e.IsCustom);
         Assert.Equal(exercises.Select(e => e.Name).Order(StringComparer.OrdinalIgnoreCase), exercises.Select(e => e.Name));
+    }
+
+    [Theory]
+    [InlineData("Chest Press (Machine)", "Chest")]
+    [InlineData("Inverted Row", "Back")]
+    [InlineData("Kettlebell Swing (Kettlebell)", "Legs")]
+    [InlineData("Farmer's Carry (Dumbbell)", "Core")] // the apostrophe survives the SQL
+    public async Task LiftLibrary_IsListedOnce_InItsGroup(string name, string muscleGroup)
+    {
+        using var alice = _factory.ClientFor("alice");
+
+        var exercises = await ListAsync(alice);
+
+        Assert.Single(exercises, e => e.Name == name && e.MuscleGroup == muscleGroup && !e.IsCustom);
     }
 
     [Fact]
