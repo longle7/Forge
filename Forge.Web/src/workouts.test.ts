@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Workout, WorkoutSet } from './api'
 import {
   bestSet,
+  exerciseNames,
   formatCardio,
   formatClock,
   formatDuration,
@@ -18,6 +19,7 @@ import {
   previousSets,
   progressionStep,
   setLabels,
+  setsSummary,
   volume,
   workoutLength,
   workoutTotals,
@@ -45,6 +47,14 @@ it.each([
   { name: 'reads no superset from the API (null) and from the app (missing) alike', sets: [{ ...set(BENCH, 135, 8), superset: null }, set(BENCH, 135, 6)], groups: [[BENCH, 2]] },
 ])('groupSets $name', ({ sets, groups }) => {
   expect(groupSets(sets).map((g) => [g.exerciseId, g.sets.length])).toEqual(groups)
+})
+
+it('exerciseNames lists each exercise once, in the order first done, and calls an unknown one "Exercise"', () => {
+  const names = new Map([
+    [BENCH, 'Bench Press'],
+    [SQUAT, 'Squat'],
+  ])
+  expect(exerciseNames([set(BENCH, 95, 10), set(SQUAT, 185, 5), set(BENCH, 135, 8), set(PULL_UP, 0, 8)], names)).toEqual(['Bench Press', 'Squat', 'Exercise'])
 })
 
 describe('previousFor', () => {
@@ -173,6 +183,14 @@ it('formats cardio sets with their pace, and reads times as minutes or m:ss', ()
   expect(parseDuration('27.5')).toBe(1650)
   expect(parseDuration('')).toBeNaN()
   expect(parseDuration('2:x')).toBeNaN()
+})
+
+it.each([
+  [[set(BENCH, 135, 10), set(BENCH, 135, 8), set(BENCH, 135, 8)], '3 sets · 10, 8, 8 reps'],
+  [[set(PULL_UP, 0, 12)], '1 set · 12 reps'],
+  [[run(3.1, 1620)], '1 set'],
+])('setsSummary(%o) is %s', (sets, expected) => {
+  expect(setsSummary(sets)).toBe(expected)
 })
 
 it('workoutTotals and workoutLength count cardio', () => {

@@ -20,15 +20,8 @@ NextTrain's setup (`../NextTrain`).
 
 ## Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/exercises` | The built-in exercises and yours, by name |
-| POST | `/exercises` | Add your own: `{ "name": "Zercher Squat", "muscleGroup": "Legs" }` |
-| GET | `/workouts` | Your workouts with their sets, newest first |
-| GET | `/workouts/{id}` | One workout |
-| PUT | `/workouts/{id}` | Save a finished workout: creates it (201) or replaces it and its sets (200) |
-| DELETE | `/workouts/{id}` | Delete a workout and its sets |
-| GET | `/health` | 200 when the database is reachable, 503 when not |
+Each controller in `Forge.Api/Controllers/` lists its endpoints in the comments above them. `GET /health` (Program.cs)
+answers 200 when the database is reachable, 503 when not.
 
 Everything except `/health` and `/auth/apple` needs a sign-in token (or, until `Auth__RequireSignIn` is on, the `X-User-Id` header). Weights are in pounds. Example `PUT` body:
 

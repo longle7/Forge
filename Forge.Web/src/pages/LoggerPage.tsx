@@ -119,12 +119,12 @@ function Logger({ draft, update, workouts, exercises, tested }: {
   useTitle(draft.name || 'Workout')
 
   // The workout is done with this page: leave it, and stop keeping it on the phone.
-  // `finished`: a new workout just saved, for the detail page to say so.
+  // `finished`: a new workout just saved, for the detail page to say so (and offer to update the routine it came from).
   const close = (to: string, finished = false) => {
     saveDraft(undefined)
     void notifyRestEnd(undefined)
     void endWorkout()
-    navigate(to, { replace: true, state: finished ? { finished } : undefined })
+    navigate(to, { replace: true, state: finished ? { finished, routineId: draft.routineId } : undefined })
   }
 
   // A change to the sets means the workout isn't over yet: a new Finish sets the end time again.

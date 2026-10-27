@@ -493,6 +493,31 @@ namespace Forge.Api.Migrations
                     b.ToTable("PlanExercises");
                 });
 
+            modelBuilder.Entity("Forge.Api.Domain.Routine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Routines");
+                });
+
             modelBuilder.Entity("Forge.Api.Domain.SavedMeal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -792,6 +817,47 @@ namespace Forge.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Exercise");
+                });
+
+            modelBuilder.Entity("Forge.Api.Domain.Routine", b =>
+                {
+                    b.OwnsMany("Forge.Api.Domain.RoutineSet", "Sets", b1 =>
+                        {
+                            b1.Property<Guid>("RoutineId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAddOrUpdate();
+
+                            b1.Property<decimal?>("Distance")
+                                .HasPrecision(6, 2);
+
+                            b1.Property<int?>("DurationSeconds");
+
+                            b1.Property<int>("ExerciseId");
+
+                            b1.Property<string>("Kind")
+                                .HasMaxLength(10);
+
+                            b1.Property<int>("Reps");
+
+                            b1.Property<int?>("Superset");
+
+                            b1.Property<decimal>("Weight")
+                                .HasPrecision(6, 2);
+
+                            b1.HasKey("RoutineId", "__synthesizedOrdinal");
+
+                            b1.ToTable("Routines");
+
+                            b1
+                                .ToJson("Sets")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RoutineId");
+                        });
+
+                    b.Navigation("Sets");
                 });
 
             modelBuilder.Entity("Forge.Api.Domain.SavedMeal", b =>

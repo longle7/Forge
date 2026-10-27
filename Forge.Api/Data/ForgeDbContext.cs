@@ -28,6 +28,7 @@ namespace Forge.Api.Data
         public DbSet<Habit> Habits { get; set; } = null!;
         public DbSet<HabitCheck> HabitChecks { get; set; } = null!;
         public DbSet<SavedMeal> SavedMeals { get; set; } = null!;
+        public DbSet<Routine> Routines { get; set; } = null!;
         public DbSet<AppleAccount> AppleAccounts { get; set; } = null!;
         public DbSet<TestedMax> TestedMaxes { get; set; } = null!;
         public DbSet<ActiveEnergy> ActiveEnergy { get; set; } = null!;
@@ -161,6 +162,22 @@ namespace Forge.Api.Data
                     items.Property(i => i.Fiber).HasPrecision(6, 1);
                     items.Property(i => i.Sugar).HasPrecision(6, 1);
                     items.Property(i => i.Sodium).HasPrecision(7, 1);
+                });
+            });
+
+            modelBuilder.Entity<Routine>(entity =>
+            {
+                entity.Property(r => r.Id).ValueGeneratedNever(); // the app makes it up (see Routine.Id)
+                entity.HasIndex(r => r.UserId);
+                entity.Property(r => r.UserId).IsRequired().HasMaxLength(100);
+                entity.Property(r => r.Name).IsRequired().HasMaxLength(50);
+                entity.OwnsMany(r => r.Sets, sets =>
+                {
+                    sets.ToJson(); // its sets, as one JSON column, like SavedMeal.Items
+                    // The same sizes as WorkoutSet's.
+                    sets.Property(s => s.Weight).HasPrecision(6, 2);
+                    sets.Property(s => s.Distance).HasPrecision(6, 2);
+                    sets.Property(s => s.Kind).HasMaxLength(10);
                 });
             });
 

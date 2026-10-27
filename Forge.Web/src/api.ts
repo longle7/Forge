@@ -297,6 +297,17 @@ export const getSavedMeals = () => api<SavedMeal[]>('/saved-meals')
 export const saveSavedMeal = (id: string, meal: Omit<SavedMeal, 'id'>) => api<SavedMeal>(`/saved-meals/${id}`, put(meal))
 export const deleteSavedMeal = (id: string) => api<void>(`/saved-meals/${id}`, { method: 'DELETE' })
 
+/** A workout you do often ("Push A"), saved from a finished one to start again in one tap. */
+export interface Routine {
+  id: string // made up by the app
+  name: string
+  sets: WorkoutSet[] // exercise by exercise, as in a workout
+}
+
+export const getRoutines = () => api<Routine[]>('/routines')
+export const saveRoutine = (id: string, routine: Omit<Routine, 'id'>) => api<Routine>(`/routines/${id}`, put(routine))
+export const deleteRoutine = (id: string) => api<void>(`/routines/${id}`, { method: 'DELETE' })
+
 export const searchFoods = (query: string, signal?: AbortSignal) => api<FoodResult[]>(`/foods?q=${encodeURIComponent(query)}`, { signal })
 
 /** A food read from a photo, per one serving, for you to check before logging. */

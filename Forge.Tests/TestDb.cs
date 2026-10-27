@@ -26,6 +26,7 @@ public static class TestDb
         db.AppleAccounts.ExecuteDelete();
         db.FoodEntries.ExecuteDelete();
         db.SavedMeals.ExecuteDelete();
+        db.Routines.ExecuteDelete();
         db.ScanUsage.ExecuteDelete();
         db.Habits.ExecuteDelete(); // their check-offs go with them
         db.WeighIns.ExecuteDelete();

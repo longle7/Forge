@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Workout } from './api'
-import { editDraft, emptyDraft, leaveSuperset, repeatDraft, replaceExercise, restsAfter, supersetWithNext, toWorkout, workoutName, type Draft, type DraftExercise } from './draft'
+import type { Routine, Workout } from './api'
+import { editDraft, emptyDraft, leaveSuperset, repeatDraft, replaceExercise, restsAfter, routineDraft, supersetWithNext, toWorkout, workoutName, type Draft, type DraftExercise } from './draft'
 
 const RUNNING = 36
 
@@ -117,6 +117,31 @@ it('toWorkout saves cardio as distance and time, and repeating one shows its tim
   expect(repeatDraft({ ...saved, sets }).exercises[0].sets).toEqual([
     { weight: '', reps: '', distance: '3.1', time: '27:00', done: false },
     { weight: '', reps: '', distance: '', time: '10:00', done: false },
+  ])
+})
+
+it('routineDraft keeps the sets, reps, kinds, and supersets, and leaves weights and cardio values for last time to fill', () => {
+  const routine: Routine = {
+    id: 'r1',
+    name: 'Evening Workout', // a routine keeps its name, even one that reads like an automatic one
+    sets: [...saved.sets, { exerciseId: RUNNING, weight: 0, reps: 0, distance: 3.1, durationSeconds: 1620 }],
+  }
+  const now = new Date(2026, 9, 10, 7)
+  const draft = routineDraft(routine, now)
+
+  expect(draft).toMatchObject({ name: 'Evening Workout', routineId: 'r1', startedAt: now.toISOString() })
+  expect(draft.exercises).toEqual([
+    {
+      exerciseId: 1,
+      superset: 1,
+      sets: [
+        { weight: '', reps: '10', kind: 'warmup', done: false },
+        { weight: '', reps: '8', done: false },
+      ],
+    },
+    { exerciseId: 25, superset: 1, sets: [{ weight: '', reps: '12', kind: 'failure', done: false }] },
+    { exerciseId: 1, sets: [{ weight: '', reps: '10', kind: 'drop', done: false }] },
+    { exerciseId: RUNNING, sets: [{ weight: '', reps: '', distance: '', time: '', done: false }] },
   ])
 })
 

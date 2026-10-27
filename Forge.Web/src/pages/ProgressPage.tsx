@@ -9,7 +9,7 @@ import { BarRow, Card, Page, plainButton, Segmented, Status } from '../component
 import { addDays, dayLabel, localDate, monthStart, parseDate, workoutDay } from '../dates'
 import { Icon } from '../icons'
 import { calorieAdherence, formatKcal, goalEta, plannedTrend, weightTrend } from '../nutrition'
-import { adherence, calorieBars, muscleSets, plannedDays, shortDate, strengthSeries, streak, topLifts, weekStatuses, type Bucket, type DayStatus } from '../progress'
+import { adherence, calorieBars, DOT_LABELS, muscleSets, plannedDays, shortDate, strengthSeries, streak, topLifts, weekStatuses, type Bucket, type DayStatus } from '../progress'
 import { SleepAndStepsCard } from '../SleepAndStepsCard'
 import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
@@ -146,17 +146,8 @@ function WeightCard({ weighIns: all, from, profile, today, period, onSaved }: { 
   )
 }
 
-const DOT_LABELS: Record<DayStatus, string> = {
-  done: 'trained',
-  missed: 'missed',
-  planned: 'planned',
-  rest: 'rest day',
-  extra: 'trained on a rest day',
-  none: 'no workout',
-}
-
 /** One day of the training calendar. Never color alone: done has a check, missed is an open ring, rest a dash. */
-function DayDot({ status }: { status: DayStatus }) {
+export function DayDot({ status }: { status: DayStatus }) {
   const base = 'grid size-7 place-items-center rounded-full'
   if (status === 'done' || status === 'extra')
     return (

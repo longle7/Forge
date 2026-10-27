@@ -15,6 +15,9 @@ export function groupSets(sets: WorkoutSet[]): { exerciseId: number; sets: Worko
   return groups
 }
 
+/** Each exercise in `sets` once, by name, in the order first done. */
+export const exerciseNames = (sets: WorkoutSet[], names: Map<number, string>) => [...new Set(sets.map((s) => s.exerciseId))].map((id) => names.get(id) ?? 'Exercise')
+
 /** Estimated one-rep max (Epley): what 8 reps at 135 lb says you could lift once (171 lb). */
 export const oneRepMax = (weight: number, reps: number) => (reps === 1 ? weight : weight * (1 + reps / 30))
 
@@ -225,6 +228,10 @@ export function formatSet(set: WorkoutSet): string {
     .filter(Boolean)
     .join(' · ')
 }
+
+/** One exercise's sets in a routine: "3 sets · 10, 8, 8 reps", or for cardio only how many ("1 set"). */
+export const setsSummary = (sets: WorkoutSet[]) =>
+  isCardioSet(sets[0]) ? plural(sets.length, 'set') : `${plural(sets.length, 'set')} · ${sets.map((s) => s.reps).join(', ')} reps`
 
 /** A cardio set in short: "3.1 mi", or its time ("30:00") when it has no distance. */
 export const formatCardio = (set: WorkoutSet) => (set.distance ? `${formatMiles(set.distance)} mi` : formatClock((set.durationSeconds ?? 0) * 1000))

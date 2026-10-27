@@ -38,6 +38,16 @@ export function streak(plan: PlanDay[], workouts: Workout[], today: string): num
 
 export type DayStatus = 'done' | 'missed' | 'planned' | 'rest' | 'extra' | 'none'
 
+/** How each day status reads, for screen readers and legends. */
+export const DOT_LABELS: Record<DayStatus, string> = {
+  done: 'trained',
+  missed: 'missed',
+  planned: 'planned',
+  rest: 'rest day',
+  extra: 'trained on a rest day',
+  none: 'no workout',
+}
+
 /**
  * The `weeks` weeks through the one with `end` (by default the last 4 weeks), Monday first, each day's status: done
  * (trained on a planned day, or on any day before the plan or without one), missed (a planned day that passed without

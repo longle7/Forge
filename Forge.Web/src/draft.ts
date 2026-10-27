@@ -1,5 +1,6 @@
+import { useNavigate } from 'react-router'
 import { readJson, write } from './cache'
-import { randomId, type PlanDay, type SetKind, type Workout, type WorkoutInput, type WorkoutSet } from './api'
+import { randomId, type PlanDay, type Routine, type SetKind, type Workout, type WorkoutInput, type WorkoutSet } from './api'
 import { formatClock, groupSets, isCardioSet, parseDuration } from './workouts'
 
 /**
@@ -12,6 +13,7 @@ export interface Draft {
   startedAt: string // ISO
   finishedAt?: string // set by the first Finish, so a retry later keeps the real end time; kept when editing
   editing?: boolean // a saved workout opened from History
+  routineId?: string // started from this routine: the finished workout offers to update it
   exercises: DraftExercise[]
   restEndsAt?: number // the rest timer, ms since epoch
   restTotal?: number // its length in seconds
@@ -39,6 +41,19 @@ export const loadDraft = () => readJson<Draft>(KEY)
 /** Keeps the workout in progress on this device; undefined once it's saved or discarded. */
 export const saveDraft = (draft: Draft | undefined) => write(KEY, draft ? JSON.stringify(draft) : null)
 
+/**
+ * Opens a new workout in the logger, which holds one at a time: with one already in progress it opens nothing and
+ * returns the message to show instead.
+ */
+export function useStartWorkout() {
+  const navigate = useNavigate()
+  return (draft: Draft): string | undefined => {
+    if (loadDraft()) return 'Finish or discard the workout in progress first.'
+    saveDraft(draft)
+    navigate('/workouts/active')
+  }
+}
+
 /** "Morning Workout", "Afternoon Workout", or "Evening Workout", like Strong. */
 export function workoutName(now: Date): string {
   const hour = now.getHours()
@@ -47,7 +62,7 @@ export function workoutName(now: Date): string {
 
 export const emptyDraft = (now = new Date()): Draft => ({ id: randomId(), name: workoutName(now), startedAt: now.toISOString(), exercises: [] })
 
-const draftExercises = (workout: Workout, done: boolean): DraftExercise[] =>
+const draftExercises = (workout: Pick<Workout, 'sets'>, done: boolean): DraftExercise[] =>
   groupSets(workout.sets).map(({ exerciseId, sets }) => ({
     exerciseId,
     superset: sets[0].superset ?? undefined,
@@ -59,7 +74,7 @@ const draftExercises = (workout: Workout, done: boolean): DraftExercise[] =>
   }))
 
 /** A new workout with the same exercises and sets as `workout`, values filled in, nothing checked off yet. */
-export const repeatDraft = (workout: Workout, now = new Date()): Draft => ({
+export const repeatDraft = (workout: Pick<Workout, 'name' | 'sets'>, now = new Date()): Draft => ({
   ...emptyDraft(now),
   // A name you chose ("Push day") carries over; an automatic one follows the time of day.
   name: /^(Morning|Afternoon|Evening) Workout$/.test(workout.name) ? workoutName(now) : workout.name,
@@ -81,6 +96,20 @@ export const planDraft = (plan: PlanDay, cardio: Set<number>, now = new Date()):
       : Array.from({ length: e.sets }, () => ({ weight: '', reps: String(e.reps), done: false })),
   })),
 })
+
+/**
+ * A routine, ready to log: its exercises, sets, reps, kinds, and supersets. Weights and cardio values stay empty, as in
+ * planDraft, so they come from last time with the progression hint, not from the workout the routine was saved from.
+ */
+export function routineDraft(routine: Routine, now = new Date()): Draft {
+  const draft = repeatDraft(routine, now)
+  const exercises = draft.exercises.map((e) => ({
+    ...e,
+    // Only cardio sets have a distance and time.
+    sets: e.sets.map((s) => (s.distance === undefined ? { ...s, weight: '' } : { ...s, distance: '', time: '' })),
+  }))
+  return { ...draft, name: routine.name, routineId: routine.id, exercises }
+}
 
 /** A saved workout opened for editing: the same ID and times, every set checked off. */
 export const editDraft = (workout: Workout): Draft => ({
