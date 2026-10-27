@@ -51,7 +51,7 @@ export function HealthSettings() {
           </button>
         )}
         {result && !error && <p className="text-[15px] text-muted">{result}</p>}
-        {error && <Notice>{error}</Notice>}
+        {error && <Notice tone="error">{error}</Notice>}
       </div>
     </Group>
   )

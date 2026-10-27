@@ -1,9 +1,11 @@
-import { Component, useEffect, useRef, type ReactNode } from 'react'
+import { Component, useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { ApiError } from './api'
+import { ApiError, type Workout } from './api'
 import { Icon, type IconName } from './icons'
+import { haptic } from './notify'
 import { formatKcal } from './nutrition'
 import { useOnline, useTitle } from './usePolling'
+import { formatDay, formatDuration, workoutLength, workoutTotals } from './workouts'
 
 // Buttons: one look per job, every one at least 44 px tall (Apple's minimum tap size).
 
@@ -21,6 +23,8 @@ export const dangerButton =
 /** Text and number fields. 16 px or larger text stops iOS Safari from zooming in on focus. */
 export const field =
   'min-h-11 w-full rounded-xl bg-fill px-3 text-[17px] text-ink outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-coral'
+/** For a 36 px chip or button: its tap area reaches 4 px past each edge, to 44 px, while it looks the same. */
+export const tapArea = 'relative before:absolute before:-inset-1'
 
 /**
  * Every screen: an iOS large title, with a back button above it on deeper screens. `eyebrow` is the small line over
@@ -49,12 +53,15 @@ export function Page({ title, eyebrow, back, action, children }: {
   )
 }
 
-/** The bar above a deeper screen's title: Back, labeled with where it goes, like iOS. */
+/**
+ * The bar above a deeper screen's title: Back, labeled with where it goes, like iOS. It sticks just under the iPhone's
+ * status bar, which App blurs.
+ */
 function NavBar({ back }: { back: { to: string; label: string } }) {
   const location = useLocation()
   const navigate = useNavigate()
   return (
-    <div className="sticky top-0 z-10 -mx-4 bg-canvas/85 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+    <div className="sticky top-[env(safe-area-inset-top)] z-10 -mx-4 bg-canvas/85 px-2 backdrop-blur-md">
       <button
         // Opened from a link or bookmark there's no history to go back to, so go to the parent screen.
         onClick={() => (location.key === 'default' ? navigate(back.to) : navigate(-1))}
@@ -67,16 +74,25 @@ function NavBar({ back }: { back: { to: string; label: string } }) {
   )
 }
 
-/** A white card on the cream canvas. With `to`, the whole card is a link. */
-export function Card({ children, to, className = '' }: { children: ReactNode; to?: string; className?: string }) {
+/** A white card on the cream canvas. With `to`, the whole card is a link; with `onClick`, a button. */
+export function Card({ children, to, onClick, className = '' }: { children: ReactNode; to?: string; onClick?: () => void; className?: string }) {
   const style = `block rounded-2xl bg-surface p-4 shadow-[0_1px_2px_rgb(42_31_26/0.06)] ${className}`
-  return to ? (
-    <Link to={to} className={`${style} transition active:scale-[0.99]`}>
-      {children}
-    </Link>
-  ) : (
-    <div className={style}>{children}</div>
-  )
+  const pressable = `${style} transition active:scale-[0.99]`
+  if (to) {
+    return (
+      <Link to={to} className={pressable}>
+        {children}
+      </Link>
+    )
+  }
+  if (onClick) {
+    return (
+      <button onClick={onClick} className={`${pressable} w-full text-left`}>
+        {children}
+      </button>
+    )
+  }
+  return <div className={style}>{children}</div>
 }
 
 /** A bold section title between cards ("This Week"), with an optional link at its right ("See All"). */
@@ -85,7 +101,8 @@ export function SectionTitle({ title, link }: { title: string; link?: { to: stri
     <div className="flex items-end justify-between px-1 pt-2">
       <h2 className="text-[22px] font-bold tracking-tight">{title}</h2>
       {link && (
-        <Link to={link.to} className="text-coral-ink active:opacity-60">
+        // Padding grows the tap area to 44 px; the negative margin keeps the text where it was.
+        <Link to={link.to} className="-m-2.5 p-2.5 text-coral-ink active:opacity-60">
           {link.label}
         </Link>
       )}
@@ -198,7 +215,7 @@ export function MacroBar({ label, value, goal, color, unit = 'g', limit = false 
 
 /** − value + buttons, like iOS's stepper. */
 export function Stepper({ value, onChange, min, max, label }: { value: number; onChange: (value: number) => void; min: number; max: number; label: string }) {
-  const button = 'grid size-9 place-items-center rounded-lg bg-fill text-[20px] leading-none text-coral-ink active:opacity-60 disabled:opacity-30'
+  const button = `${tapArea} grid size-9 place-items-center rounded-lg bg-fill text-[20px] leading-none text-coral-ink active:opacity-60 disabled:opacity-30`
   return (
     <div role="group" aria-label={label} className="flex items-center gap-1">
       <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} aria-label={`Less ${label}`} className={button}>
@@ -216,6 +233,10 @@ export function Stepper({ value, onChange, min, max, label }: { value: number; o
 
 /** iOS's on/off switch. */
 export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (checked: boolean) => void; label: string; disabled?: boolean }) {
+  const toggle = () => {
+    void haptic('tap')
+    onChange(!checked)
+  }
   return (
     <button
       type="button"
@@ -223,7 +244,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
       aria-checked={checked}
       aria-label={label}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
+      onClick={toggle}
       className={`relative h-8 w-13 shrink-0 rounded-full transition disabled:opacity-50 ${checked ? 'bg-green-strong' : 'bg-muted/30'}`}
     >
       <span className={`absolute top-1 left-1 size-6 rounded-full bg-white shadow transition ${checked ? 'translate-x-5' : ''}`} />
@@ -238,6 +259,10 @@ export function Segmented<T extends string | number>({ options, value, onChange,
   onChange: (value: T) => void
   label: string
 }) {
+  const choose = (next: T) => {
+    if (next !== value) void haptic('tap')
+    onChange(next)
+  }
   return (
     <div role="radiogroup" aria-label={label} className="grid auto-cols-fr grid-flow-col gap-1 rounded-xl bg-fill p-1">
       {options.map((option) => {
@@ -248,8 +273,8 @@ export function Segmented<T extends string | number>({ options, value, onChange,
             type="button"
             role="radio"
             aria-checked={selected}
-            onClick={() => onChange(option.value)}
-            className={`min-h-9 rounded-lg px-2 text-[15px] font-semibold transition ${selected ? 'bg-surface text-ink shadow-[0_1px_3px_rgb(42_31_26/0.12)] dark:bg-[#4a3830]' : 'text-muted'}`}
+            onClick={() => choose(option.value)}
+            className={`${tapArea} min-h-9 rounded-lg px-2 text-[15px] font-semibold transition ${selected ?'bg-surface text-ink shadow-[0_1px_3px_rgb(42_31_26/0.12)] dark:bg-[#4a3830]' : 'text-muted'}`}
           >
             {option.label}
           </button>
@@ -260,29 +285,44 @@ export function Segmented<T extends string | number>({ options, value, onChange,
 }
 
 /**
- * A bottom sheet: a native modal <dialog> sliding up from the bottom, with Cancel at its top left. It traps focus,
- * and Escape or Cancel calls `onClose`; the owner removes it from the page when it's done. `full` fills the screen.
+ * A bottom sheet: a native modal <dialog> that slides up from the bottom, with Cancel at its top left and `action`
+ * (Save, Add) at its top right, in bold like iOS's Done and above the keyboard. It traps focus; Escape, Cancel, or a
+ * tap on the dimmed backdrop calls `onClose`, and the owner removes it from the page when it's done. `full` fills the
+ * screen.
  */
-export function Sheet({ title, full, onClose, children }: { title: string; full?: boolean; onClose: () => void; children: ReactNode }) {
+export function Sheet({ title, full, action, onClose, children }: {
+  title: string
+  full?: boolean
+  action?: ReactNode
+  onClose: () => void
+  children: ReactNode
+}) {
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     if (!dialog.current?.open) dialog.current?.showModal() // StrictMode runs this twice in development
   }, [])
+  // A tap on the backdrop lands on the <dialog> itself, outside the panel. A full sheet has no backdrop, and a tap on
+  // the <dialog> there is on its empty space, which mustn't close it.
+  const closeOnBackdrop = (event: MouseEvent<HTMLDialogElement>) => {
+    if (!full && event.target === event.currentTarget) dialog.current?.close()
+  }
   return (
     <dialog
       ref={dialog}
       onClose={onClose}
+      onClick={closeOnBackdrop}
       aria-label={title}
-      className={`${full ? 'm-0 h-full max-h-none max-w-none' : 'mx-auto mt-auto mb-0 max-h-[92dvh] max-w-xl rounded-t-3xl border-t border-line'} w-full bg-canvas p-0 text-ink backdrop:bg-black/40 dark:backdrop:bg-black/65`}
+      className={`${full ? 'm-0 h-full max-h-none max-w-none' : 'mx-auto mt-auto mb-0 max-h-[92dvh] max-w-xl rounded-t-3xl border-t border-line'} sheet-enter w-full bg-canvas p-0 text-ink backdrop:bg-black/40 dark:backdrop:bg-black/65`}
     >
       <div className={`mx-auto max-w-xl space-y-4 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${full ? 'pt-[calc(0.5rem+env(safe-area-inset-top))]' : 'pt-2'}`}>
         {!full && <div className="mx-auto h-1.5 w-10 rounded-full bg-line" aria-hidden />}
-        <div className="flex items-center justify-between">
-          <button type="button" onClick={() => dialog.current?.close()} className={plainButton}>
+        {/* Three columns, so the title stays centered whatever the buttons beside it say. */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <button type="button" onClick={() => dialog.current?.close()} className={`justify-self-start ${plainButton}`}>
             Cancel
           </button>
           <h2 className="font-semibold">{title}</h2>
-          <span className="w-14" aria-hidden />
+          <div className="justify-self-end font-semibold">{action}</div>
         </div>
         {children}
       </div>
@@ -299,25 +339,47 @@ export function PrBadge() {
   )
 }
 
-/** A message under a form or action: what happened, or what to do next. */
-export function Notice({ children }: { children: ReactNode }) {
+/** A finished workout in a list (Home, Workouts, History): its name, "day · length · totals", and PR when it set any. */
+export function WorkoutRow({ workout, prs }: { workout: Workout; prs: number }) {
+  const summary = [formatDay(workout.startedAt), formatDuration(workoutLength(workout)), workoutTotals(workout)].filter(Boolean).join(' · ')
   return (
-    <p role="status" className="rounded-2xl bg-amber/15 px-4 py-3 text-[15px] text-ink">
+    <Row to={`/workouts/history/${workout.id}`} detail={prs > 0 ? <PrBadge /> : undefined}>
+      <span className="block font-medium">{workout.name}</span>
+      <span className="block text-[15px] text-muted">{summary}</span>
+    </Row>
+  )
+}
+
+// Errors look the same everywhere: a Status box, an error Notice.
+const errorColors = 'bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100'
+
+/** A message under a form or action: what happened, or what to do next. `tone="error"` when something failed. */
+export function Notice({ tone, children }: { tone?: 'error'; children: ReactNode }) {
+  return (
+    <p role={tone === 'error' ? 'alert' : 'status'} className={`rounded-2xl px-4 py-3 text-[15px] ${tone === 'error' ? errorColors : 'bg-amber/15 text-ink'}`}>
       {children}
     </p>
   )
 }
 
-/** An error box with a way out, or `rows` placeholder cards while loading. */
-export function Status({ error, loading, rows = 3 }: { error?: Error; loading?: boolean; rows?: number }) {
+/**
+ * An error box with Try Again, or `rows` placeholder cards while loading. `onRetry` loads again (a page passes its
+ * usePolling reload); without it, Try Again reloads the whole app.
+ */
+export function Status({ error, loading, rows = 3, onRetry = () => location.reload() }: {
+  error?: Error
+  loading?: boolean
+  rows?: number
+  onRetry?: () => void
+}) {
   const online = useOnline()
   if (error) {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-2xl bg-red-50 p-4 text-[15px] text-red-900 dark:bg-red-950 dark:text-red-100">
-        {/* Offline, a reload would only show the browser's error page; data refreshes by itself once back online. */}
+      <div className={`flex items-center justify-between gap-3 rounded-2xl p-4 text-[15px] ${errorColors}`}>
+        {/* Offline, trying again can only fail; data refreshes by itself once back online. */}
         <p>{online ? friendlyError(error) : "You're offline. Forge will refresh when you're back online."}</p>
         {online && (
-          <button onClick={() => location.reload()} className="shrink-0 rounded-lg bg-red-900/10 px-3 py-2 font-semibold dark:bg-white/10">
+          <button onClick={onRetry} className="min-h-11 shrink-0 rounded-lg bg-red-900/10 px-3 font-semibold dark:bg-white/10">
             Try again
           </button>
         )}

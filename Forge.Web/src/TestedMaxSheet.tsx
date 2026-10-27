@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { deleteMax, randomId, saveMax, type TestedMax } from './api'
-import { dangerButton, field, Notice, primaryButton, Sheet, Stepper } from './components'
+import { dangerButton, field, Notice, plainButton, Sheet, Stepper } from './components'
+import { haptic } from './notify'
 import { oneRepMax, formatWeight } from './workouts'
 import { useAction } from './usePolling'
 
@@ -27,6 +28,7 @@ export function TestedMaxSheet({ exerciseId, max, today, onSaved, onClose }: {
     if (!date || date > today) return setError('Pick the day you lifted it.')
     void run(async () => {
       await saveMax(max?.id ?? randomId(), { exerciseId, date, weight: Math.round(pounds * 10) / 10, reps })
+      void haptic('success')
       onSaved()
     })
   }
@@ -34,33 +36,36 @@ export function TestedMaxSheet({ exerciseId, max, today, onSaved, onClose }: {
     if (!confirm('Delete this max?')) return
     void run(async () => {
       await deleteMax(max!.id)
+      void haptic('success')
       onSaved()
     })
   }
 
   return (
-    <Sheet title={max ? 'Tested Max' : 'Add Tested Max'} onClose={onClose}>
-      <form onSubmit={save} className="space-y-3">
+    <Sheet
+      title={max ? 'Tested Max' : 'Add Tested Max'}
+      onClose={onClose}
+      action={
+        <button type="submit" form="tested-max" disabled={busy} className={plainButton}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+      }
+    >
+      <form id="tested-max" onSubmit={save} className="space-y-3">
         <label className="block">
           <span className="text-[15px] text-muted">Weight (lb)</span>
           <input value={weight} onChange={(e) => setWeight(e.target.value)} inputMode="decimal" placeholder="225" className={`${field} min-h-14 text-center text-[28px] font-bold`} />
         </label>
         <div className="flex items-center justify-between">
           <span className="text-[15px] text-muted">Reps</span>
-          <div className="flex items-center gap-3">
-            <span className="w-6 text-center font-semibold tabular-nums">{reps}</span>
-            <Stepper value={reps} onChange={setReps} min={1} max={10} label="reps" />
-          </div>
+          <Stepper value={reps} onChange={setReps} min={1} max={10} label="reps" />
         </div>
         <label className="block">
           <span className="text-[15px] text-muted">Day</span>
           <input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} className={field} />
         </label>
         {pounds > 0 && reps > 1 && <p className="text-[15px] text-muted">That's about {formatWeight(Math.round(oneRepMax(pounds, reps)))} lb for one rep.</p>}
-        {error && <Notice>{error}</Notice>}
-        <button disabled={busy} className={primaryButton}>
-          {busy ? 'Saving…' : 'Save'}
-        </button>
+        {error && <Notice tone="error">{error}</Notice>}
         {max && (
           <button type="button" onClick={remove} disabled={busy} className={dangerButton}>
             Delete

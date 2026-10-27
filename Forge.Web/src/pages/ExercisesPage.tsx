@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { addExercise, getExercises, getWorkouts, isCardio, MUSCLE_GROUPS } from '../api'
-import { Card, field, Group, Page, primaryButton, Row, SearchInput, Status } from '../components'
+import { Card, field, Group, Notice, Page, primaryButton, Row, SearchInput, Status } from '../components'
 import { failure, usePolling, useAction } from '../usePolling'
 import { bestSet, formatCardio, formatSet } from '../workouts'
 
@@ -16,7 +16,7 @@ export default function ExercisesPage() {
   return (
     <Page title="Exercises" back={{ to: '/workouts', label: 'Workouts' }}>
       <SearchInput value={query} onChange={setQuery} placeholder="Search exercises" />
-      <Status loading={exercises.data === undefined && !exercises.error} error={failure(exercises)} />
+      <Status loading={exercises.data === undefined && !exercises.error} error={failure(exercises)} onRetry={exercises.reload} />
       {exercises.data && matches.length === 0 && <p className="text-muted">No exercise matches “{query.trim()}”. Add it below.</p>}
       {MUSCLE_GROUPS.map((group) => {
         const list = matches.filter((e) => e.muscleGroup === group)
@@ -74,7 +74,7 @@ function AddExercise({ initialName }: { initialName: string }) {
           ))}
         </select>
         {muscleGroup === 'Cardio' && <p className="text-[15px] text-muted">Cardio is logged as a distance and time instead of weight and reps.</p>}
-        {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
+        {error && <Notice tone="error">{error}</Notice>}
         <button disabled={saving || !value.trim()} className={primaryButton}>
           {saving ? 'Adding…' : 'Add Exercise'}
         </button>

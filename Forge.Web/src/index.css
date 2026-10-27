@@ -77,16 +77,25 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
-/* Page changes: the new page fades and rises into place (App.tsx), unless the device asks for less motion. */
+/* Page changes: the new page fades in (App.tsx). Only a fade: a transform would carry the page's fixed parts (the
+   rest timer) along with it. A sheet slides up from the bottom (components.tsx). Neither moves when the device asks
+   for less motion. */
 @media (prefers-reduced-motion: no-preference) {
   .page-enter {
     animation: page-enter 200ms ease-out;
+  }
+  .sheet-enter {
+    animation: sheet-enter 250ms ease-out;
   }
 }
 @keyframes page-enter {
   from {
     opacity: 0;
-    transform: translateY(6px);
+  }
+}
+@keyframes sheet-enter {
+  from {
+    transform: translateY(100%);
   }
 }
 

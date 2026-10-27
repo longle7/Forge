@@ -17,12 +17,13 @@ import {
   saveSavedMeal,
   type FoodEntry,
 } from '../api'
-import { Card, field, FoodRow, Group, MacroBar, Notice, Page, primaryButton, Rings, Sheet, Status, tintedButton } from '../components'
+import { Card, field, FoodRow, Group, MacroBar, Notice, Page, plainButton, primaryButton, Rings, Sheet, Status, tintedButton } from '../components'
 import { addDays, dayLabel, localDate, workoutDay } from '../dates'
 import { AdaptiveGoalCard } from '../AdaptiveGoalCard'
 import { FoodSheet } from '../FoodSheet'
 import { FAT, RING } from '../colors'
 import { Icon } from '../icons'
+import { haptic } from '../notify'
 import { dayBudget, dayGoals, exerciseCalories, formatKcal, MICROS, microTotals, remaining, servingLabel, totals, weightOn } from '../nutrition'
 import { isRestDay } from '../plan'
 import { failure, useNow, usePolling, useAction } from '../usePolling'
@@ -133,7 +134,7 @@ export default function CaloriesPage() {
       )}
       {message && <Notice>{message}</Notice>}
 
-      <Status loading={log.data === undefined && !log.error} error={failure(log)} rows={2} />
+      <Status loading={log.data === undefined && !log.error} error={failure(log)} rows={2} onRetry={log.reload} />
       {log.data &&
         MEALS.map(({ id, label }) => {
           const entries = log.data!.filter((e) => e.meal === id)
@@ -250,13 +251,23 @@ function SaveMealSheet({ foods, onSaved, onClose }: { foods: FoodEntry[]; onSave
     await run(async () => {
       const items = foods.map((f) => ({ name: f.name, serving: f.serving, servings: f.servings, calories: f.calories, protein: f.protein, carbs: f.carbs, fat: f.fat, fiber: f.fiber, sugar: f.sugar, sodium: f.sodium }))
       await saveSavedMeal(randomId(), { name: name.trim(), items })
+      void haptic('success')
       onSaved(name.trim())
     })
   }
 
   return (
-    <Sheet title="Save as Meal" onClose={onClose}>
+    <Sheet
+      title="Save as Meal"
+      onClose={onClose}
+      action={
+        <button type="submit" form="save-meal" disabled={saving} className={plainButton}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      }
+    >
       <form
+        id="save-meal"
         onSubmit={(e) => {
           e.preventDefault()
           void save()
@@ -267,10 +278,7 @@ function SaveMealSheet({ foods, onSaved, onClose }: { foods: FoodEntry[]; onSave
         <p className="text-[15px] text-muted">
           {foods.map((f) => f.name).join(', ')} · {formatKcal(totals(foods).calories)} kcal
         </p>
-        {error && <p className="text-[15px] text-red-600 dark:text-red-400">{error}</p>}
-        <button disabled={saving} className={primaryButton}>
-          {saving ? 'Saving…' : 'Save Meal'}
-        </button>
+        {error && <Notice tone="error">{error}</Notice>}
       </form>
     </Sheet>
   )

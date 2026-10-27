@@ -90,6 +90,7 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
   return (
     <Page title="Your Goals" back={BACK}>
       <p className="-mt-3 text-muted">A minute of details, and Forge works out your daily calories and macros. You can adjust any number.</p>
+      {/* Try Again reloads the whole app: this form reads your profile only as it opens. */}
       {loadError && <Status error={loadError} />}
 
       <Group title="About you">
@@ -229,7 +230,7 @@ function SetupForm({ existing, loadError }: { existing: Profile | null; loadErro
         </div>
       </Group>
 
-      {message && <Notice>{message}</Notice>}
+      {message && <Notice tone="error">{message}</Notice>}
       <button onClick={save} disabled={saving} className={primaryButton}>
         {saving ? 'Saving…' : 'Save Goals'}
       </button>
