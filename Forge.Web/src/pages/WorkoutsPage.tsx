@@ -8,7 +8,7 @@ import { planFor, workedOut } from '../plan'
 import { failure, useNow, usePolling } from '../usePolling'
 import { formatDay, formatDuration, formatTime, personalRecords, plural, workoutLength, workoutTotals } from '../workouts'
 
-/** The Workouts tab: today's workout, this week's plan, recent history, and the exercise list. */
+/** The Workouts tab: today's workout, this week's plan, recent history, the exercise list, and your maxes. */
 export default function WorkoutsPage() {
   const today = localDate(useNow(60_000))
   const workouts = usePolling(getWorkouts, '/workouts')
@@ -58,6 +58,9 @@ export default function WorkoutsPage() {
       <Group>
         <Row to="/workouts/exercises" icon="list">
           Exercises
+        </Row>
+        <Row to="/workouts/maxes" icon="trophy">
+          Maxes
         </Row>
       </Group>
     </Page>

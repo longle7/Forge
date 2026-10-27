@@ -506,6 +506,41 @@ namespace Forge.Api.Migrations
                     b.ToTable("ScanUsage", (string)null);
                 });
 
+            modelBuilder.Entity("Forge.Api.Domain.TestedMax", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<int>("ExerciseId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Reps")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("decimal(6,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExerciseId");
+
+                    b.HasIndex("UserId", "ExerciseId");
+
+                    b.ToTable("TestedMaxes");
+                });
+
             modelBuilder.Entity("Forge.Api.Domain.UserProfile", b =>
                 {
                     b.Property<string>("UserId")
@@ -732,6 +767,17 @@ namespace Forge.Api.Migrations
                         });
 
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Forge.Api.Domain.TestedMax", b =>
+                {
+                    b.HasOne("Forge.Api.Domain.Exercise", "Exercise")
+                        .WithMany()
+                        .HasForeignKey("ExerciseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Exercise");
                 });
 
             modelBuilder.Entity("Forge.Api.Domain.WorkoutSet", b =>
