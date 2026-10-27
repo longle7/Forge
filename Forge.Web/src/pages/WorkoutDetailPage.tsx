@@ -1,12 +1,13 @@
 import { Fragment, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
-import { deleteWorkout, getExercises, getProfile, getRoutines, getWorkouts, randomId, saveRoutine, type Routine, type Workout, type WorkoutSet } from '../api'
+import { deleteWorkout, getExercises, getProfile, getRoutines, getWorkouts, randomId, saveRoutine, type Exercise, type Routine, type Workout, type WorkoutSet } from '../api'
 import { ChartTable, HeartRateChart } from '../charts'
 import { BarRow, Card, dangerButton, field, Notice, NotFound, Page, plainButton, PrBadge, Sheet, Status, SupersetGroup, tintedButton } from '../components'
 import { workoutDay } from '../dates'
 import { editDraft, repeatDraft, useStartWorkout, type Draft } from '../draft'
 import { maxHeartRate, timeInZones, ZONES } from '../heartRate'
 import { Icon } from '../icons'
+import { LiftIcon } from '../LiftFigure'
 import { haptic } from '../notify'
 import { drawShareCard, shareImage } from '../shareCard'
 import { failure, useAction, usePolling, useSettled } from '../usePolling'
@@ -49,6 +50,7 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
   const sharing = useAction()
   const updating = useAction()
   const startWorkout = useStartWorkout()
+  const byId = new Map(exercises.data?.map((e) => [e.id, e]))
   const names = new Map(exercises.data?.map((e) => [e.id, e.name]))
   // groupSets keeps the same set objects, so PRs are looked up by object.
   const prs = personalRecords(workouts).get(workout.id) ?? new Set()
@@ -120,7 +122,7 @@ function Details({ workout, workouts }: { workout: Workout; workouts: Workout[] 
       )}
 
       {groupSupersets(groupSets(workout.sets), (group) => group.sets[0].superset).map((superset, g) => {
-        const cards = superset.map((group, i) => <ExerciseSets key={i} group={group} name={names.get(group.exerciseId) ?? 'Exercise'} prs={prs} />)
+        const cards = superset.map((group, i) => <ExerciseSets key={i} group={group} exercise={byId.get(group.exerciseId)} prs={prs} />)
         return superset.length > 1 ? <SupersetGroup key={g}>{cards}</SupersetGroup> : <Fragment key={g}>{cards}</Fragment>
       })}
 
@@ -202,12 +204,13 @@ function SaveRoutineSheet({ workout, names, onSaved, onClose }: { workout: Worko
 }
 
 /** One exercise's sets, marked W, D, or F or numbered among the normal sets, with their PRs. */
-function ExerciseSets({ group, name, prs }: { group: { exerciseId: number; sets: WorkoutSet[] }; name: string; prs: Set<WorkoutSet> }) {
+function ExerciseSets({ group, exercise, prs }: { group: { exerciseId: number; sets: WorkoutSet[] }; exercise: Exercise | undefined; prs: Set<WorkoutSet> }) {
   const labels = setLabels(group.sets)
   return (
     <Card>
-      <Link to={`/workouts/exercises/${group.exerciseId}`} className="font-semibold text-coral-ink">
-        {name}
+      <Link to={`/workouts/exercises/${group.exerciseId}`} className="flex items-center gap-3 font-semibold text-coral-ink">
+        {exercise && <LiftIcon exercise={exercise} />}
+        {exercise?.name ?? 'Exercise'}
       </Link>
       <ol className="mt-2 space-y-1.5">
         {group.sets.map((set, i) => (

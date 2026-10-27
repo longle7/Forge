@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { addExercise, MUSCLE_GROUPS, type Exercise } from './api'
-import { Notice, SearchInput, Sheet, tapArea, tintedButton } from './components'
+import { Card, Notice, SearchInput, Sheet, tapArea, tintedButton } from './components'
+import { LiftIcon } from './LiftFigure'
+import { EQUIPMENT_LABELS, nameWithEquipment, type Equipment } from './lifts'
 import { haptic } from './notify'
 import { useAction } from './usePolling'
 
 /**
  * Choose an exercise, or add a new one by name: for the workout logger and the plan editor. Chips narrow it to a muscle
- * group, and pick the group of a new one; `recent` (exercise IDs, most recent first) are listed on top. A full-screen
- * Sheet, titled `title` (the logger's Replace says so).
+ * group, and pick the group of a new one, then its equipment; `recent` (exercise IDs, most recent first) are listed on
+ * top. A full-screen Sheet, titled `title` (the logger's Replace says so).
  */
 export function ExercisePicker({ title = 'Add Exercise', exercises, recent = [], onPick, onClose }: {
   title?: string
@@ -18,16 +20,18 @@ export function ExercisePicker({ title = 'Add Exercise', exercises, recent = [],
 }) {
   const [query, setQuery] = useState('')
   const [group, setGroup] = useState<string>()
+  const [equipment, setEquipment] = useState<Equipment>('bodyweight')
   const { busy: adding, error, run } = useAction()
 
   const q = query.trim()
   const matches = exercises.filter((e) => e.name.toLowerCase().includes(q.toLowerCase()) && (!group || e.muscleGroup === group))
   const recentShown = q || group ? [] : recent.map((id) => exercises.find((e) => e.id === id)).filter((e) => e !== undefined)
   const isNew = !!q && !exercises.some((e) => e.name.toLowerCase() === q.toLowerCase())
+  const newName = nameWithEquipment(q, equipment)
 
   const add = async (muscleGroup: string) => {
     await run(async () => {
-      const exercise = await addExercise(q, muscleGroup)
+      const exercise = await addExercise(newName, muscleGroup)
       void haptic('success')
       onPick(exercise)
     })
@@ -49,11 +53,14 @@ export function ExercisePicker({ title = 'Add Exercise', exercises, recent = [],
           </button>
         ))}
       </div>
-      {/* A new exercise goes in the muscle group you pick with the chips above. */}
+      {/* A new exercise goes in the muscle group you pick with the chips above, with the equipment you pick here. */}
       {isNew && group && (
-        <button onClick={() => add(group)} disabled={adding} className={`w-full ${tintedButton}`}>
-          {adding ? 'Adding…' : `Add “${q}” to ${group}`}
-        </button>
+        <Card>
+          <EquipmentChips value={equipment} onChange={setEquipment} />
+          <button onClick={() => add(group)} disabled={adding} className={`mt-3 w-full ${tintedButton}`}>
+            {adding ? 'Adding…' : `Add “${newName}” to ${group}`}
+          </button>
+        </Card>
       )}
       {isNew && !group && <p className="px-1 text-[15px] text-muted">To add “{q}” as a new exercise, pick its muscle group above.</p>}
       {error && <Notice tone="error">{error}</Notice>}
@@ -75,12 +82,32 @@ function List({ exercises, onPick }: { exercises: Exercise[]; onPick: (exercise:
     <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-surface">
       {exercises.map((exercise) => (
         <li key={exercise.id}>
-          <button onClick={() => onPick(exercise)} className="flex min-h-12 w-full items-center justify-between gap-2 px-4 text-left active:bg-fill">
-            <span>{exercise.name}</span>
+          <button onClick={() => onPick(exercise)} className="flex min-h-12 w-full items-center gap-3 px-4 py-1 text-left active:bg-fill">
+            <LiftIcon exercise={exercise} />
+            <span className="min-w-0 flex-1">{exercise.name}</span>
             <span className="text-[15px] text-muted">{exercise.muscleGroup}</span>
           </button>
         </li>
       ))}
     </ul>
+  )
+}
+
+/** Chips for a new lift's equipment, which goes in its name like the built-ins': "Zercher Squat (Barbell)". */
+export function EquipmentChips({ value, onChange }: { value: Equipment; onChange: (equipment: Equipment) => void }) {
+  return (
+    <div role="group" aria-label="Equipment" className="flex flex-wrap gap-2">
+      {(Object.keys(EQUIPMENT_LABELS) as Equipment[]).map((equipment) => (
+        <button
+          key={equipment}
+          type="button"
+          onClick={() => onChange(equipment)}
+          aria-pressed={value === equipment}
+          className={`${tapArea} min-h-9 rounded-full px-3.5 text-[15px] font-medium ${value === equipment ? 'bg-coral/15 text-coral-ink' : 'bg-fill text-muted'}`}
+        >
+          {EQUIPMENT_LABELS[equipment]}
+        </button>
+      ))}
+    </div>
   )
 }

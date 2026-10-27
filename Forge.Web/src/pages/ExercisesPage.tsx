@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { addExercise, getExercises, getWorkouts, isCardio, MUSCLE_GROUPS } from '../api'
 import { Card, field, Group, Notice, Page, primaryButton, Row, SearchInput, Status } from '../components'
+import { EquipmentChips } from '../ExercisePicker'
+import { LiftIcon } from '../LiftFigure'
+import { nameWithEquipment, type Equipment } from '../lifts'
 import { failure, usePolling, useAction } from '../usePolling'
 import { bestSet, formatCardio, formatSet } from '../workouts'
 
@@ -31,7 +34,10 @@ export default function ExercisesPage() {
                   to={`/workouts/exercises/${exercise.id}`}
                   detail={best ? <span className="text-[15px]">{isCardio(exercise) ? formatCardio(best) : formatSet(best)}</span> : exercise.isCustom ? 'Yours' : undefined}
                 >
-                  {exercise.name}
+                  <span className="flex items-center gap-3">
+                    <LiftIcon exercise={exercise} />
+                    {exercise.name}
+                  </span>
                 </Row>
               )
             })}
@@ -47,12 +53,13 @@ function AddExercise({ initialName }: { initialName: string }) {
   const navigate = useNavigate()
   const [name, setName] = useState<string>()
   const [muscleGroup, setMuscleGroup] = useState(MUSCLE_GROUPS[0])
+  const [equipment, setEquipment] = useState<Equipment>('bodyweight')
   const { busy: saving, error, run } = useAction()
   const value = name ?? initialName // follows the search box until you type here
 
   const add = async () => {
     await run(async () => {
-      const exercise = await addExercise(value.trim(), muscleGroup)
+      const exercise = await addExercise(nameWithEquipment(value.trim(), equipment), muscleGroup)
       navigate(`/workouts/exercises/${exercise.id}`)
     })
   }
@@ -67,12 +74,13 @@ function AddExercise({ initialName }: { initialName: string }) {
         }}
         className="mt-3 space-y-2"
       >
-        <input value={value} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Zercher Squat (Barbell)" aria-label="Exercise name" maxLength={100} className={field} />
+        <input value={value} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Zercher Squat" aria-label="Exercise name" maxLength={100} className={field} />
         <select value={muscleGroup} onChange={(e) => setMuscleGroup(e.target.value)} aria-label="Muscle group" className={field}>
           {MUSCLE_GROUPS.map((group) => (
             <option key={group}>{group}</option>
           ))}
         </select>
+        <EquipmentChips value={equipment} onChange={setEquipment} />
         {muscleGroup === 'Cardio' && <p className="text-[15px] text-muted">Cardio is logged as a distance and time instead of weight and reps.</p>}
         {error && <Notice tone="error">{error}</Notice>}
         <button disabled={saving || !value.trim()} className={primaryButton}>

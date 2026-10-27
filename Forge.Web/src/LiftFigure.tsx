@@ -21,11 +21,14 @@ export function LiftFigure({ pose, equipment, className }: { pose: Pose; equipme
   )
 }
 
-/** A lift's figure and, beside it, the muscles it works: for lists and headers, next to the lift's name. */
+/**
+ * A lift's figure and, beside it, the muscles it works: for lists and headers, next to the lift's name. In ink, even in
+ * a coral heading.
+ */
 export function LiftIcon({ exercise }: { exercise: Pick<Exercise, 'name' | 'muscleGroup'> }) {
   const lift = liftInfo(exercise)
   return (
-    <span className="flex shrink-0 items-center gap-1">
+    <span className="flex shrink-0 items-center gap-1 text-ink">
       <LiftFigure pose={lift.pose} equipment={lift.equipment} className="size-10" />
       <LiftMuscles lift={lift} className="h-10" />
     </span>
