@@ -52,7 +52,7 @@ export const POSES: Record<Pose, Figure> = {
   // Bent over, pulling the weight to the waist.
   row: {
     head: [36, 23], neck: [31, 25], hips: [18, 29],
-    elbows: both([25, 20.5]), hands: both([26.5, 28]), knees: both([25, 37]), feet: both([23, 45]),
+    elbows: both([24.5, 23]), hands: both([27, 30]), knees: both([25, 37]), feet: both([23, 45]),
   },
   // Standing tall, elbows high, hands at the face: face pulls and upright rows.
   highPull: {
@@ -91,10 +91,10 @@ export const POSES: Record<Pose, Figure> = {
     elbows: both([23.5, 22.5]), hands: both([30, 18]), knees: [[24.5, 36.5], [23, 36.5]], feet: [[25, 45], [22, 45]],
     pulleys: [[42, 45]],
   },
-  // Standing, elbows up by the head, the weight lowered behind it.
+  // Standing, elbows pointing up beside the head, the weight lowered behind it.
   tricepsExtension: {
-    head: [22.5, 11.5], neck: [24, 16.5], hips: [24, 28.5],
-    elbows: both([28.5, 9.5]), hands: both([22, 4.5]), knees: [[24.5, 37], [23, 37]], feet: [[25, 45], [22, 45]],
+    head: [28, 12.5], neck: [24, 17], hips: [24, 29],
+    elbows: both([22.5, 8.5]), hands: both([18, 13.5]), knees: [[24.5, 37], [23, 37]], feet: [[25, 45], [22, 45]],
     pulleys: [[4, 34]],
   },
   // Facing you, arms out to the sides at shoulder height.
