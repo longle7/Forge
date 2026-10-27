@@ -4,6 +4,7 @@ import { ApiError, getExercises, getMaxes, getWorkouts, isCardio, saveWorkout, t
 import { readJson, write } from '../cache'
 import { Card, dangerButton, field, Notice, plainButton, primaryButton, Sheet, SupersetGroup, tintedButton } from '../components'
 import { leaveSuperset, loadDraft, replaceExercise, restsAfter, saveDraft, supersetWithNext, toSet, toWorkout, type Draft, type DraftExercise, type DraftSet } from '../draft'
+import { FULL_GYM, swapsFor } from '../equipment'
 import { ExercisePicker } from '../ExercisePicker'
 import { LiftIcon } from '../LiftFigure'
 import { equipmentOf } from '../lifts'
@@ -237,6 +238,9 @@ function Logger({ draft, update, workouts, exercises, tested }: {
         : draft.exercises.map((ex, i) => (i === replacing ? replaceExercise(ex, exercise.id, isCardio(exercise)) : ex)),
     )
   }
+  // Replace lists the exercise's swaps first: all of them, since the picker hides the ones you lack equipment for.
+  const replaced = picker?.replacing === undefined ? undefined : byId.get(draft.exercises[picker.replacing].exerciseId)
+  const swaps = replaced && { title: 'Swaps', ids: swapsFor(replaced, all, FULL_GYM).map((e) => e.id) }
   // The plate calculator starts at the next set's weight: typed in, or the one to try from last time.
   const openPlates = (ex: DraftExercise) => {
     const next = Math.max(0, ex.sets.findIndex((set) => !set.done))
@@ -504,6 +508,7 @@ function Logger({ draft, update, workouts, exercises, tested }: {
         <ExercisePicker
           title={picker.replacing === undefined ? 'Add Exercise' : 'Replace Exercise'}
           exercises={all}
+          suggested={swaps}
           recent={recentExercises(workouts)}
           onPick={pick}
           onClose={() => setPicker(undefined)}
