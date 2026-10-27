@@ -54,7 +54,7 @@ export const POSES: Record<Pose, Figure> = {
     head: [36, 23], neck: [31, 25], hips: [18, 29],
     elbows: both([24.5, 23]), hands: both([27, 30]), knees: both([25, 37]), feet: both([23, 45]),
   },
-  // Standing tall, elbows high, hands at the face: face pulls and upright rows.
+  // Standing tall, elbows high, hands pulled up to the chest: face pulls and upright rows.
   highPull: {
     head: [25, 8.5], neck: [24, 14.5], hips: [23.5, 27.5],
     elbows: both([28, 12.5]), hands: both([32.5, 17]), knees: [[25, 36.5], [22.5, 36.5]], feet: [[25.5, 45], [21.5, 45]],

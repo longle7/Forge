@@ -438,7 +438,7 @@ export const equipmentOf = (name: string): Equipment =>
 
 /** A built-in's catalog entry, or for a lift you added, its group's defaults and the equipment in its name. */
 export function liftInfo(exercise: Pick<Exercise, 'name' | 'muscleGroup'>): LiftInfo {
-  // hasOwn, so a lift you named "constructor" isn't taken for the object's own property.
+  // hasOwn, so a lift you named "constructor" or "toString" isn't looked up on every object's prototype.
   if (Object.hasOwn(LIFTS, exercise.name)) return LIFTS[exercise.name]
   return { ...(GROUP_DEFAULTS[exercise.muscleGroup] ?? GROUP_DEFAULTS.Other), equipment: equipmentOf(exercise.name), cues: [] }
 }
