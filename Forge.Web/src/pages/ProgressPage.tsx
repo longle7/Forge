@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, isNative, type DayTotals, type Habit, type PlanDay, type Profile, type WeighIn, type Workout } from '../api'
+import { foodDaysPath, getExercises, getFoodDays, getHabits, getPlan, getProfile, getWeighIns, getWorkouts, isNative, type DayTotals, type Exercise, type Habit, type PlanDay, type Profile, type WeighIn, type Workout } from '../api'
+import { BodyMap } from '../BodyMap'
 import { completion, habitStreak } from '../habits'
 import { BarChart, ChartTable, LineChart, Sparkline } from '../charts'
 import { RING } from '../colors'
-import { Card, Page, plainButton, Segmented, Status } from '../components'
-import { addDays, localDate, parseDate, workoutDay } from '../dates'
+import { BarRow, Card, Page, plainButton, Segmented, Status } from '../components'
+import { addDays, dayLabel, localDate, monthStart, parseDate, workoutDay } from '../dates'
 import { Icon } from '../icons'
 import { calorieAdherence, formatKcal, goalEta, plannedTrend, weightTrend } from '../nutrition'
-import { adherence, calorieBars, plannedDays, shortDate, strengthSeries, streak, topLifts, weekStatuses, type Bucket, type DayStatus } from '../progress'
+import { adherence, calorieBars, muscleSets, plannedDays, shortDate, strengthSeries, streak, topLifts, weekStatuses, type Bucket, type DayStatus } from '../progress'
 import { SleepAndStepsCard } from '../SleepAndStepsCard'
 import { failure, useNow, usePolling } from '../usePolling'
 import { WeighInSheet } from '../WeighInSheet'
@@ -47,9 +48,11 @@ export default function ProgressPage() {
       <WeightCard weighIns={weighIns.data ?? []} from={from} profile={profile.data ?? undefined} today={today} period={period} onSaved={weighIns.reload} />
       <SleepAndStepsCard from={from} today={today} period={period} bucket={range.bucket} />
       <PlanCard plan={plan.data ?? []} workouts={workouts.data ?? []} from={from} today={today} period={period} />
+      <TrainingCalendar plan={plan.data ?? []} workouts={workouts.data ?? []} today={today} />
       <HabitsCard habits={(habits.data ?? []).filter((h) => !h.archived)} from={from} today={today} period={period} />
       <CaloriesCard days={food.data ?? []} profile={profile.data ?? undefined} plan={plan.data} from={from} today={today} period={period} bucket={range.bucket} />
       <StrengthCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
+      <MusclesCard workouts={workouts.data ?? []} exercises={exercises.data ?? []} from={from} today={today} period={period} />
       <RecordsCard workouts={workouts.data ?? []} from={from} names={names} period={period} />
 
       {/* Points the website to the iPhone app; inside the app it would point at itself. */}
@@ -149,10 +152,10 @@ const DOT_LABELS: Record<DayStatus, string> = {
   planned: 'planned',
   rest: 'rest day',
   extra: 'trained on a rest day',
-  none: 'before your plan',
+  none: 'no workout',
 }
 
-/** One day of the plan grid. Never color alone: done has a check, missed is an open ring, rest a dash. */
+/** One day of the training calendar. Never color alone: done has a check, missed is an open ring, rest a dash. */
 function DayDot({ status }: { status: DayStatus }) {
   const base = 'grid size-7 place-items-center rounded-full'
   if (status === 'done' || status === 'extra')
@@ -163,7 +166,7 @@ function DayDot({ status }: { status: DayStatus }) {
     )
   if (status === 'missed') return <span className={`${base} border-2 border-muted/40`} />
   if (status === 'planned') return <span className={`${base} border-2 border-coral/50`} />
-  // Rest days get a dash; days before the plan began, a faint dot.
+  // Rest days get a dash; days with no workout and nothing planned (before the plan, or without one), a faint dot.
   return <span className={`${base} text-muted/50`}>{status === 'rest' ? '–' : '·'}</span>
 }
 
@@ -181,8 +184,6 @@ function PlanCard({ plan, workouts, from, today, period }: { plan: PlanDay[]; wo
   }
   const days = plannedDays(plan, workouts, from, today)
   const share = adherence(days)
-  // Only the weeks since the plan began: earlier ones would be empty rows.
-  const weeks = weekStatuses(plan, workouts, today).filter((week) => week.some((d) => d.status !== 'none'))
   return (
     <Card>
       <CardTitle icon="calendar" title="Sticking to the plan" />
@@ -194,29 +195,88 @@ function PlanCard({ plan, workouts, from, today, period }: { plan: PlanDay[]; wo
         />
         <Stat label="Streak" value={String(streak(plan, workouts, today))} detail="planned days in a row" />
       </div>
-      <div className="mt-4 grid grid-cols-7 justify-items-center gap-y-2 text-[11px] text-muted" role="table" aria-label="Your plan, week by week">
+    </Card>
+  )
+}
+
+/**
+ * A month of training days, Monday first, with or without a plan; with one, also the days missed, planned, and rest.
+ * ‹ › change the month, up to this one. A training day opens its workout.
+ */
+function TrainingCalendar({ plan, workouts, today }: { plan: PlanDay[]; workouts: Workout[]; today: string }) {
+  const [month, setMonth] = useState(() => monthStart(today))
+  const last = addDays(monthStart(month, 1), -1)
+  // A month touches at most 6 weeks: take the 6 through its last day, less any that end before it begins.
+  const weeks = weekStatuses(plan, workouts, today, 6, last).filter((week) => week[6].day >= month)
+  const monthName = parseDate(month).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  return (
+    <Card>
+      <CardTitle icon="calendar" title="Training calendar" />
+      <div className="mt-1 flex items-center justify-between">
+        <button onClick={() => setMonth(monthStart(month, -1))} aria-label="Previous month" className={`${plainButton} min-w-11 justify-center`}>
+          <Icon name="chevronLeft" className="size-5" />
+        </button>
+        <p className="font-semibold" aria-live="polite">
+          {monthName}
+        </p>
+        <button onClick={() => setMonth(monthStart(month, 1))} disabled={month === monthStart(today)} aria-label="Next month" className={`${plainButton} min-w-11 justify-center`}>
+          <Icon name="chevronRight" className="size-5" />
+        </button>
+      </div>
+      <div className="mt-1 grid grid-cols-7 justify-items-center gap-y-1 text-[11px] text-muted" role="table" aria-label={`Training days in ${monthName}`}>
         {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
           <span key={i} role="columnheader" aria-hidden>
             {d}
           </span>
         ))}
-        {weeks.flat().map(({ day, status }) => (
-          <span key={day} role="cell" aria-label={`${shortDate(day)}: ${DOT_LABELS[status]}`} className={day === today ? 'rounded-full ring-2 ring-coral/40 ring-offset-1 ring-offset-surface' : ''}>
-            <DayDot status={status} />
-          </span>
-        ))}
+        {/* Days of the months either side stay blank. */}
+        {weeks.flat().map(({ day, status, workoutId }) =>
+          day < month || day > last ? <span key={day} aria-hidden /> : <CalendarDay key={day} day={day} status={status} workoutId={workoutId} today={today} />,
+        )}
       </div>
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted">
-        {(['done', 'missed', 'planned', 'rest'] as const).map((s) => (
-          <span key={s} className="flex items-center gap-1.5">
-            <span className="origin-left scale-75">
-              <DayDot status={s} />
-            </span>
-            {DOT_LABELS[s][0].toUpperCase() + DOT_LABELS[s].slice(1)}
-          </span>
-        ))}
-      </div>
+      {plan.length > 0 && <DotLegend />}
     </Card>
+  )
+}
+
+/** One day of the calendar: the date (today's in bold coral) over its dot. A training day links to its first workout. */
+function CalendarDay({ day, status, workoutId, today }: { day: string; status: DayStatus; workoutId?: string; today: string }) {
+  const label = `${dayLabel(day, today)}: ${DOT_LABELS[status]}`
+  const style = 'flex min-h-11 min-w-11 flex-col items-center gap-0.5'
+  const content = (
+    <>
+      <span aria-hidden className={day === today ? 'font-bold text-coral-ink' : undefined}>
+        {Number(day.slice(8))}
+      </span>
+      <DayDot status={status} />
+    </>
+  )
+  return workoutId ? (
+    <span role="cell">
+      <Link to={`/workouts/history/${workoutId}`} aria-label={label} className={`${style} active:opacity-60`}>
+        {content}
+      </Link>
+    </span>
+  ) : (
+    <span role="cell" aria-label={label} className={style}>
+      {content}
+    </span>
+  )
+}
+
+/** What the dots mean. Only with a plan: without one, a check is the only mark. */
+function DotLegend() {
+  return (
+    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted">
+      {(['done', 'missed', 'planned', 'rest'] as const).map((s) => (
+        <span key={s} className="flex items-center gap-1.5">
+          <span className="origin-left scale-75">
+            <DayDot status={s} />
+          </span>
+          {DOT_LABELS[s][0].toUpperCase() + DOT_LABELS[s].slice(1)}
+        </span>
+      ))}
+    </div>
   )
 }
 
@@ -318,6 +378,31 @@ function StrengthCard({ workouts, from, names, period }: { workouts: Workout[]; 
           )
         })}
       </ul>
+    </Card>
+  )
+}
+
+/** Working sets a week for each muscle group over the range: shaded on the body against the guide, then as bars. */
+function MusclesCard({ workouts, exercises, from, today, period }: { workouts: Workout[]; exercises: Exercise[]; from: string; today: string; period: string }) {
+  const groups = muscleSets(workouts, exercises, from, today)
+  // The bars run to 20 sets a week, the top of the guide, unless a group goes past it.
+  const scale = Math.max(20, ...groups.map((g) => g.weeklySets))
+  return (
+    <Card>
+      <CardTitle icon="person" title="Muscles" detail={`working sets a week, ${period}`} />
+      {groups.some((g) => g.weeklySets > 0) ? (
+        <>
+          <BodyMap groups={groups} />
+          <ul className="mt-4 space-y-2 text-[15px]">
+            {groups.map(({ group, weeklySets }) => (
+              <BarRow key={group} label={<span className="font-semibold">{group}</span>} share={weeklySets / scale} color={RING.move} value={String(weeklySets)} />
+            ))}
+          </ul>
+          <ChartTable caption={`Working sets a week, ${period}`} rows={groups.map(({ group, weeklySets }) => [group, `${plural(weeklySets, 'set')} a week`])} />
+        </>
+      ) : (
+        <p className="mt-1 text-[15px] text-muted">Log strength workouts to see the sets each muscle group gets.</p>
+      )}
     </Card>
   )
 }
