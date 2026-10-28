@@ -63,6 +63,16 @@ jobs:
           test -n "$ASC_PRIVATE_KEY" || { echo "::error::Add the ASC_KEY_ID, ASC_ISSUER_ID, and ASC_PRIVATE_KEY secrets first (see the top of this file)."; exit 1; }
           printf '%s' "$ASC_PRIVATE_KEY" > "$RUNNER_TEMP/AuthKey.p8"
 
+      # A fresh Mac makes a new development certificate every run, and Apple allows only a few: clear the leftovers
+      # first (see the script).
+      - name: Free a development certificate slot
+        if: inputs.build == ''
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
+        run: node .github/scripts/free-development-certificates.mjs
+
       # The build number must go up with every upload; the run number always does.
       - name: Archive
         if: inputs.build == ''
